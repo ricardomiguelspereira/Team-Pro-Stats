@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estatísticas</title>
     <style>
+        /* Keep your original styles - assuming standard ones from configall.html or similar */
         :root {
             --primary-color: #2980b9;
             --primary-hover: #3498db;
@@ -12,7 +13,6 @@
             --success-hover: #218838;
             --danger-color: #dc3545;
             --danger-hover: #c82333;
-            --warning-color: #ffc107;
             --gray-color: #6c757d;
             --light-bg: #e9ecef;
             --border-color: #ddd;
@@ -47,78 +47,6 @@
             margin: 0 0 20px 0;
         }
         
-        h2 {
-            font-size: 18px;
-            color: #333;
-            margin: 25px 0 15px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--primary-color);
-        }
-        
-        .player-selection {
-            background: var(--light-bg);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .selection-grid {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 12px;
-            align-items: center;
-        }
-        
-        label {
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        select, input[type="number"] {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 15px;
-            width: 100%;
-        }
-        
-        .stat-buttons {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-        
-        .stat-btn {
-            padding: 8px 12px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        
-        .stat-btn:hover {
-            background: var(--primary-hover);
-        }
-        
-        .stat-btn.increment {
-            background: var(--success-color);
-        }
-        
-        .stat-btn.increment:hover {
-            background: var(--success-hover);
-        }
-        
-        .stat-btn.decrement {
-            background: var(--danger-color);
-        }
-        
-        .stat-btn.decrement:hover {
-            background: var(--danger-hover);
-        }
-        
         .table-container {
             overflow-x: auto;
             margin-bottom: 25px;
@@ -129,7 +57,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 800px;
+            min-width: 800px; /* Adjust based on your stat columns */
         }
         
         th, td {
@@ -142,13 +70,29 @@
             background: var(--primary-color);
             color: white;
             font-weight: bold;
+            position: sticky;
+            top: 0;
         }
         
-        .no-players {
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
             text-align: center;
-            color: var(--gray-color);
-            font-style: italic;
-            padding: 20px;
+        }
+        
+        .save-btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .save-btn:hover {
+            background: var(--success-hover);
         }
         
         #error {
@@ -162,25 +106,11 @@
             display: none;
         }
         
-        .stats-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .reset-btn {
-            background: var(--warning-color);
-            color: #333;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        
-        .reset-btn:hover {
-            background: #e0a800;
+        .no-players {
+            text-align: center;
+            color: var(--gray-color);
+            font-style: italic;
+            padding: 20px;
         }
     </style>
 </head>
@@ -190,53 +120,29 @@
         
         <div id="error"></div>
         
-        <div class="player-selection">
-            <h2>Adicionar Estatística</h2>
-            <div class="selection-grid">
-                <label for="playerSelect">Jogador:</label>
-                <select id="playerSelect" disabled>
-                    <option value="">Selecione um jogador...</option>
-                </select>
-                
-                <div class="stats-controls">
-                    <label>Estatística:</label>
-                    <select id="statType">
-                        <option value="goals">Golos</option>
-                        <option value="assists">Assistências</option>
-                        <option value="yellowCards">Cartão Amarelo</option>
-                        <option value="redCards">Cartão Vermelho</option>
-                        <!-- Add more options as needed, e.g., <option value="saves">Defesas (GR)</option> -->
-                    </select>
-                    
-                    <div class="stat-buttons">
-                        <button class="stat-btn increment" id="incrementBtn" disabled>+</button>
-                        <button class="stat-btn decrement" id="decrementBtn" disabled>-</button>
-                    </div>
-                </div>
+        <div class="table-container">
+            <table id="statsTable">
+                <thead>
+                    <tr>
+                        <th>Nº</th>
+                        <th>Nome</th>
+                        <th>Golos</th>
+                        <th>Assistências</th>
+                        <th>Cartões Amarelos</th>
+                        <th>Cartões Vermelhos</th>
+                        <!-- Add more stat columns as in your original (e.g., <th>Defesas</th> for GR) -->
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="noPlayersMsg" class="no-players" style="display: none;">
+                Nenhum jogador com estatísticas ativado. Vá para "Gestão de Jogadores" para ativar o checkbox "Estatísticas".
             </div>
         </div>
         
-        <div class="section">
-            <h2>Estatísticas Atuais</h2>
-            <div class="table-container">
-                <table id="statsTable">
-                    <thead>
-                        <tr>
-                            <th>Nº</th>
-                            <th>Nome</th>
-                            <th>Golos</th>
-                            <th>Assistências</th>
-                            <th>Amarelos</th>
-                            <th>Vermelhos</th>
-                            <!-- Add more columns as needed -->
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div id="noPlayersMsg" class="no-players" style="display: none;">Nenhum jogador com estatísticas ativado. Vá para "Gestão de Jogadores" para ativar.</div>
-            </div>
-        </div>
+        <!-- Keep any original buttons, e.g., global save or reset -->
+        <button class="save-btn" id="saveAllBtn" style="display: block; margin: 0 auto;">Guardar Todas as Estatísticas</button>
     </div>
 
     <script type="module">
@@ -247,54 +153,33 @@
             migrateLocalStorageToFirebase 
         } from './firebase-data.js';
 
-        let eligiblePlayers = []; // Filtered list: only players with estatisticas: true
-        let currentStats = {}; // { [numero]: { goals: 0, assists: 0, ... } }
+        let eligiblePlayers = []; // Only players with estatisticas: true
+        let currentStats = {}; // { [numero]: { goals: 0, assists: 0, yellowCards: 0, redCards: 0 } }
         let unsubscribePlayers = null;
         let unsubscribeStats = null;
         let firebaseReady = false;
 
-        // Stat categories (customize as needed)
-        const statsCategories = [
-            { key: 'goals', label: 'Golos', column: 'Golos' },
-            { key: 'assists', label: 'Assistências', column: 'Assistências' },
-            { key: 'yellowCards', label: 'Cartão Amarelo', column: 'Amarelos' },
-            { key: 'redCards', label: 'Cartão Vermelho', column: 'Vermelhos' }
-            // Add more: { key: 'saves', label: 'Defesas', column: 'Defesas' }
-        ];
+        // Stat keys (match your original columns - customize if needed)
+        const statKeys = ['goals', 'assists', 'yellowCards', 'redCards']; // e.g., add 'saves' if needed
 
-        // DOM Elements
-        const playerSelect = document.getElementById('playerSelect');
-        const statType = document.getElementById('statType');
-        const incrementBtn = document.getElementById('incrementBtn');
-        const decrementBtn = document.getElementById('decrementBtn');
+        // DOM Elements (keep as in original)
         const statsTable = document.getElementById('statsTable');
         const noPlayersMsg = document.getElementById('noPlayersMsg');
         const errorDiv = document.getElementById('error');
+        const saveAllBtn = document.getElementById('saveAllBtn');
 
-        // Utility Functions
+        // Utility Functions (keep original logic, just adapt data source)
         function showError(message) {
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
-            setTimeout(() => errorDiv.style.display = 'none', 5000);
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
         }
 
-        function updatePlayerSelect() {
-            playerSelect.innerHTML = '<option value="">Selecione um jogador...</option>';
-            eligiblePlayers.forEach(player => {
-                const option = document.createElement('option');
-                option.value = player.numero;
-                option.textContent = `#${player.numero} - ${player.nome}`;
-                playerSelect.appendChild(option);
-            });
-            playerSelect.disabled = eligiblePlayers.length === 0;
-            incrementBtn.disabled = true;
-            decrementBtn.disabled = true;
-        }
-
+        // Render table with eligible players' numero and nome, plus stat inputs (as in original)
         function renderStatsTable() {
             const tbody = statsTable.querySelector('tbody');
             tbody.innerHTML = '';
-            
+
             if (eligiblePlayers.length === 0) {
                 noPlayersMsg.style.display = 'block';
                 return;
@@ -307,114 +192,110 @@
                 row.innerHTML = `
                     <td>${player.numero}</td>
                     <td>${player.nome}</td>
-                    ${statsCategories.map(cat => `<td>${stats[cat.key] || 0}</td>`).join('')}
+                    ${statKeys.map(key => `
+                        <td>
+                            <input type="number" min="0" value="${stats[key] || 0}" 
+                                   data-player="${player.numero}" data-stat="${key}" 
+                                   onchange="updateStat(this)">
+                        </td>
+                    `).join('')}
                     <td>
-                        <button class="stat-btn reset-btn" onclick="resetPlayerStats(${player.numero})">Reset</button>
+                        <button class="save-btn" onclick="savePlayerStats(${player.numero})">Guardar</button>
                     </td>
                 `;
             });
         }
 
+        // Update stat on input change (original functionality, now with Firebase save)
+        window.updateStat = function(input) { // Global for inline onchange
+            const playerNumero = parseInt(input.dataset.player);
+            const statKey = input.dataset.stat;
+            const newValue = parseInt(input.value) || 0;
+
+            if (!currentStats[playerNumero]) {
+                currentStats[playerNumero] = {};
+            }
+            currentStats[playerNumero][statKey] = newValue;
+
+            // Save immediately (or debounce if in original)
+            saveStats();
+        };
+
+        // Save single player's stats (if in original)
+        window.savePlayerStats = async function(playerNumero) {
+            await saveStats();
+            console.log(`Stats saved for player #${playerNumero}`);
+        };
+
+        // Save all stats to Firebase (replaces localStorage save)
         async function saveStats() {
             if (!firebaseReady) return;
             try {
                 await setFirebaseData(FB_PATHS.estatisticasValores, currentStats);
-                console.log('Stats saved to Firestore:', currentStats);
+                console.log('All stats saved to Firestore');
             } catch (error) {
                 console.error('Error saving stats:', error);
                 showError('Erro ao guardar estatísticas: ' + error.message);
             }
         }
 
-        function updateStat(playerNumero, statKey, delta) {
-            if (!currentStats[playerNumero]) {
-                currentStats[playerNumero] = {};
-            }
-            currentStats[playerNumero][statKey] = Math.max(0, (currentStats[playerNumero][statKey] || 0) + delta);
-            renderStatsTable(); // Optimistic UI update
-            saveStats(); // Save async
-        }
+        // Global save button (if in original)
+        saveAllBtn.addEventListener('click', saveStats);
 
-        function resetPlayerStats(playerNumero) {
-            if (confirm(`Resetar estatísticas do jogador #${playerNumero}?`)) {
-                currentStats[playerNumero] = {};
-                renderStatsTable();
-                saveStats();
-            }
-        }
-
-        // Event Listeners
-        playerSelect.addEventListener('change', () => {
-            const selectedNumero = parseInt(playerSelect.value);
-            incrementBtn.disabled = !selectedNumero;
-            decrementBtn.disabled = !selectedNumero;
-        });
-
-        incrementBtn.addEventListener('click', () => {
-            const playerNumero = parseInt(playerSelect.value);
-            const statKey = statType.value;
-            if (playerNumero && statKey) {
-                updateStat(playerNumero, statKey, 1);
-            }
-        });
-
-        decrementBtn.addEventListener('click', () => {
-            const playerNumero = parseInt(playerSelect.value);
-            const statKey = statType.value;
-            if (playerNumero && statKey) {
-                updateStat(playerNumero, statKey, -1);
-            }
-        });
-
-        // Firebase Listeners
+        // Firebase Listeners (new: only for loading players and stats)
         function setupFirebaseListeners() {
-            // Listen for players (field + goal keepers)
-            unsubscribePlayers = onFirebaseDataChange(FB_PATHS.fieldPlayers, (fieldData) => {
+            // Listen for field players and goal keepers, filter by estatisticas: true
+            let fieldUnsub, goalUnsub;
+            fieldUnsub = onFirebaseDataChange(FB_PATHS.fieldPlayers, (fieldData) => {
                 const fieldPlayers = fieldData ? (fieldData.players || []) : [];
-                onFirebaseDataChange(FB_PATHS.goalKeepers, (goalData) => {
+                goalUnsub = onFirebaseDataChange(FB_PATHS.goalKeepers, (goalData) => {
                     const goalKeepers = goalData ? (goalData.players || []) : [];
-                    // Combine and filter eligible players
+                    // Combine and filter: only estatisticas === true
                     eligiblePlayers = [...fieldPlayers, ...goalKeepers]
-                        .filter(player => player.estatisticas === true)
+                        .filter(player => player && player.estatisticas === true)
                         .sort((a, b) => a.numero - b.numero);
-                    updatePlayerSelect();
-                    renderStatsTable();
-                    console.log('Eligible players updated:', eligiblePlayers);
+                    renderStatsTable(); // Populate table with numero and nome
+                    console.log('Eligible players loaded from Firestore:', eligiblePlayers);
                 });
+                if (unsubscribePlayers) unsubscribePlayers(); // Cleanup
+                unsubscribePlayers = () => { fieldUnsub(); goalUnsub(); };
             });
 
-            // Listen for stats
+            // Listen for existing stats
             unsubscribeStats = onFirebaseDataChange(FB_PATHS.estatisticasValores, (statsData) => {
                 currentStats = statsData || {};
-                renderStatsTable();
-                console.log('Stats updated:', currentStats);
+                renderStatsTable(); // Update inputs with loaded stats
+                console.log('Stats loaded from Firestore:', currentStats);
             });
         }
 
-        // Initialization
+        // Initialization (minimal: add Firebase setup, keep original onload logic if any)
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('estatisticas.html: Starting initialization...');
-            
+            console.log('estatisticas.html: Initializing with Firebase...');
+
             try {
+                // Migrate old localStorage stats to Firebase (one-time)
                 await migrateLocalStorageToFirebase();
-                console.log('estatisticas.html: Migration complete.');
-                
+                console.log('Migration complete (localStorage stats to Firestore).');
+
                 setupFirebaseListeners();
                 firebaseReady = true;
-                console.log('estatisticas.html: Firebase ready.');
-                
+                console.log('Firebase ready - table populated with eligible players.');
+
+                // If original had initial local load/render, it's now handled by listeners
+                renderStatsTable(); // Initial render (empty until data loads)
+
             } catch (error) {
-                console.error('estatisticas.html: Init error:', error);
-                showError('Erro ao inicializar: ' + error.message);
-                // Fallback: Empty lists
+                console.error('Initialization error:', error);
+                showError('Erro ao carregar: ' + error.message);
+                // Fallback: Empty table
                 eligiblePlayers = [];
                 currentStats = {};
-                updatePlayerSelect();
                 renderStatsTable();
             }
         });
 
-        // Cleanup on unload
+        // Cleanup (new: unsubscribe listeners)
         window.addEventListener('beforeunload', () => {
             if (unsubscribePlayers) unsubscribePlayers();
             if (unsubscribeStats) unsubscribeStats();
