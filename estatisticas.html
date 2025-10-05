@@ -6,14 +6,13 @@
 <title>Estatísticas</title>
 <link rel="stylesheet" href="estatisticas.css">
 <style>
-/* Footer */
-    footer {
-      width: 100%;
-      text-align: center;
-      padding: 12px 0;
-      font-size: 0.8em;
-      color: #666;
-    }
+  footer {
+    width: 100%;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 0.8em;
+    color: #666;
+  }
 </style>
 </head>
 <body>
@@ -101,9 +100,10 @@
 <div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
 <div class="notification" id="notification"></div>
 
-<!-- Firebase SDKs (module for initialization) -->
+<!-- Firebase SDKs -->
 <script type="module" src="firebase-data.js"></script>
-<!-- Firebase-compatible stats script (replaces original estatisticas.js) -->
+
+<!-- Stats logic -->
 <script type="module">
   import { 
     FB_PATHS, 
@@ -112,28 +112,21 @@
     migrateLocalStorageToFirebase 
   } from './firebase-data.js';
 
-  let eligibleFieldPlayers = []; // Filtered: estatisticas: true, gr: false
-  let eligibleGoalKeepers = []; // Filtered: estatisticas: true, gr: true
-  let statsParte1 = { campo: {}, gr: {} }; // { [numero]: { statKey: value } }
+  let eligibleFieldPlayers = [];
+  let eligibleGoalKeepers = [];
+  let statsParte1 = { campo: {}, gr: {} };
   let statsParte2 = { campo: {}, gr: {} };
   let unsubscribePlayers = null;
   let unsubscribeStats1 = null;
   let unsubscribeStats2 = null;
   let firebaseReady = false;
 
-  // Stat column mappings (match exact table columns)
   const campoStats = ['grPostes', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas'];
   const grStats = ['defesas', 'interceptados', 'golosSofridos', 'faltas'];
 
-  // DOM Elements
   const notification = document.getElementById('notification');
   const lastSaved = document.getElementById('lastSaved');
-  const tableCampo1 = document.getElementById('tableCampo1');
-  const tableGR1 = document.getElementById('tableGR1');
-  const tableCampo2 = document.getElementById('tableCampo2');
-  const tableGR2 = document.getElementById('tableGR2');
 
-  // Utility Functions (original logic adapted)
   function showNotification(message, isError = false) {
     notification.textContent = message;
     notification.className = isError ? 'notification error' : 'notification success';
@@ -145,7 +138,6 @@
     lastSaved.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
   }
 
-  // Render a single table (original render logic, now with Firebase data)
   function renderTable(tableId, players, stats, statKeys) {
     const tbody = document.querySelector(`#${tableId} tbody`);
     tbody.innerHTML = '';
@@ -155,14 +147,17 @@
         <td class="fixed-col">${player.numero}</td>
         <td class="fixed-col">${player.nome}</td>
         ${statKeys.map(key => {
-          const value = stats[player.numero] ? (stats[player.numero][key] || 0) : 0;
-          return `<td><input type="number" min="0" value="${value}" data-player="${player.numero}" data-part="${tableId.includes('1') ? '1' : '2'}" data-category="${tableId.includes('Campo') ? 'campo' : 'gr'}" data-stat="${key}" onchange="updateStat(this)"></td>`;
+          const value = stats[player.numero]?.[key] ?? 0;
+          return `<td><input type="number" min="0" value="${value}" 
+                   data-player="${player.numero}" 
+                   data-part="${tableId.includes('1') ? '1' : '2'}" 
+                   data-category="${tableId.includes('Campo') ? 'campo' : 'gr'}" 
+                   data-stat="${key}" onchange="updateStat(this)"></td>`;
         }).join('')}
       `;
     });
   }
 
-  // Update stat on input change (original functionality, now saves to Firebase)
   window.updateStat = async function(input) {
     const playerNumero = parseInt(input.dataset.player);
     const part = input.dataset.part;
@@ -171,24 +166,19 @@
     const newValue = parseInt(input.value) || 0;
 
     const stats = part === '1' ? statsParte1 : statsParte2;
-    if (!stats[category][playerNumero]) {
-      stats[category][playerNumero] = {};
-    }
+    if (!stats[category][playerNumero]) stats[category][playerNumero] = {};
     stats[category][playerNumero][statKey] = newValue;
 
-    // Optimistic UI (already in input), save async
     await saveStats(part);
     updateLastSaved();
   };
 
-  // Save stats for a part to Firebase (replaces localStorage save)
   async function saveStats(part) {
     if (!firebaseReady) return;
     try {
       const path = part === '1' ? FB_PATHS.estatisticasParte1 : FB_PATHS.estatisticasParte2;
       const data = part === '1' ? statsParte1 : statsParte2;
       await setFirebaseData(path, data);
-      console.log(`Stats saved for part ${part} to Firestore`);
       showNotification(`Estatísticas da ${part}ª parte guardadas!`);
     } catch (error) {
       console.error('Error saving stats:', error);
@@ -196,63 +186,46 @@
     }
   }
 
-  // Render all tables (original render function, now with Firebase data)
   window.render = async function() {
-    // Render Parte 1
     renderTable('tableCampo1', eligibleFieldPlayers, statsParte1.campo, campoStats);
     renderTable('tableGR1', eligibleGoalKeepers, statsParte1.gr, grStats);
-    // Render Parte 2
     renderTable('tableCampo2', eligibleFieldPlayers, statsParte2.campo, campoStats);
     renderTable('tableGR2', eligibleGoalKeepers, statsParte2.gr, grStats);
   };
 
-  // Firebase Listeners (new: load players and stats)
   function setupFirebaseListeners() {
-    // Listen for players (combine field and GR, filter by estatisticas: true)
     unsubscribePlayers = onFirebaseDataChange(FB_PATHS.fieldPlayers, (fieldData) => {
-      const allField = fieldData ? (fieldData.players || []) : [];
+      const allField = fieldData?.players || [];
       onFirebaseDataChange(FB_PATHS.goalKeepers, (goalData) => {
-        const allGR = goalData ? (goalData.players || []) : [];
-        // Filter eligible
-        eligibleFieldPlayers = allField.filter(p => p.estatisticas === true && !p.gr).sort((a, b) => a.numero - b.numero);
-        eligibleGoalKeepers = [...allGR, ...allField.filter(p => p.gr)].filter(p => p.estatisticas === true).sort((a, b) => a.numero - b.numero);
-        render(); // Populate tables with # and Nome
-        console.log('Eligible players loaded:', { field: eligibleFieldPlayers.length, gr: eligibleGoalKeepers.length });
+        const allGR = goalData?.players || [];
+        eligibleFieldPlayers = allField.filter(p => p.estatisticas && !p.gr).sort((a, b) => a.numero - b.numero);
+        eligibleGoalKeepers = [...allGR, ...allField.filter(p => p.gr)]
+          .filter(p => p.estatisticas)
+          .sort((a, b) => a.numero - b.numero);
+        render();
       });
     });
 
-    // Listen for stats Parte 1
     unsubscribeStats1 = onFirebaseDataChange(FB_PATHS.estatisticasParte1, (data) => {
       statsParte1 = data || { campo: {}, gr: {} };
       if (document.getElementById('part1').classList.contains('active')) render();
     });
 
-    // Listen for stats Parte 2
     unsubscribeStats2 = onFirebaseDataChange(FB_PATHS.estatisticasParte2, (data) => {
       statsParte2 = data || { campo: {}, gr: {} };
       if (document.getElementById('part2').classList.contains('active')) render();
     });
   }
 
-  // Initialization (adapted from original window.load)
   document.addEventListener('DOMContentLoaded', async () => {
-    console.log('estatisticas.html: Initializing with Firebase...');
-
     try {
-      await migrateLocalStorageToFirebase(); // Migrate old stats
-      console.log('Migration complete.');
-
+      await migrateLocalStorageToFirebase();
       setupFirebaseListeners();
       firebaseReady = true;
-      console.log('Firebase ready - rendering tables.');
-
-      // Initial render (tables populate with data from listeners)
       await render();
-
     } catch (error) {
       console.error('Init error:', error);
       showNotification('Erro ao inicializar: ' + error.message, true);
-      // Fallback: Empty tables
       eligibleFieldPlayers = [];
       eligibleGoalKeepers = [];
       statsParte1 = { campo: {}, gr: {} };
@@ -261,17 +234,15 @@
     }
   });
 
-  // Cleanup
   window.addEventListener('beforeunload', () => {
-    if (unsubscribePlayers) unsubscribePlayers();
-    if (unsubscribeStats1) unsubscribeStats1();
-    if (unsubscribeStats2) unsubscribeStats2();
+    unsubscribePlayers?.();
+    unsubscribeStats1?.();
+    unsubscribeStats2?.();
   });
 </script>
 
-<!-- Original inline script for tabs and UI state (unchanged) -->
+<!-- Tabs -->
 <script>
-  // Restore active tab on load
   window.addEventListener('load', async () => {
     const savedTab = localStorage.getItem('activeStatsTab');
     if (savedTab) {
@@ -283,31 +254,27 @@
         document.getElementById(savedTab).classList.add('active');
       }
     }
-    // Ensure render is called after tab state is restored
     if (typeof render === 'function') await render();
   });
 
-  // Tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(btn.dataset.tab).classList.add('active');
-      // Store the active tab
       localStorage.setItem('activeStatsTab', btn.dataset.tab);
-      // Re-render current tab's tables
       if (typeof render === 'function') render();
     });
   });
 
-  // Abrir Entradas/Saídas
   document.getElementById('openInOut').addEventListener('click', () => {
     const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
     localStorage.setItem('activeStatsTab', currentTab);
     window.location.href = 'entradassaidas.html';
   });
 </script>
+
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </body>
 </html>
