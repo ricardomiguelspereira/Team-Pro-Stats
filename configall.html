@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Jogadores</title>
     <style>
-        /* Your existing styles here - no changes needed */
         :root {
             --primary-color: #2980b9;
             --primary-hover: #3498db;
@@ -114,15 +113,25 @@
             font-size: 15px;
             font-weight: bold;
             margin-top: 5px;
+            position: relative;
         }
         
-        .add-btn:hover, .add-btn:active {
+        .add-btn:hover:not(:disabled) {
             background: var(--primary-hover);
         }
         
         .add-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
+        }
+        
+        .add-btn .spinner {
+            display: none;
+            margin-left: 8px;
+        }
+        
+        .add-btn.loading .spinner {
+            display: inline-block;
         }
         
         .table-container {
@@ -227,33 +236,4 @@
             text-align: center;
             font-weight: bold;
             padding: 10px;
-            background: rgba(220, 53, 69, 0.1);
-            border-radius: 4px;
-            display: none; /* Hidden by default */
-        }
-        
-        .inline-input {
-            padding: 5px;
-            border: 1px solid var(--primary-color);
-            border-radius: 3px;
-            font-size: 14px;
-            text-transform: uppercase;
-            width: 100%;
-        }
-        
-        .inline-input-name {
-            padding: 5px;
-            border: 1px solid var(--primary-color);
-            border-radius: 3px;
-            font-size: 14px;
-            text-transform: uppercase;
-            width: 100%;
-        }
-        
-        .editable-cell {
-            cursor: pointer;
-            color: #34495e;
-            padding: 5px 0;
-        }
-        
-        .editable
+            background: rgba(220, 53, 69
