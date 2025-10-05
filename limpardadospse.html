@@ -80,8 +80,9 @@
     }
   </style>
 
+  <script type="module" src="firebase-data.js"></script>
   <script>
-    const STORAGE_KEY = 'pseData';
+    const PSE_PATH = FB_PATHS.pseData; // Firebase path for PSE data
 
     window.onload = function() {
       showConfirmPopup();
@@ -115,21 +116,27 @@
       });
     }
 
-    function clearPSEData() {
-      localStorage.removeItem(STORAGE_KEY);
+    async function clearPSEData() {
+      try {
+        await deleteFirebaseData(PSE_PATH); // Clear PSE data from Firebase
 
-      const popup = document.createElement('div');
-      popup.className = 'popup success';
-      popup.innerHTML = `
-        <h2>✅ Sucesso!</h2>
-        <p>Todos os dados PSE foram eliminados.<br>Será redirecionado em breve...</p>
-      `;
-      document.body.appendChild(popup);
-      popup.style.display = 'block';
+        const popup = document.createElement('div');
+        popup.className = 'popup success';
+        popup.innerHTML = `
+          <h2>✅ Sucesso!</h2>
+          <p>Todos os dados PSE foram eliminados.<br>Será redirecionado em breve...</p>
+        `;
+        document.body.appendChild(popup);
+        popup.style.display = 'block';
 
-      setTimeout(() => {
-        window.location.href = "https://ricardopereira.com"; // destino após limpar
-      }, 2500);
+        setTimeout(() => {
+          window.location.href = "https://ricardopereira.com"; // destino após limpar
+        }, 2500);
+      } catch (error) {
+        console.error('Error clearing PSE data:', error);
+        alert('Erro ao limpar dados PSE: ' + error.message);
+        window.location.href = "https://ricardopereira.com"; // Redirect on error
+      }
     }
 
     function showCancelMessage() {

@@ -8,6 +8,7 @@
   <!-- jsPDF + autoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="firebase-data.js"></script>
 </head>
 <body>
 <script>
@@ -22,16 +23,14 @@
 
       // ---------- Carregar dados PSE ----------
       let pseData = [];
-      const savedPSE = localStorage.getItem("pseData");
-      if (savedPSE) {
-        try {
-          pseData = JSON.parse(savedPSE);
-        } catch (err) { pseData = []; }
+      const savedPSEData = await getFirebaseData(FB_PATHS.pseData); // Get from Firebase
+      if (savedPSEData && savedPSEData.entries) {
+        pseData = savedPSEData.entries;
       }
 
       // ---------- Carregar logo ----------
-      let savedLogoData = JSON.parse(localStorage.getItem('estatisticas_separadas') || '{}');
-      let teamLogoBase64 = savedLogoData.logo || '';
+      const teamLogoData = await getFirebaseData(FB_PATHS.teamLogo); // Get logo from Firebase
+      let teamLogoBase64 = teamLogoData ? teamLogoData.logo : '';
 
       async function addLogoToPage(pdfInstance, currentPageNum = 1) {
         if (!teamLogoBase64) return;
@@ -89,10 +88,11 @@
         bodyData = pseData.map(item => [
           item.name || "Sem Nome",
           item.pse,
-          item.desc || "",
+          item.desc || "", // Assuming desc is stored, if not, you might need to derive it
           new Date(item.datetime).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
         ]);
       } else {
+        // Example data if no PSE data is found
         bodyData = [
           ["João", 7, "Vigoroso", "25/09/2025 10:00"],
           ["Maria", 5, "Moderado", "25/09/2025 10:15"]

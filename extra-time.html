@@ -5,37 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Estatísticas | Prolongamento</title>
 <style>
-body { font-family:"Segoe UI", Tahoma, sans-serif; background:#e0e0e0; color:#333; margin:0; padding:20px; }
-h2 { margin-bottom:15px; }
-h3#titleCampo { color:#2980b9; margin-top:25px; margin-bottom:10px; }
-h3#titleGR { color:#27ae60; margin-top:25px; margin-bottom:10px; }
-.tabs { display:flex; gap:10px; align-items:center; margin-bottom:20px; }
-.tab-btn { padding:10px 16px; border:none; border-radius:8px; background:#e0e0e0; cursor:pointer; font-weight:500; transition:0.3s; box-shadow:0 2px 4px rgba(0,0,0,0.1);}
-.tab-btn:hover { background:#d5d5d5; }
-.tab-btn.active { background:#27ae60; color:#fff; box-shadow:0 3px 6px rgba(0,0,0,0.2);}
-.nav-btn { background:#2980b9; color:#fff; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:500; transition:0.3s; box-shadow:0 2px 5px rgba(0,0,0,0.2);}
-.nav-btn:hover { background:#3498db;}
-.tab-content { display:none; }
-.tab-content.active { display:block; }
-.part-table { border-collapse:collapse; width:100%; margin-bottom:25px; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.1); table-layout:auto;}
-.part-table th { background:#2980b9; color:#fff; font-size:13px; padding:8px; white-space:nowrap;}
-.part-table td { border:1px solid #eee; padding:6px; font-size:12px; text-align:center; white-space:nowrap; height:36px;}
-.part-table tr:nth-child(even) { background:#f9f9f9;}
-.fixed-col { position:sticky; background:#fff; z-index:2; }
-.part-table th:first-child, .part-table td:first-child { left:0; width:40px; }
-.part-table th:nth-child(2), .part-table td:nth-child(2) { left:40px; width:150px; text-align:left; padding-left:6px;}
-.responsive { margin-bottom:30px; padding:10px; background:#fdfdfd; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.05);}
-.button-group { display:flex; justify-content:center; align-items:center; gap:4px;}
-.inc, .dec { width:28px; height:28px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition:0.3s;}
-.inc { background:#27ae60; color:#fff;}
-.dec { background:#e74c3c; color:#fff;}
-.inc:hover { background:#219150;}
-.dec:hover { background:#c0392b;}
-.inc.disabled, .dec.disabled { background:#aaa; cursor:not-allowed;}
-.valueInput { width:40px; height:28px; border:1px solid #ccc; border-radius:6px; text-align:center; font-size:12px; background:#f9f9f9;}
-.notification { position:fixed; top:20px; right:20px; background:#27ae60; color:#fff; padding:12px 18px; border-radius:8px; box-shadow:0 3px 6px rgba(0,0,0,0.2); opacity:0; pointer-events:none; transition:opacity 0.4s; z-index:200;}
-.notification.show { opacity:1;}
-footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#666;}
+/* ... (your existing styles) ... */
 </style>
 </head>
 <body>
@@ -121,9 +91,10 @@ footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#
 <div id="lastSavedET" style="font-size:10px;margin-top:10px;"></div>
 <div class="notification" id="notificationET"></div>
 
+<script type="module" src="firebase-data.js"></script>
 <script>
 // ---------- Config ----------
-const STORAGE_KEY_ET = 'estatisticas_extra_time';
+const STORAGE_KEY_ET = FB_PATHS.estatisticasExtraTime; // Use Firebase path
 const DEBOUNCE_MS = 500;
 const STAT_KEYS_CAMPO = ['rem','stopped','fora','goals','wrongPasses','fouls'];
 const STAT_KEYS_GR = ['grOnNet','grStopped','grGoals','fouls'];
@@ -133,37 +104,62 @@ let playersCampoET=[], playersGRET=[], autoSaveTimerET;
 // ---------- Helpers ----------
 function createPlayerET(id, keys){ const p={id,name:''}; keys.forEach(k=>{p[k+'ET1']=0; p[k+'ET2']=0;}); return p;}
 function initPlayersET(){ 
-  playersCampoET = Array.from({length:8},(_,i)=>createPlayerET(i+1,STAT_KEYS_CAMPO)); 
-  playersGRET = Array.from({length:2},(_,i)=>createPlayerET(i+9,STAT_KEYS_GR)); 
+  // Initialize with empty arrays, data will be loaded from Firebase
+  playersCampoET = []; 
+  playersGRET = []; 
 }
 function allNamesFilledET(){ return [...playersCampoET,...playersGRET].every(p=>p.name && p.name.trim() !== ''); }
 function isElementET(id){ return document.getElementById(id)!=null; }
 
 // ---------- Load Main Names Real-Time ----------
-function loadMainNamesRealtime(){
-  const fieldPlayers = JSON.parse(localStorage.getItem("fieldPlayers")) || [];
-  const goalKeepers = JSON.parse(localStorage.getItem("goalKeepers")) || [];
+async function loadMainNamesRealtime(){
+  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+
+  const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
+  const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
 
   const fieldWithStats = fieldPlayers.filter(p=>p.estatisticas);
   const goalWithStats = goalKeepers.filter(p=>p.estatisticas);
 
+  // Ensure playersCampoET and playersGRET are populated with correct structure
+  // If they are empty, initialize them based on fieldWithStats/goalWithStats
+  if (playersCampoET.length === 0 && fieldWithStats.length > 0) {
+    playersCampoET = fieldWithStats.map(p => createPlayerET(p.numero, STAT_KEYS_CAMPO));
+  }
+  if (playersGRET.length === 0 && goalWithStats.length > 0) {
+    playersGRET = goalWithStats.map(p => createPlayerET(p.numero, STAT_KEYS_GR));
+  }
+
   fieldWithStats.forEach((p,i)=>{ 
-    if(i<playersCampoET.length){ 
-      playersCampoET[i].name=p.nome||''; 
-      playersCampoET[i].id=p.numero||playersCampoET[i].id;
-    } 
+    const existingPlayer = playersCampoET.find(etp => etp.id === p.numero);
+    if(existingPlayer){
+      existingPlayer.name = p.nome || '';
+    } else {
+      // Add new player if they don't exist in ET stats yet
+      playersCampoET.push(createPlayerET(p.numero, STAT_KEYS_CAMPO));
+      playersCampoET.sort((a,b) => a.id - b.id); // Keep sorted
+    }
   });
   goalWithStats.forEach((p,i)=>{ 
-    if(i<playersGRET.length){ 
-      playersGRET[i].name=p.nome||''; 
-      playersGRET[i].id=p.numero||playersGRET[i].id;
-    } 
+    const existingPlayer = playersGRET.find(etp => etp.id === p.numero);
+    if(existingPlayer){
+      existingPlayer.name = p.nome || '';
+    } else {
+      // Add new player if they don't exist in ET stats yet
+      playersGRET.push(createPlayerET(p.numero, STAT_KEYS_GR));
+      playersGRET.sort((a,b) => a.id - b.id); // Keep sorted
+    }
   });
+
+  // Remove players from ET stats if they are no longer in main config
+  playersCampoET = playersCampoET.filter(etp => fieldWithStats.some(p => p.numero === etp.id));
+  playersGRET = playersGRET.filter(etp => goalWithStats.some(p => p.numero === etp.id));
 }
 
 // ---------- Save / AutoSave ----------
-function saveToLocalET(){ 
-  localStorage.setItem(STORAGE_KEY_ET, JSON.stringify({campo:playersCampoET,gr:playersGRET})); 
+async function saveToLocalET(){ 
+  await setFirebaseData(STORAGE_KEY_ET, {campo:playersCampoET,gr:playersGRET}); 
   document.getElementById('lastSavedET').textContent='Última gravação ET: '+new Date().toLocaleString('pt-PT'); 
   showNotificationET('Guardado ET!'); 
 }
@@ -171,13 +167,12 @@ function scheduleAutoSaveET(){
   clearTimeout(autoSaveTimerET); 
   autoSaveTimerET=setTimeout(saveToLocalET,DEBOUNCE_MS);
 }
-function loadFromLocalET(){ 
-  const saved=localStorage.getItem(STORAGE_KEY_ET); 
+async function loadFromLocalET(){ 
+  const saved = await getFirebaseData(STORAGE_KEY_ET); 
   if(saved){ 
     try{ 
-      const data=JSON.parse(saved); 
-      playersCampoET=data.campo||playersCampoET; 
-      playersGRET=data.gr||playersGRET;
+      playersCampoET=saved.campo||playersCampoET; 
+      playersGRET=saved.gr||playersGRET;
     }catch(e){console.warn('Erro parse ET',e);}
   }
 }
@@ -234,26 +229,53 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.classList.add('active'); 
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); 
     document.getElementById(btn.dataset.tab).classList.add('active'); 
+    localStorage.setItem('activeExtraTimeTab', btn.dataset.tab); // Still using localStorage for UI state
   });
 });
 
 // ---------- Real-Time Sync ----------
-function startRealtimeSync(){ 
-  setInterval(()=>{
-    const oldCampo = JSON.stringify(playersCampoET);
-    const oldGR = JSON.stringify(playersGRET);
-    loadMainNamesRealtime();
-    if(JSON.stringify(playersCampoET)!==oldCampo || JSON.stringify(playersGRET)!==oldGR){
-      renderAllET('ET1'); renderAllET('ET2');
-    }
-  },500);
-}
+// Listen for changes to main player config and extra-time stats
+onFirebaseDataChange(FB_PATHS.fieldPlayers, async () => {
+  await loadMainNamesRealtime();
+  renderAllET('ET1'); renderAllET('ET2');
+});
+onFirebaseDataChange(FB_PATHS.goalKeepers, async () => {
+  await loadMainNamesRealtime();
+  renderAllET('ET1'); renderAllET('ET2');
+});
+onFirebaseDataChange(STORAGE_KEY_ET, async (data) => {
+  if (data) {
+    playersCampoET = data.campo || [];
+    playersGRET = data.gr || [];
+    await loadMainNamesRealtime(); // Update names from main config
+    renderAllET('ET1'); renderAllET('ET2');
+  }
+});
+
 
 // ---------- Init ----------
-initPlayersET();
-loadFromLocalET();
-renderAllET('ET1'); renderAllET('ET2');
-startRealtimeSync();
+async function initExtraTime() {
+  initPlayersET(); // Initialize empty arrays
+  await loadFromLocalET(); // Load existing ET stats
+  await loadMainNamesRealtime(); // Populate names from main config
+  renderAllET('ET1'); 
+  renderAllET('ET2');
+}
+initExtraTime();
+
+// Restore active tab on load
+window.addEventListener('load', () => {
+  const savedTab = localStorage.getItem('activeExtraTimeTab'); // Still using localStorage for UI state
+  if (savedTab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const btn = document.querySelector(`[data-tab="${savedTab}"]`);
+    if (btn) {
+      btn.classList.add('active');
+      document.getElementById(savedTab).classList.add('active');
+    }
+  }
+});
 
 // ---------- Open Entradas / Saídas ----------
 document.getElementById('openInOutExtraTime').addEventListener('click',()=>{

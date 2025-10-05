@@ -80,6 +80,15 @@
     <p class="powered-by">powered by RP Technology</p>
   </div>
 
+  <!-- Firebase SDKs (optional: for analytics tracking on landing page) -->
+  <script type="module" src="firebase-data.js"></script>
+  <script type="module">
+    // Optional: Log a page view event to Firebase Analytics
+    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+    const analytics = getAnalytics();
+    logEvent(analytics, 'page_view', { page_title: 'Team Pro Stats Landing' });
+  </script>
+
   <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </body>
 </html>

@@ -8,15 +8,16 @@
   <!-- jsPDF + autoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="firebase-data.js"></script>
   <script src="estatisticas.js"></script>
 </head>
 <body>
 <script>
-  const STORAGE_KEY_EXTRA = 'estatisticas_extra_time';
+  const STORAGE_KEY_EXTRA = FB_PATHS.estatisticasExtraTime;
 
   async function exportToPDF() {
     try {
-      if (typeof init === 'function') init();
+      if (typeof init === 'function') await init(); // Await init
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'pt', 'a4');
@@ -33,7 +34,8 @@
       const totalColWidth = colWidths.reduce((a, b) => a + b, 0);
       const tableLeft = (pageWidth - totalColWidth) / 2;
 
-      const teamLogoBase64 = localStorage.getItem('teamLogoBase64') || '';
+      const teamLogoData = await getFirebaseData(FB_PATHS.teamLogo); // Get logo from Firebase
+      const teamLogoBase64 = teamLogoData ? teamLogoData.logo : '';
 
       async function loadLogoDimensions() {
         return new Promise((resolve) => {
@@ -75,8 +77,7 @@
       // load players
       const campoPlayers = playersCampo || [];
       const grPlayers = playersGR || [];
-      let extraData = {};
-      try { extraData = JSON.parse(localStorage.getItem(STORAGE_KEY_EXTRA) || '{}'); } catch(e) {}
+      let extraData = await getFirebaseData(STORAGE_KEY_EXTRA) || {}; // Get from Firebase
       const extraCampo = extraData.campo || [];
       const extraGR = extraData.gr || [];
 

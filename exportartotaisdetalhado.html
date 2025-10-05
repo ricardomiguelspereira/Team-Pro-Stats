@@ -8,16 +8,17 @@
   <!-- jsPDF + autoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="firebase-data.js"></script>
   <script src="estatisticas.js"></script>
 </head>
 <body>
 <script>
-  const STORAGE_KEY_EXTRA = 'estatisticas_extra_time';
+  const STORAGE_KEY_ET = FB_PATHS.estatisticasExtraTime;
 
   async function exportToPDF() {
     try {
       // Initialize from estatisticas.js to populate playersCampo, playersGR, and statsData for normal time
-      if (typeof init === 'function') init();
+      if (typeof init === 'function') await init(); // Await init
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('l', 'pt', 'a4'); // landscape, points
@@ -34,12 +35,12 @@
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Load extra time data from localStorage
-      let extraData = {};
-      try { extraData = JSON.parse(localStorage.getItem(STORAGE_KEY_EXTRA) || '{}'); } catch(e) { extraData = {}; }
-
+      // Load extra time data from Firebase
+      let extraData = await getFirebaseData(STORAGE_KEY_ET) || {};
+      
       // Logo data
-      const teamLogoBase64 = localStorage.getItem('teamLogoBase64') || '';
+      const teamLogoData = await getFirebaseData(FB_PATHS.teamLogo); // Get logo from Firebase
+      const teamLogoBase64 = teamLogoData ? teamLogoData.logo : '';
 
       async function loadLogoDimensions() {
         return new Promise((resolve) => {
@@ -106,7 +107,7 @@
         if (!playerArray || playerArray.length === 0) return [];
         const suffix = timePeriod === 'main' ? half : 'ET' + half;
 
-        // Ensure statArray matches playerArray length (pad with empty objects if needed)
+        // Ensure statArray matches playerArray length (pad with empty objects)
         const paddedStats = Array(playerArray.length).fill().map((_, i) => statArray[i] || {});
 
         return playerArray.map((player, idx) => {

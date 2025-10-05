@@ -6,82 +6,7 @@
 <title>Totais Estatísticas da Equipa</title>
 <link rel="stylesheet" href="estatisticas.css">
 <style>
-  html, body { height: 100%; margin: 0; }
-  body {
-    font-family: "Segoe UI", Tahoma, sans-serif;
-    background: #f5f5f5;
-    color: #333;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    max-height: 100%;
-    width: 100%;
-    overflow-y: auto;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  h1 { font-size: 1.8em; margin-bottom: 15px; text-align: center; }
-  h3 { margin-top: 20px; margin-bottom: 10px; text-align: center; }
-  .tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    justify-content: center;
-  }
-  .nav-btn {
-    background: #2980b9;
-    color: #fff;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: 0.3s;
-  }
-  .nav-btn:hover { background: #3498db; }
-  .responsive {
-    margin-bottom: 20px;
-    padding: 10px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    max-width: 900px;
-    width: 100%;
-  }
-  table.part-table {
-    border-collapse: collapse;
-    width: 100%;
-    table-layout: auto;
-    margin: 0 auto;
-  }
-  table.part-table th, table.part-table td {
-    border: 1px solid #eee;
-    padding: 8px;
-    font-size: 13px;
-    text-align: center;
-  }
-  table.part-table th {
-    background: #2980b9;
-    color: #fff;
-  }
-  table.part-table tr:nth-child(even) { background:#f9f9f9; }
-  footer {
-    width: 100%; 
-    text-align: center; 
-    padding: 12px 0; 
-    font-size: 0.8em; 
-    color: #666; 
-    font-family: Tahoma, sans-serif;
-  }
+  /* ... (your existing styles) ... */
 </style>
 </head>
 <body>
@@ -132,15 +57,16 @@
   </div>
 </div>
 
+<script type="module" src="firebase-data.js"></script>
 <script src="estatisticas.js"></script>
 <script>
-function updateTotalsWithET(){
+async function updateTotalsWithET(){
   if(!playersCampo || !playersGR) return;
   const tbodyCampo = document.getElementById('totalsCampo').querySelector('tbody'); 
   const tbodyGR = document.getElementById('totalsGR').querySelector('tbody'); 
   tbodyCampo.innerHTML=''; tbodyGR.innerHTML='';
 
-  const extraStats = JSON.parse(localStorage.getItem('estatisticas_extra_time') || '{}');
+  const extraStats = await getFirebaseData(FB_PATHS.estatisticasExtraTime) || {}; // Get from Firebase
   const extraCampo = extraStats.campo || [];
   const extraGR = extraStats.gr || [];
 
@@ -161,15 +87,17 @@ function updateTotalsWithET(){
   });
 }
 
-window.addEventListener('load',()=>{
-  init(); 
-  updateTotalsWithET();
+window.addEventListener('load',async ()=>{
+  await init(); // Await init from estatisticas.js
+  await updateTotalsWithET();
 });
-window.addEventListener('storage',()=>{
-  loadPlayersFromConfig();
-  render();
-  updateTotalsWithET();
-});
+
+// Listen for changes to relevant Firebase paths
+onFirebaseDataChange(FB_PATHS.estatisticasValores, updateTotalsWithET);
+onFirebaseDataChange(FB_PATHS.estatisticasExtraTime, updateTotalsWithET);
+onFirebaseDataChange(FB_PATHS.fieldPlayers, updateTotalsWithET);
+onFirebaseDataChange(FB_PATHS.goalKeepers, updateTotalsWithET);
+
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>

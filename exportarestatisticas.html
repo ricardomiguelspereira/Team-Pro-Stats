@@ -8,12 +8,13 @@
 <!-- jsPDF + autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script type="module" src="firebase-data.js"></script>
 </head>
 <body>
 <script>
-const STORAGE_NORMAL='estatisticas_valores';
-const STORAGE_EXTRA='estatisticas_separadas_extra';
-const LOGO_STORAGE='teamLogoBase64';
+const STORAGE_NORMAL = FB_PATHS.estatisticasValores;
+const STORAGE_EXTRA = FB_PATHS.estatisticasSeparadasExtra;
+const LOGO_STORAGE = FB_PATHS.teamLogo; // Use Firebase path
 
 // Convert decimal minutes to MM:SS
 function formatTime(decimalMin){
@@ -32,7 +33,9 @@ async function exportTempoJogoPDF(){
   let yOffset=margin;
 
   // === Load logo ===
-  let logoData = localStorage.getItem(LOGO_STORAGE) || '';
+  const teamLogoData = await getFirebaseData(LOGO_STORAGE);
+  let logoData = teamLogoData ? teamLogoData.logo : '';
+
   async function drawHeader(){
     if(logoData && logoData.startsWith('data:image/')){
       const img=new Image();
@@ -73,11 +76,11 @@ async function exportTempoJogoPDF(){
   function normalizeText(text){
     return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
   }
-  function getLevelFromConfig(){
-    const raw = localStorage.getItem('jogo_form_data');
+  async function getLevelFromConfig(){
+    const raw = await getFirebaseData(FB_PATHS.jogoFormData); // Get from Firebase
     if(!raw) return 'sub13';
     try{
-      const d=JSON.parse(raw);
+      const d=raw;
       const esc=normalizeText(d.escalao||'');
       const map={sub13:'sub13',sub15:'sub15',sub17:'sub17',sub19:'sub19',sub23:'sub23',seniores:'seniores',seniors:'seniores'};
       return map[esc]||'sub13';
@@ -92,14 +95,17 @@ async function exportTempoJogoPDF(){
   }
 
   // === Load players and InOut ===
-  function loadData(storageKey){
-    const saved = localStorage.getItem(storageKey);
+  async function loadData(storageKey){
+    const saved = await getFirebaseData(storageKey); // Get from Firebase
     if(!saved) return {players:[], inOut:{}};
     try{
-      const data=JSON.parse(saved);
-      const inOut=data.inOut||{};
-      const fieldPlayers=JSON.parse(localStorage.getItem("fieldPlayers")||"[]");
-      const goalKeepers=JSON.parse(localStorage.getItem("goalKeepers")||"[]");
+      const inOut=saved.inOut||{};
+      const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
+      const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+
+      const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
+      const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
+
       const players=[...fieldPlayers.filter(p=>p.estatisticas),...goalKeepers.filter(p=>p.estatisticas)];
       return {players,inOut};
     }catch{return {players:[],inOut:{}};}
@@ -134,13 +140,13 @@ async function exportTempoJogoPDF(){
   }
 
   // === Add Section with summary ===
-  function addSection(title,storageKey,summaryObj=null){
-    const {players,inOut}=loadData(storageKey);
+  async function addSection(title,storageKey,summaryObj=null){
+    const {players,inOut}=await loadData(storageKey);
     if(players.length===0) return;
-    const intervals=getIntervalsForLevel(getLevelFromConfig());
-    ['1','2'].forEach(part=>{
+    const intervals=getIntervalsForLevel(await getLevelFromConfig()); // Await getLevelFromConfig
+    for (const part of ['1','2']) { // Use for...of for async operations
       const data=calculateTime(players,inOut,intervals,part);
-      if(data.every(d=>d.tempo===0)) return;
+      if(data.every(d=>d.tempo===0)) continue;
       ensureSpace(60);
       pdf.setFontSize(16); pdf.setFont(undefined,'bold');
       pdf.text(`${title} - ${part==='1'?'1ª Parte':'2ª Parte'}`,pageWidth/2,yOffset,{align:'center'});
@@ -167,7 +173,7 @@ async function exportTempoJogoPDF(){
           summaryObj[d.num][key]=d.tempo;
         });
       }
-    });
+    }
   }
 
   const summaryObj={};

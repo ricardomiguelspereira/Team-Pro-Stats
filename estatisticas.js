@@ -1,5 +1,5 @@
 // ---------- Configuração ----------
-const STORAGE_KEY = 'estatisticas_valores';
+const STORAGE_KEY = FB_PATHS.estatisticasValores; // Use Firebase path
 const DEBOUNCE_MS = 500;
 
 const STAT_KEYS_CAMPO = ['rem','stopped','fora','goals','wrongPasses','fouls'];
@@ -29,9 +29,13 @@ function buildPlayerStats(player, isGR){
   return obj;
 }
 
-function loadPlayersFromConfig(){
-  const fieldPlayers = JSON.parse(localStorage.getItem("fieldPlayers")) || [];
-  const goalKeepers = JSON.parse(localStorage.getItem("goalKeepers")) || [];
+// This function now needs to load players from Firebase
+async function loadPlayersFromConfig(){
+  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+
+  const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
+  const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
 
   // só quem tem estatísticas ativas
   const fieldWithStats = fieldPlayers.filter(p => p.estatisticas);
@@ -61,17 +65,16 @@ function loadPlayersFromConfig(){
 }
 
 // ---------- Salvamento ----------
-function saveToLocal(){ 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ stats: statsData, inOut: inOutData })); 
+async function saveToLocal(){ 
+  await setFirebaseData(STORAGE_KEY, { stats: statsData, inOut: inOutData }); 
   if(document.getElementById('lastSaved')) 
     document.getElementById('lastSaved').textContent='Última gravação: '+new Date().toLocaleString('pt-PT'); 
 }
 function scheduleAutoSave(){ clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(saveToLocal, DEBOUNCE_MS); }
-function loadFromLocal(){
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if(saved){ 
+async function loadFromLocal(){
+  const data = await getFirebaseData(STORAGE_KEY);
+  if(data){ 
     try{
-      const data = JSON.parse(saved);
       statsData = data.stats || {};
       inOutData = data.inOut || {};
     }catch(err){ console.warn('Erro a parsear estatísticas.', err); }
@@ -131,7 +134,8 @@ function renderPlayers(arr, containerId, part, keys){
     tbody.appendChild(tr);
   });
 }
-function render(){
+async function render(){
+  await loadPlayersFromConfig(); // Ensure players are loaded from Firebase
   renderPlayers(playersCampo,'tableCampo1','part1',STAT_KEYS_CAMPO);
   renderPlayers(playersGR,'tableGR1','part1',STAT_KEYS_GR);
   renderPlayers(playersCampo,'tableCampo2','part2',STAT_KEYS_CAMPO);
@@ -176,19 +180,29 @@ function renderInOut(){
 }
 
 // ---------- Inicialização ----------
-function init(){
-  loadFromLocal();
-  loadPlayersFromConfig();
+async function init(){
+  await loadFromLocal(); // Await loading from Firebase
+  await loadPlayersFromConfig(); // Await loading players from Firebase
   statsEnabled = true;
   render();
 }
 
 // ---------- Sincronização em tempo real ----------
-window.addEventListener("storage", (e)=>{
-  if(e.key === "fieldPlayers" || e.key === "goalKeepers"){
-    loadPlayersFromConfig();
+// Listen for changes to statsData and player configurations
+onFirebaseDataChange(FB_PATHS.estatisticasValores, (data) => {
+  if (data) {
+    statsData = data.stats || {};
+    inOutData = data.inOut || {};
     render();
   }
+});
+
+onFirebaseDataChange(FB_PATHS.fieldPlayers, (data) => {
+  loadPlayersFromConfig().then(render);
+});
+
+onFirebaseDataChange(FB_PATHS.goalKeepers, (data) => {
+  loadPlayersFromConfig().then(render);
 });
 
 // start

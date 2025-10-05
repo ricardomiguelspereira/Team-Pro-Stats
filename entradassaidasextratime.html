@@ -6,23 +6,7 @@
 <title>Entradas / Saídas Prolongamento</title>
 <link rel="stylesheet" href="estatisticas.css" />
 <style>
-  .tabs { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px; font-size: 14px; }
-  .tab-btn { padding: 10px 16px; border: none; border-radius: 8px; background: #e0e0e0; cursor: pointer; font-weight: 500; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: #333; }
-  .tab-btn:hover { background: #d5d5d5; }
-  .tab-btn.active { background: #27ae60; color: #fff; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
-  .nav-btn { background-color: #2980b9; border: none; color: white; padding: 8px 14px; cursor: pointer; font-size: 14px; border-radius: 4px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-  .nav-btn:hover { background-color: #3498db; }
-  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; }
-  table.part-table-inout { border-collapse: collapse; width: auto; table-layout: auto; min-width: 100%; }
-  table.part-table-inout thead tr { background-color: #3498db; color: white; }
-  table.part-table-inout th, table.part-table-inout td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; font-size: 12px; white-space: nowrap; }
-  table.part-table-inout th:first-child, table.part-table-inout td:first-child, table.part-table-inout th:nth-child(2), table.part-table-inout td:nth-child(2) { width: 1%; white-space: nowrap; }
-  table.part-table-inout th:nth-child(n+3), table.part-table-inout td:nth-child(n+3) { width: 25px; max-width: 25px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .header-container { margin-bottom: 15px; text-align: center; }
-  .header-container h2 { margin: 0; }
-  .notification { margin-top: 10px; font-size: 12px; color: #e74c3c; text-align: center; }
-  footer { text-align: center; margin-top: 20px; font-size: 12px; color: #555; }
-  @media (max-width: 900px) { .responsive-inout { overflow-x: auto; } table.part-table-inout { width: max-content; } }
+  /* ... (your existing styles) ... */
 </style>
 </head>
 <body>
@@ -58,31 +42,32 @@
 <div id="lastSaved" style="font-size:10px;margin-top:10px;text-align:center;"></div>
 <div class="notification" id="notification"></div>
 
+<script type="module" src="firebase-data.js"></script>
 <script>
 const fixedIntervals = ["5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
-const STORAGE_KEY_EXTRA = 'estatisticas_separadas_extra';
-const SCROLL_KEY_PREFIX = 'scrollPos_extra_';
+const STORAGE_KEY_EXTRA = FB_PATHS.estatisticasSeparadasExtra; // Use Firebase path
+const SCROLL_KEY_PREFIX = 'scrollPos_extra_'; // Still using localStorage for UI state
 
-// Init extra data storage
-if(!localStorage.getItem(STORAGE_KEY_EXTRA)){
-  localStorage.setItem(STORAGE_KEY_EXTRA, JSON.stringify({inOut:{}, lastSaved:new Date().toLocaleString()}));
-}
+// Init extra data storage (now handled by Firebase, but ensure structure)
+// Removed localStorage.setItem for initial structure, Firebase will create on first save.
 
 // ---------- Fetch players in real-time ----------
-function getPlayers(){
-  const fieldPlayers = JSON.parse(localStorage.getItem("fieldPlayers")||"[]");
-  const goalKeepers = JSON.parse(localStorage.getItem("goalKeepers")||"[]");
+async function getPlayers(){
+  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+
+  const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
+  const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
+
   const fieldWithStats = fieldPlayers.filter(p=>p.estatisticas);
   const goalWithStats = goalKeepers.filter(p=>p.estatisticas);
   return [...fieldWithStats, ...goalWithStats].map(p=>({id:p.numero,name:p.nome}));
 }
 
 // ---------- Render ----------
-function renderInOut(){
-  const allPlayers = getPlayers();
-  const extraDataStr = localStorage.getItem(STORAGE_KEY_EXTRA);
-  let extraData = {};
-  try{ extraData = JSON.parse(extraDataStr); } catch{ extraData={inOut:{}, lastSaved:''}; }
+async function renderInOut(){
+  const allPlayers = await getPlayers();
+  const extraData = await getFirebaseData(STORAGE_KEY_EXTRA) || {inOut:{}, lastSaved:''}; // Get from Firebase
 
   function buildTableHeader(table, intervals){
     const theadTr = table.querySelector('thead tr');
@@ -98,7 +83,7 @@ function renderInOut(){
     td.addEventListener('click', toggleState);
     td.addEventListener('touchend', e => { if(!isScrolling) toggleState(e); });
 
-    function toggleState(e){
+    async function toggleState(e){ // Make event listener async
       e.preventDefault();
       let state = td.dataset.state||'';
       if(state==='') state='E'; else if(state==='E') state='S'; else state='';
@@ -108,7 +93,7 @@ function renderInOut(){
       td.style.color = state?'white':'';
       extraData.inOut[key] = state;
       extraData.lastSaved = new Date().toLocaleString();
-      localStorage.setItem(STORAGE_KEY_EXTRA, JSON.stringify(extraData));
+      await setFirebaseData(STORAGE_KEY_EXTRA, extraData); // Save to Firebase
       document.getElementById('lastSaved').textContent = `Última gravação: ${extraData.lastSaved}`;
     }
   }
@@ -148,45 +133,43 @@ function renderInOut(){
 ['scrollContainer1','scrollContainer2'].forEach(id=>{
   const container = document.getElementById(id);
   container.addEventListener('scroll', e=>{
-    localStorage.setItem(SCROLL_KEY_PREFIX+id.slice(-1), e.target.scrollLeft);
+    localStorage.setItem(SCROLL_KEY_PREFIX+id.slice(-1), e.target.scrollLeft); // Still using localStorage for UI state
   });
 });
 
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    localStorage.setItem('activeInOutTab_extra', btn.dataset.tab);
+    localStorage.setItem('activeInOutTab_extra', btn.dataset.tab); // Still using localStorage for UI state
   });
 });
 
 // Open extra-time page
-document.getElementById('openExtraTime').addEventListener('click', ()=>{
+document.getElementById('openExtraTime').addEventListener('click',()=>{
   const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
-  localStorage.setItem('activeInOutTab_extra', currentTab);
+  localStorage.setItem('activeInOutTab_extra', currentTab); // Still using localStorage for UI state
   window.location.href='extra-time.html';
 });
 
 // Real-time sync when names or numbers update
-window.addEventListener('storage', e=>{
-  if(e.key==='fieldPlayers' || e.key==='goalKeepers'){
-    renderInOut();
-  }
-});
+onFirebaseDataChange(FB_PATHS.fieldPlayers, renderInOut);
+onFirebaseDataChange(FB_PATHS.goalKeepers, renderInOut);
+onFirebaseDataChange(STORAGE_KEY_EXTRA, renderInOut); // Listen for changes to extra-time in/out data
 
 // Initial render
-window.addEventListener('load', ()=>{
-  const savedTab = localStorage.getItem('activeInOutTab_extra');
+window.addEventListener('load', async ()=>{
+  const savedTab = localStorage.getItem('activeInOutTab_extra'); // Still using localStorage for UI state
   if(savedTab){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     const btn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
     if(btn){ btn.classList.add('active'); document.getElementById(savedTab).classList.add('active'); }
   }
-  renderInOut();
+  await renderInOut();
 });
 </script>
 

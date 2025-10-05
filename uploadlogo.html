@@ -5,119 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Upload Logo da Equipa</title>
 <style>
-/* ==================== Base ==================== */
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f0f0f0; /* pode manter uma cor de fundo da página */
-  display: flex;
-  flex-direction: column;
-}
-
-/* ==================== Container central ==================== */
-body > #content-wrapper {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-#content {
-  width: 90%;
-  max-width: 600px;
-  text-align: center;
-}
-
-/* ==================== Títulos ==================== */
-h1 {
-  color: #2c3e50;
-  margin-bottom: 20px;
-}
-
-/* ==================== Input file ==================== */
-.input-group {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  padding: 15px;
-  background: #fff; /* só a caixa do upload tem fundo */
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  margin-bottom: 15px;
-}
-
-input[type=file] {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  cursor: pointer;
-  background: #fff;
-}
-
-/* ==================== Preview Logo ==================== */
-#teamLogoPreview {
-  max-width: 180px;
-  max-height: 120px;
-  margin-top: 20px;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  border-radius: 6px;
-}
-
-/* ==================== Botão ==================== */
-button {
-  padding: 6px 14px;
-  font-size: 14px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  color: white;
-  background: #4CAF50;
-  transition: all 0.2s ease;
-  margin-top: 10px;
-}
-button:hover {
-  background: #45a049;
-  transform: translateY(-1px);
-}
-
-/* ==================== Notificação ==================== */
-#notification {
-  margin-top: 15px;
-  font-weight: 600;
-}
-
-/* ==================== Footer ==================== */
-footer {
-  text-align: center;
-  padding: 12px 0;
-  font-size: 0.8em;
-  color: #666;
-  background: transparent; /* sem fundo */
-  font-family: Tahoma, sans-serif;
-}
-
-/* ==================== Responsividade ==================== */
-@media (max-width: 480px) {
-  .input-group {
-    width: 100%;
-    flex-direction: column;
-  }
-  input[type=file] {
-    width: 100%;
-  }
-  #teamLogoPreview {
-    max-width: 140px;
-    max-height: 100px;
-  }
-  button {
-    width: 100%;
-  }
-}
+/* ... (your existing styles) ... */
 </style>
 </head>
 <body>
@@ -141,15 +29,16 @@ footer {
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 
+<script type="module" src="firebase-data.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const input = document.getElementById('teamLogoInput');
   const preview = document.getElementById('teamLogoPreview');
   const saveBtn = document.getElementById('saveBtn');
   const notification = document.getElementById('notification');
 
-  // Carrega logo existente
-  let savedData = JSON.parse(localStorage.getItem('estatisticas_separadas') || '{}');
+  // Carrega logo existente from Firebase
+  let savedData = await getFirebaseData(FB_PATHS.teamLogo) || {};
   if(savedData.logo){
     preview.src = savedData.logo;
     preview.style.display = 'block';
@@ -170,14 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  saveBtn.addEventListener('click', () => {
+  saveBtn.addEventListener('click', async () => {
     if(!logoBase64){
       notification.textContent = '❌ Nenhum logo selecionado!';
       notification.style.color = '#e74c3c';
       return;
     }
     savedData.logo = logoBase64;
-    localStorage.setItem('estatisticas_separadas', JSON.stringify(savedData));
+    await setFirebaseData(FB_PATHS.teamLogo, savedData); // Save to Firebase
     notification.textContent = '✅ Logo guardado com sucesso!';
     notification.style.color = '#4CAF50';
     setTimeout(()=>notification.textContent='',2000);

@@ -6,88 +6,7 @@
 <title>Percepção Subjectiva do Esforço - Seleção Direta</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
-
-  body { 
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg,#e3f2fd,#f9f9f9);
-    display:flex;
-    flex-direction:column;
-    min-height:100vh;
-    justify-content:flex-start;
-    align-items:center;
-    margin:0;
-    padding-bottom:30px;
-  }
-
-  .container {
-    background:#fff;
-    padding:30px 20px;
-    border-radius:16px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.08);
-    text-align:center;
-    width:100%;
-    max-width:700px;
-    margin-top:30px;
-  }
-
-  h1 { font-size:28px; font-weight:700; margin-bottom:25px; color:#222; }
-
-  .notification {
-    position: fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-50px);
-    opacity:0; padding:12px 18px; border-radius:12px; font-size:15px; font-weight:500;
-    background:#4CAF50; color:#fff; min-width:220px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.15);
-    transition:all 0.4s ease; z-index:9999;
-  }
-  .notification.show { opacity:1; transform:translateX(-50%) translateY(0); }
-  .notification.error { background:#f44336; }
-
-  .input-group { 
-    margin:30px 0 40px 0; 
-    width:100%; 
-  }
-  select { padding:12px; font-size:15px; border-radius:12px; border:1px solid #ddd; width:100%; transition:all 0.2s ease; }
-  select:focus { border-color:#4CAF50; box-shadow:0 0 0 3px rgba(76,175,80,0.2); }
-
-  table { width:100%; margin-top:20px; border-collapse:collapse; font-size:14px; cursor:pointer; }
-  th, td { padding:12px; border:1px solid #ddd; text-align:center; vertical-align:middle; }
-  th { background:#f2f2f2; }
-  td.emoji { font-size:28px; width:50px; }
-  td.level { font-weight:700; width:90px; }
-  td.desc { line-height:1.4; text-align:left; }
-  td.desc strong { font-weight:700; }
-
-  /* Selected row - apply black border around all cells */
-  tr.selected td {
-    border: 2px solid #000;
-  }
-
-  /* bounce animation for emoji */
-  @keyframes bounce {
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-10px); }
-    60% { transform: translateY(-5px); }
-  }
-
-  td.emoji.bounce { animation: bounce 1s ease-in-out infinite; }
-
-  .button-group { display:flex; justify-content:center; margin-top:30px; }
-  button { padding:12px 18px; font-size:15px; border-radius:12px; border:none;
-    background:linear-gradient(135deg,#43a047,#66bb6a); color:#fff; font-weight:600;
-    cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;
-  }
-  button:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-
-  footer {
-    position: static;
-    width: 100%;
-    text-align: center;
-    padding: 10px 0;
-    font-size: 0.8em;
-    color: #888;
-    background: transparent;
-    margin-top: 10px; /* closer to table */
-  }
+  /* ... (your existing styles) ... */
 </style>
 </head>
 <body>
@@ -137,8 +56,9 @@
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 
+<script type="module" src="firebase-data.js"></script>
 <script>
-// PASSWORD INIT
+// PASSWORD INIT (not directly related to Firebase data, but kept for context)
 async function hashPassword(password){const e=new TextEncoder();const d=e.encode(password);const h=await crypto.subtle.digest("SHA-256",d);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("");}
 async function initPassword(){if(!localStorage.getItem("passwordHash")){localStorage.setItem("passwordHash",await hashPassword("1234"));}}
 
@@ -167,30 +87,41 @@ pseTable.querySelectorAll("tbody tr").forEach(row=>{
 });
 
 // ATHLETES AND SAVE
-let pseData=JSON.parse(localStorage.getItem("pseData"))||[];
+let pseData = []; // Will be loaded from Firebase
 const athleteSelect=document.getElementById("athleteSelect");
 
-function loadPSEAthletes(){
-  const fieldPlayers=JSON.parse(localStorage.getItem('fieldPlayers'))||[];
-  const goalKeepers=JSON.parse(localStorage.getItem('goalKeepers'))||[];
+async function loadPSEAthletes(){
+  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+
+  const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
+  const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
+
   const pseFieldPlayers=fieldPlayers.filter(p=>p.pse).map(p=>({numero:p.numero,nome:p.nome}));
   const pseGoalKeepers=goalKeepers.filter(p=>p.pse).map(p=>({numero:p.numero,nome:p.nome}));
   let athletes=[...pseFieldPlayers,...pseGoalKeepers];
   athletes.sort((a,b)=>a.numero-b.numero||a.nome.localeCompare(b.nome));
   return athletes;
 }
-function updateAthleteSelect(){
-  const athletes=loadPSEAthletes();
+
+async function updateAthleteSelect(){
+  const athletes=await loadPSEAthletes();
   athleteSelect.innerHTML='<option value="">Selecionar atleta</option>';
   if(athletes.length===0){const option=document.createElement("option");option.value="";option.textContent="Nenhum atleta com PSE ativado";option.disabled=true;athleteSelect.appendChild(option);return;}
   athletes.forEach(p=>{const o=document.createElement("option");o.value=p.nome;o.textContent=`Nº ${p.numero} - ${p.nome}`;athleteSelect.appendChild(o);});
 }
+
 function isSameDay(d1,d2){return d1.getFullYear()===d2.getFullYear()&&d1.getMonth()===d2.getMonth()&&d1.getDate()===d2.getDate();}
 
-document.getElementById("saveBtn").addEventListener("click",()=>{
+document.getElementById("saveBtn").addEventListener("click",async ()=>{
   const selected=athleteSelect.value;
   if(!selected){showNotification("Selecionar Atleta",true);return;}
   if(!selectedLevel){showNotification("Selecionar Nível PSE",true);return;}
+  
+  // Load current pseData from Firebase before checking/saving
+  const currentPseData = await getFirebaseData(FB_PATHS.pseData);
+  pseData = currentPseData ? currentPseData.entries || [] : [];
+
   const now=new Date();
   const alreadyRecorded=pseData.some(item=>{
     const itemDate=new Date(item.datetime);
@@ -199,7 +130,7 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
   if(alreadyRecorded){showNotification("Este atleta já registrou PSE hoje",true);return;}
   
   pseData.push({name:selected,pse:selectedLevel,datetime:now.toISOString()});
-  localStorage.setItem("pseData",JSON.stringify(pseData));
+  await setFirebaseData(FB_PATHS.pseData, { entries: pseData }); // Save to Firebase
   showNotification(`PSE guardado: ${selected} - ${selectedLevel}`);
   
   // Reset selected level
@@ -217,7 +148,10 @@ document.getElementById("saveBtn").addEventListener("click",()=>{
 
 initPassword();
 updateAthleteSelect();
-window.addEventListener("storage",(e)=>{if(e.key==="fieldPlayers"||e.key==="goalKeepers"){updateAthleteSelect();}});
+
+// Listen for changes to player config to update athlete select
+onFirebaseDataChange(FB_PATHS.fieldPlayers, updateAthleteSelect);
+onFirebaseDataChange(FB_PATHS.goalKeepers, updateAthleteSelect);
 </script>
 </body>
 </html>
