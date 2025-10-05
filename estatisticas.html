@@ -6,13 +6,9 @@
 <title>Estatísticas</title>
 <link rel="stylesheet" href="estatisticas.css">
 <style>
-  footer {
-    width: 100%;
-    text-align: center;
-    padding: 12px 0;
-    font-size: 0.8em;
-    color: #666;
-  }
+  footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#666; }
+  .notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+  .notification.error { background:#ffdede; }
 </style>
 </head>
 <body>
@@ -98,121 +94,172 @@
 </div>
 
 <div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
-<div class="notification" id="notification"></div>
+<div id="notification" class="notification"></div>
 
 <script type="module">
-  import { FB_PATHS, setFirebaseData, onFirebaseDataChange, migrateLocalStorageToFirebase } from './firebase-data.js';
+  import {
+    FB_PATHS,
+    initializeFirebase,
+    saveSingleStat,
+    saveFullStats,
+    setFirebaseData,
+    onFirebaseDataChange,
+    getFirebaseData,
+    migrateLocalStorageToFirebase
+  } from './firebase-data.js';
 
-  let eligibleFieldPlayers = [];
-  let eligibleGoalKeepers = [];
+  // Local state mirrors Firestore structure exactly
+  let eligibleFieldPlayers = []; // players de campo (estatisticas: true && !gr)
+  let eligibleGoalKeepers = [];  // GRs (from goalKeepers doc + any player.gr flagged)
   let statsParte1 = { campo: {}, gr: {} };
   let statsParte2 = { campo: {}, gr: {} };
+
   let firebaseReady = false;
+  let unsubPlayers = null;
+  let unsubStats1 = null;
+  let unsubStats2 = null;
 
   const campoStats = ['grPostes', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas'];
   const grStats = ['defesas', 'interceptados', 'golosSofridos', 'faltas'];
 
-  const notification = document.getElementById('notification');
-  const lastSaved = document.getElementById('lastSaved');
+  const notificationEl = document.getElementById('notification');
+  const lastSavedEl = document.getElementById('lastSaved');
 
-  function showNotification(message, isError = false) {
-    notification.textContent = message;
-    notification.className = isError ? 'notification error' : 'notification success';
-    notification.style.display = 'block';
-    setTimeout(() => (notification.style.display = 'none'), 2500);
+  function showNotification(msg, isError = false) {
+    notificationEl.textContent = msg;
+    notificationEl.className = isError ? 'notification error' : 'notification';
+    notificationEl.style.display = 'block';
+    setTimeout(() => { notificationEl.style.display = 'none'; }, 2000);
   }
 
   function updateLastSaved() {
-    lastSaved.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
+    lastSavedEl.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
   }
 
-  function renderTable(id, players, stats, keys) {
-    const tbody = document.querySelector(`#${id} tbody`);
+  // Render helpers
+  function renderTable(tableId, players, statsMap, statKeys) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
     tbody.innerHTML = '';
     players.forEach(player => {
       const row = tbody.insertRow();
+      // Ensure player.numero present
+      const num = player.numero;
+      const name = player.nome || '';
       row.innerHTML = `
-        <td class="fixed-col">${player.numero}</td>
-        <td class="fixed-col">${player.nome}</td>
-        ${keys.map(k => {
-          const val = stats[player.numero]?.[k] ?? 0;
-          return `<td><input type="number" min="0" value="${val}"
-                  data-player="${player.numero}"
-                  data-part="${id.includes('1') ? '1' : '2'}"
-                  data-category="${id.includes('Campo') ? 'campo' : 'gr'}"
-                  data-stat="${k}"
-                  onchange="updateStat(this)">
-          </td>`;
+        <td class="fixed-col">${num}</td>
+        <td class="fixed-col">${name}</td>
+        ${statKeys.map(k => {
+          const value = statsMap?.[String(num)]?.[k] ?? 0;
+          return `<td><input type="number" min="0" value="${value}"
+                   data-player="${num}"
+                   data-part="${tableId.includes('1') ? '1' : '2'}"
+                   data-category="${tableId.includes('Campo') ? 'campo' : 'gr'}"
+                   data-stat="${k}"
+                   onchange="updateStat(this)"></td>`;
         }).join('')}
       `;
     });
   }
 
+  // Expose updateStat globally so inline onchange works
   window.updateStat = async function(input) {
+    const playerNum = input.dataset.player;
     const part = input.dataset.part;
     const category = input.dataset.category;
-    const playerNum = parseInt(input.dataset.player);
-    const stat = input.dataset.stat;
-    const value = parseInt(input.value) || 0;
+    const statKey = input.dataset.stat;
+    const newValue = parseInt(input.value) || 0;
 
-    const store = part === '1' ? statsParte1 : statsParte2;
-    if (!store[category][playerNum]) store[category][playerNum] = {};
-    store[category][playerNum][stat] = value;
+    // Update local copy
+    const stats = (part === '1') ? statsParte1 : statsParte2;
+    if (!stats[category]) stats[category] = {};
+    if (!stats[category][playerNum]) stats[category][playerNum] = {};
+    stats[category][playerNum][statKey] = newValue;
 
-    await saveStats(part);
-    updateLastSaved();
+    // Persist single stat to Firestore (keeps the exact schema)
+    try {
+      await saveSingleStat(part, category, playerNum, statKey, newValue);
+      updateLastSaved();
+      showNotification(`Guardado: ${statKey} (${newValue}) — #${playerNum}`);
+    } catch (err) {
+      console.error('Save single stat failed:', err);
+      showNotification('Erro ao guardar (ver console)', true);
+    }
   };
 
-  async function saveStats(part) {
-    if (!firebaseReady) return;
-    const data = part === '1' ? statsParte1 : statsParte2;
-    const path = part === '1' ? FB_PATHS.estatisticasParte1 : FB_PATHS.estatisticasParte2;
-    await setFirebaseData(path, data);
-    showNotification(`Estatísticas da ${part}ª parte guardadas!`);
-  }
-
+  // Render all four tables
   function render() {
-    renderTable('tableCampo1', eligibleFieldPlayers, statsParte1.campo, campoStats);
-    renderTable('tableGR1', eligibleGoalKeepers, statsParte1.gr, grStats);
-    renderTable('tableCampo2', eligibleFieldPlayers, statsParte2.campo, campoStats);
-    renderTable('tableGR2', eligibleGoalKeepers, statsParte2.gr, grStats);
+    renderTable('tableCampo1', eligibleFieldPlayers, statsParte1.campo || {}, campoStats);
+    renderTable('tableGR1', eligibleGoalKeepers, statsParte1.gr || {}, grStats);
+    renderTable('tableCampo2', eligibleFieldPlayers, statsParte2.campo || {}, campoStats);
+    renderTable('tableGR2', eligibleGoalKeepers, statsParte2.gr || {}, grStats);
   }
 
-  function setupFirebaseListeners() {
-    onFirebaseDataChange(FB_PATHS.fieldPlayers, (data) => {
-      const fields = data?.players || [];
-      onFirebaseDataChange(FB_PATHS.goalKeepers, (grs) => {
-        const gks = grs?.players || [];
-        eligibleFieldPlayers = fields.filter(p => p.estatisticas && !p.gr).sort((a,b)=>a.numero-b.numero);
-        eligibleGoalKeepers = [...gks, ...fields.filter(p=>p.gr && p.estatisticas)].sort((a,b)=>a.numero-b.numero);
-        render();
-      });
+  // Setup listeners to keep local UI in sync with Firestore
+  async function setupFirebaseListeners() {
+    // Players listener: combine players/fieldPlayers and players/goalKeepers
+    if (unsubPlayers) unsubPlayers();
+    unsubPlayers = await onFirebaseDataChange(FB_PATHS.fieldPlayers, async (fieldData) => {
+      const fields = (fieldData && Array.isArray(fieldData.players)) ? fieldData.players : [];
+      // Listen goalkeepers doc as well
+      const goalData = await getFirebaseData(FB_PATHS.goalKeepers);
+      const gks = (goalData && Array.isArray(goalData.players)) ? goalData.players : [];
+
+      // Build eligible lists matching your html logic: estatisticas: true
+      eligibleFieldPlayers = fields.filter(p => p.estatisticas === true && !p.gr).sort((a,b) => a.numero - b.numero);
+      // Combine explicit goalKeepers doc plus any field player with gr flag
+      eligibleGoalKeepers = [
+        ...gks,
+        ...fields.filter(p => p.gr === true && p.estatisticas === true)
+      ].sort((a,b) => a.numero - b.numero);
+
+      render();
     });
 
-    onFirebaseDataChange(FB_PATHS.estatisticasParte1, (data) => {
-      statsParte1 = data || { campo:{}, gr:{} };
-      if (document.querySelector('#part1.active')) render();
+    // Stats Parte 1
+    if (unsubStats1) unsubStats1();
+    unsubStats1 = await onFirebaseDataChange(FB_PATHS.estatisticasParte1, (data) => {
+      statsParte1 = data || { campo: {}, gr: {} };
+      // Re-render only if part1 visible
+      render();
     });
 
-    onFirebaseDataChange(FB_PATHS.estatisticasParte2, (data) => {
-      statsParte2 = data || { campo:{}, gr:{} };
-      if (document.querySelector('#part2.active')) render();
+    // Stats Parte 2
+    if (unsubStats2) unsubStats2();
+    unsubStats2 = await onFirebaseDataChange(FB_PATHS.estatisticasParte2, (data) => {
+      statsParte2 = data || { campo: {}, gr: {} };
+      render();
     });
   }
 
+  // Initializer: ensure auth, migrate, load initial stats then subscribe
   document.addEventListener('DOMContentLoaded', async () => {
     try {
-      await migrateLocalStorageToFirebase();
-      setupFirebaseListeners();
+      await initializeFirebase(); // ensures auth & migration
       firebaseReady = true;
+
+      // Load any existing stats immediately so UI shows values fast
+      const s1 = await getFirebaseData(FB_PATHS.estatisticasParte1);
+      const s2 = await getFirebaseData(FB_PATHS.estatisticasParte2);
+      statsParte1 = s1 || { campo: {}, gr: {} };
+      statsParte2 = s2 || { campo: {}, gr: {} };
+
+      await setupFirebaseListeners();
       render();
     } catch (err) {
-      console.error(err);
-      showNotification('Erro ao inicializar Firebase.', true);
+      console.error('Init error:', err);
+      showNotification('Erro ao inicializar Firebase (ver console)', true);
     }
+  });
+
+  // Cleanup listeners on unload
+  window.addEventListener('beforeunload', () => {
+    if (typeof unsubPlayers === 'function') unsubPlayers();
+    if (typeof unsubStats1 === 'function') unsubStats1();
+    if (typeof unsubStats2 === 'function') unsubStats2();
   });
 </script>
 
+<!-- Tabs & UI (unchanged behavior) -->
 <script>
   window.addEventListener('load', async () => {
     const savedTab = localStorage.getItem('activeStatsTab');

@@ -1,4 +1,4 @@
-// Firebase Configuration
+// Firebase Configuration (keep your config)
 const firebaseConfig = {
   apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
   authDomain: "team-pro-stats.firebaseapp.com",
@@ -9,13 +9,20 @@ const firebaseConfig = {
   measurementId: "G-D1GDDBPD55"
 };
 
-// Firebase Imports
+// Imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { 
-  getFirestore, doc, setDoc, getDoc, onSnapshot, deleteDoc 
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  onSnapshot,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { 
-  getAuth, signInAnonymously, onAuthStateChanged 
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
 const app = initializeApp(firebaseConfig);
@@ -24,7 +31,10 @@ const auth = getAuth(app);
 
 let currentUserId = null;
 
-// ✅ Firebase Paths
+/**
+ * Exported paths that map to documents under:
+ * users/{uid}/<collection>/<doc>
+ */
 export const FB_PATHS = {
   fieldPlayers: 'players/fieldPlayers',
   goalKeepers: 'players/goalKeepers',
@@ -38,33 +48,44 @@ export const FB_PATHS = {
   teamLogo: 'config/teamLogo'
 };
 
-// ✅ Ensure anonymous auth
-async function ensureAuth() {
+// --- Authentication ---
+export async function ensureAuth() {
+  if (currentUserId) return currentUserId;
   return new Promise((resolve, reject) => {
-    onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUserId = user.uid;
-        resolve(user);
+        unsub();
+        resolve(currentUserId);
       } else {
         signInAnonymously(auth)
           .then((cred) => {
             currentUserId = cred.user.uid;
-            resolve(cred.user);
+            unsub();
+            resolve(currentUserId);
           })
-          .catch(reject);
+          .catch((err) => {
+            unsub();
+            reject(err);
+          });
       }
     });
   });
 }
 
-// ✅ Build proper Firestore reference
+/**
+ * Build a Firestore doc reference under users/{uid}/...
+ * path: a string like 'stats/estatisticasParte1' or 'players/fieldPlayers'
+ */
 function getUserDocRef(path) {
-  if (!currentUserId) throw new Error("User not authenticated yet");
-  const pathParts = ['users', currentUserId, ...path.split('/')];
-  return doc(db, ...pathParts);
+  if (!currentUserId) throw new Error("User not authenticated");
+  const parts = path.split('/').filter(p => p.length);
+  // Prepend 'users' and currentUserId
+  const fullPath = ['users', currentUserId, ...parts];
+  return doc(db, ...fullPath);
 }
 
-// ✅ CRUD
+// --- Basic CRUD functions (guarantee auth) ---
 export async function setFirebaseData(path, data) {
   await ensureAuth();
   const ref = getUserDocRef(path);
@@ -78,15 +99,21 @@ export async function getFirebaseData(path) {
   return snap.exists() ? snap.data() : null;
 }
 
+/**
+ * Subscribe to document changes.
+ * callback receives either the document data object or null if missing.
+ * Returns an unsubscribe function.
+ */
 export async function onFirebaseDataChange(path, callback) {
   await ensureAuth();
   const ref = getUserDocRef(path);
-  return onSnapshot(ref, (snap) => {
+  const unsubscribe = onSnapshot(ref, (snap) => {
     callback(snap.exists() ? snap.data() : null);
   }, (err) => {
-    console.error("Listener error for", path, err);
+    console.error("onSnapshot error for", path, err);
     callback(null);
   });
+  return unsubscribe;
 }
 
 export async function deleteFirebaseData(path) {
@@ -95,7 +122,49 @@ export async function deleteFirebaseData(path) {
   await deleteDoc(ref);
 }
 
-// ✅ Migrate localStorage → Firebase (preserves existing functionalities)
+// --- Helpers for saving stats with the exact structure expected by estatisticas.html ---
+
+/**
+ * Save the whole stats object for a given part.
+ * statsObj should be { campo: { "7": {...}}, gr: { "1": {...} } }
+ */
+export async function saveFullStats(part, statsObj) {
+  const path = (part === '1') ? FB_PATHS.estatisticasParte1 : FB_PATHS.estatisticasParte2;
+  await setFirebaseData(path, statsObj);
+}
+
+/**
+ * Save a single stat for one player (safe: reads existing doc, merges, writes).
+ * Ensures final document shape: { campo: { "7": { grPostes: 1, ... } }, gr: { "1": { ... } } }
+ *
+ * - part: '1' or '2'
+ * - category: 'campo' or 'gr'
+ * - playerNumber: number OR string
+ * - statKey: string (e.g. 'golos', 'defesas')
+ * - value: number (stat value)
+ */
+export async function saveSingleStat(part, category, playerNumber, statKey, value) {
+  await ensureAuth();
+  const path = (part === '1') ? FB_PATHS.estatisticasParte1 : FB_PATHS.estatisticasParte2;
+  const ref = getUserDocRef(path);
+  const snap = await getDoc(ref);
+  const current = snap.exists() ? snap.data() : { campo: {}, gr: {} };
+
+  if (!current[category]) current[category] = {};
+  const key = String(playerNumber);
+  if (!current[category][key]) current[category][key] = {};
+
+  // Assign the specific stat (keep any existing sibling stats)
+  current[category][key][statKey] = Number(value) || 0;
+
+  // Persist full merged object (merge:true to be safe)
+  await setDoc(ref, current, { merge: true });
+
+  // Return the updated sub-object for convenience/debugging
+  return current;
+}
+
+// --- Migration from localStorage to Firebase (keeps the existing behaviour) ---
 export async function migrateLocalStorageToFirebase() {
   await ensureAuth();
 
@@ -113,21 +182,36 @@ export async function migrateLocalStorageToFirebase() {
   ];
 
   for (const { lsKey, fbPath } of migrationKeys) {
-    const data = localStorage.getItem(lsKey);
-    if (!data) continue;
+    const raw = localStorage.getItem(lsKey);
+    if (!raw) continue;
     try {
-      const parsed = JSON.parse(data);
+      const parsed = JSON.parse(raw);
       if (lsKey === 'teamLogoBase64') {
         await setFirebaseData(fbPath, { logo: parsed });
       } else {
         await setFirebaseData(fbPath, parsed);
       }
       localStorage.removeItem(lsKey);
-      console.log(`Migrated ${lsKey} → ${fbPath}`);
+      console.log(`Migrated ${lsKey} -> ${fbPath}`);
     } catch (err) {
-      console.warn(`Failed to migrate ${lsKey}:`, err);
+      console.warn(`Failed migrating ${lsKey}:`, err);
     }
   }
 }
 
-ensureAuth().then(() => migrateLocalStorageToFirebase());
+/**
+ * Convenience initializer to make sure auth & one-time migration are done.
+ * Returns the authenticated uid.
+ */
+export async function initializeFirebase() {
+  const uid = await ensureAuth();
+  // run migration in background but wait so data exists for immediate reads
+  await migrateLocalStorageToFirebase();
+  return uid;
+}
+
+// Auto-run auth & migration if this module is loaded (non-blocking)
+ensureAuth().then(() => migrateLocalStorageToFirebase()).catch((e) => {
+  // ignore here; callers can call initializeFirebase() if required
+  console.debug("Initial auth/migration attempt:", e?.message || e);
+});
