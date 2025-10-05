@@ -168,3 +168,12 @@ ensureAuth().then(() => {
 }).catch(error => {
   console.error("Failed to authenticate for migration:", error);
 });
+
+
+     // Add to FB_PATHS object
+     estatisticasParte1: 'stats/estatisticasParte1',
+     estatisticasParte2: 'stats/estatisticasParte2',
+     // Update migration function to include these (add to migrationKeys array)
+     { lsKey: 'estatisticas_parte1', dbPath: FB_PATHS.estatisticasParte1 }, // Adjust lsKey if different
+     { lsKey: 'estatisticas_parte2', dbPath: FB_PATHS.estatisticasParte2 },
+     
