@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Jogadores</title>
     <style>
+        /* Your existing styles here - no changes needed */
         :root {
             --primary-color: #2980b9;
             --primary-hover: #3498db;
@@ -80,7 +81,7 @@
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 15px; /* Slightly larger for touch */
+            font-size: 15px;
             width: 100%;
         }
         
@@ -115,8 +116,13 @@
             margin-top: 5px;
         }
         
-        .add-btn:hover {
+        .add-btn:hover, .add-btn:active {
             background: var(--primary-hover);
+        }
+        
+        .add-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
         
         .table-container {
@@ -129,7 +135,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 600px; /* Minimum for table content */
+            min-width: 600px;
         }
         
         th, td {
@@ -151,7 +157,7 @@
         }
         
         input[type="checkbox"] {
-            transform: scale(1.3); /* Larger for touch */
+            transform: scale(1.3);
         }
         
         .edit-btn {
@@ -220,6 +226,10 @@
             margin: 10px 0;
             text-align: center;
             font-weight: bold;
+            padding: 10px;
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 4px;
+            display: none; /* Hidden by default */
         }
         
         .inline-input {
@@ -246,243 +256,4 @@
             padding: 5px 0;
         }
         
-        .editable-cell:hover {
-            text-decoration: underline;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-        
-        .delete-all {
-            background: var(--danger-color);
-            padding: 10px 15px;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            display: block;
-            width: 100%;
-            margin-top: 20px;
-        }
-        
-        .delete-all:hover {
-            background: var(--danger-hover);
-        }
-        
-        /* Media query for screens 768px and up (tablet landscape/small desktop) */
-        @media (min-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-            
-            h1 {
-                font-size: 28px;
-            }
-            
-            .input-grid {
-                grid-template-columns: auto 1fr auto 1fr auto auto auto;
-                align-items: center;
-            }
-            
-            .checkbox-group {
-                grid-column: auto;
-                margin: 0;
-            }
-            
-            .add-btn {
-                grid-column: auto;
-                margin-top: 0;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Gestão de Jogadores</h1>
-        
-        <div class="input-section">
-            <div class="input-grid">
-                <label for="numero">Nº:</label>
-                <input type="number" id="numero" min="1" max="99" required>
-                
-                <label for="nome">Nome:</label>
-                <input type="text" id="nome" required>
-                
-                <div class="checkbox-group">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="pse">
-                        <label for="pse">PSE</label>
-                    </div>
-                    
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="estatisticas">
-                        <label for="estatisticas">Estatísticas</label>
-                    </div>
-                    
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="gr">
-                        <label for="gr">Guarda-Redes</label>
-                    </div>
-                </div>
-                
-                <button class="add-btn" onclick="adicionarJogador()">Adicionar</button>
-            </div>
-        </div>
-        
-        <div id="error"></div>
-        
-        <div class="section">
-            <h2>Jogadores de Campo</h2>
-            <div class="table-container">
-                <table id="fieldPlayersTable">
-                    <thead>
-                        <tr>
-                            <th>Nº</th>
-                            <th>Nome</th>
-                            <th class="checkbox-cell">PSE</th>
-                            <th class="checkbox-cell">Estatísticas</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Guarda-Redes</h2>
-            <div class="table-container">
-                <table id="goalKeepersTable">
-                    <thead>
-                        <tr>
-                            <th>Nº</th>
-                            <th>Nome</th>
-                            <th class="checkbox-cell">PSE</th>
-                            <th class="checkbox-cell">Estatísticas</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-        
-        <button class="delete-all" onclick="eliminarTudo()">Eliminar Tudo</button>
-    </div>
-
-    <!-- Firebase SDKs -->
-    <script type="module" src="firebase-data.js"></script>
-    <script>
-        let fieldPlayers = [];
-        let goalKeepers = [];
-        let editingRow = null; // Track the currently editing row
-        let unsubscribeField = null; // To unsubscribe from Firebase listeners
-        let unsubscribeGoal = null;
-
-        // Wait for Firebase to be ready before setting up listeners
-        window.addEventListener('load', async function() {
-            try {
-                console.log('Starting configall.html load...');
-                
-                // Run migration first (transfers old localStorage to Firebase)
-                await migrateLocalStorageToFirebase();
-                console.log('Migration complete.');
-
-                // Set up Firebase listeners after migration
-                setupFirebaseListeners();
-                
-                // Initial render (tables will populate via listeners)
-                renderTables();
-                
-                console.log('configall.html initialized successfully.');
-            } catch (error) {
-                console.error('Error initializing configall.html:', error);
-                document.getElementById('error').textContent = 'Erro ao carregar dados: ' + error.message;
-                // Fallback: Render empty tables
-                renderTables();
-            }
-        });
-
-        function setupFirebaseListeners() {
-            // Listen for changes from Firebase (unsubscribe previous if exists)
-            if (unsubscribeField) unsubscribeField();
-            if (unsubscribeGoal) unsubscribeGoal();
-
-            unsubscribeField = onFirebaseDataChange(FB_PATHS.fieldPlayers, (data) => {
-                console.log('Field players updated:', data);
-                fieldPlayers = data ? (data.players || []) : [];
-                sortPlayers();
-                renderTables();
-            });
-
-            unsubscribeGoal = onFirebaseDataChange(FB_PATHS.goalKeepers, (data) => {
-                console.log('Goal keepers updated:', data);
-                goalKeepers = data ? (data.players || []) : [];
-                sortPlayers();
-                renderTables();
-            });
-        }
-
-        function sortPlayers() {
-            fieldPlayers.sort((a, b) => a.numero - b.numero || a.nome.localeCompare(b.nome));
-            goalKeepers.sort((a, b) => a.numero - b.numero || b.nome.localeCompare(b.nome));
-        }
-
-        async function saveData() {
-            try {
-                console.log('Saving fieldPlayers:', fieldPlayers);
-                console.log('Saving goalKeepers:', goalKeepers);
-                
-                await setFirebaseData(FB_PATHS.fieldPlayers, { players: fieldPlayers });
-                await setFirebaseData(FB_PATHS.goalKeepers, { players: goalKeepers });
-                
-                console.log('Data saved successfully.');
-            } catch (error) {
-                console.error('Error saving data:', error);
-                document.getElementById('error').textContent = 'Erro ao guardar: ' + error.message;
-            }
-        }
-
-        function renderTable(tableId, players) {
-            const tbody = document.querySelector(`#${tableId} tbody`);
-            if (!tbody) return; // Safety check
-            
-            tbody.innerHTML = '';
-            players.forEach((player, index) => {
-                const row = tbody.insertRow();
-                row.className = (editingRow && editingRow.tableId === tableId && editingRow.index === index) ? 'editing' : '';
-                const isEditing = editingRow && editingRow.tableId === tableId && editingRow.index === index;
-                
-                let numeroCell, nomeCell, actionsCell;
-                
-                if (isEditing) {
-                    numeroCell = `<input type="number" class="inline-input" value="${player.numero || ''}" min="1" max="99">`;
-                    nomeCell = `<input type="text" class="inline-input-name" value="${player.nome || ''}">`;
-                    actionsCell = `
-                        <div class="button-group">
-                            <button class="save-btn" onclick="saveEdit(${index}, '${tableId}')">Guardar</button>
-                            <button class="cancel-btn" onclick="cancelEdit('${tableId}', ${index})">Cancelar</button>
-                        </div>
-                    `;
-                } else {
-                    numeroCell = `<span class="editable-cell" onclick="startInlineEdit(this, 'numero', ${index}, '${tableId}')">${player.numero || ''}</span>`;
-                    nomeCell = `<span class="editable-cell" onclick="startInlineEdit(this, 'nome', ${index}, '${tableId}')">${player.nome || ''}</span>`;
-                    actionsCell = `
-                        <div class="button-group">
-                            <button class="edit-btn" onclick="startEdit(${index}, '${tableId}')">Editar</button>
-                            <button class="delete-btn" onclick="apagarJogador(${index}, '${tableId}')">Apagar</button>
-                        </div>
-                    `;
-                }
-                
-                row.innerHTML = `
-                    <td>${numeroCell}</td>
-                    <td>${nomeCell}</td>
-                    <td class="checkbox-cell"><input type="checkbox" ${player.pse ? 'checked' : ''} onchange="updateCheckbox(this, 'pse', ${index}, '${tableId}')"></td>
-                    <td class="checkbox-cell"><input type="checkbox" ${player.estatisticas ? 'checked' : ''} onchange="updateCheckbox(this, 'estatisticas', ${index}, '${tableId}')"></td>
-                    <td
+        .editable
