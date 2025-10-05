@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Jogadores</title>
     <style>
+        /* Your existing styles here - no changes needed */
         :root {
             --primary-color: #2980b9;
             --primary-hover: #3498db;
@@ -236,4 +237,482 @@
             text-align: center;
             font-weight: bold;
             padding: 10px;
-            background: rgba(220, 53, 69
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .inline-input {
+            padding: 5px;
+            border: 1px solid var(--primary-color);
+            border-radius: 3px;
+            font-size: 14px;
+            text-transform: uppercase;
+            width: 100%;
+        }
+        
+        .editable-cell {
+            cursor: pointer;
+            color: #34495e;
+            padding: 5px 0;
+        }
+        
+        .editable-cell:hover {
+            text-decoration: underline;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .delete-all {
+            background: var(--danger-color);
+            padding: 10px 15px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .delete-all:hover {
+            background: var(--danger-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gestão de Jogadores</h1>
+        
+        <div class="input-section">
+            <div class="input-grid">
+                <label for="numero">Nº:</label>
+                <input type="number" id="numero" min="1" max="99" required>
+                
+                <label for="nome">Nome:</label>
+                <input type="text" id="nome" required>
+                
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="pse">
+                        <label for="pse">PSE</label>
+                    </div>
+                    
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estatisticas">
+                        <label for="estatisticas">Estatísticas</label>
+                    </div>
+                    
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="gr">
+                        <label for="gr">Guarda-Redes</label>
+                    </div>
+                </div>
+                
+                <button class="add-btn" id="addPlayerBtn" disabled>Adicionar</button>
+            </div>
+        </div>
+        
+        <div id="error"></div>
+        
+        <div class="section">
+            <h2>Jogadores de Campo</h2>
+            <div class="table-container">
+                <table id="fieldPlayersTable">
+                    <thead>
+                        <tr>
+                            <th>Nº</th>
+                            <th>Nome</th>
+                            <th class="checkbox-cell">PSE</th>
+                            <th class="checkbox-cell">Estatísticas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Guarda-Redes</h2>
+            <div class="table-container">
+                <table id="goalKeepersTable">
+                    <thead>
+                        <tr>
+                            <th>Nº</th>
+                            <th>Nome</th>
+                            <th class="checkbox-cell">PSE</th>
+                            <th class="checkbox-cell">Estatísticas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <button class="delete-all" id="deleteAllBtn">Eliminar Tudo</button>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { 
+            FB_PATHS, 
+            setFirebaseData, 
+            getFirebaseData, 
+            onFirebaseDataChange, 
+            deleteFirebaseData,
+            migrateLocalStorageToFirebase // Import migration function
+        } from './firebase-data.js'; // Ensure this path is correct
+
+        let fieldPlayers = [];
+        let goalKeepers = [];
+        let editingRow = null; // Track the currently editing row
+        let unsubscribeField = null; // To unsubscribe from Firebase listeners
+        let unsubscribeGoal = null;
+        let firebaseReady = false; // Flag to indicate Firebase is initialized and ready
+
+        // DOM Elements
+        const numeroInput = document.getElementById('numero');
+        const nomeInput = document.getElementById('nome');
+        const pseCheckbox = document.getElementById('pse');
+        const estatisticasCheckbox = document.getElementById('estatisticas');
+        const grCheckbox = document.getElementById('gr');
+        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const errorDiv = document.getElementById('error');
+        const deleteAllBtn = document.getElementById('deleteAllBtn');
+
+        // --- Utility Functions ---
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function clearForm() {
+            numeroInput.value = '';
+            nomeInput.value = '';
+            pseCheckbox.checked = false;
+            estatisticasCheckbox.checked = false;
+            grCheckbox.checked = false;
+        }
+
+        function sortPlayers() {
+            fieldPlayers.sort((a, b) => a.numero - b.numero || a.nome.localeCompare(b.nome));
+            goalKeepers.sort((a, b) => a.numero - b.numero || a.nome.localeCompare(b.nome));
+        }
+
+        // --- Firebase Data Operations ---
+        async function saveData() {
+            if (!firebaseReady) {
+                console.warn("Firebase not ready, skipping save.");
+                return;
+            }
+            try {
+                await setFirebaseData(FB_PATHS.fieldPlayers, { players: fieldPlayers });
+                await setFirebaseData(FB_PATHS.goalKeepers, { players: goalKeepers });
+                console.log('Data saved successfully to Firestore.');
+            } catch (error) {
+                console.error('Error saving data to Firestore:', error);
+                showError('Erro ao guardar dados: ' + error.message);
+            }
+        }
+
+        function setupFirebaseListeners() {
+            // Unsubscribe previous listeners if they exist
+            if (unsubscribeField) unsubscribeField();
+            if (unsubscribeGoal) unsubscribeGoal();
+
+            // Listen for changes to field players
+            unsubscribeField = onFirebaseDataChange(FB_PATHS.fieldPlayers, (data) => {
+                console.log('Firestore: Field players updated:', data);
+                fieldPlayers = data ? (data.players || []) : [];
+                sortPlayers();
+                renderTables();
+            });
+
+            // Listen for changes to goal keepers
+            unsubscribeGoal = onFirebaseDataChange(FB_PATHS.goalKeepers, (data) => {
+                console.log('Firestore: Goal keepers updated:', data);
+                goalKeepers = data ? (data.players || []) : [];
+                sortPlayers();
+                renderTables();
+            });
+        }
+
+        // --- Render Tables ---
+        function renderTable(tableId, players, isGoalKeeperTable = false) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            players.forEach((player, index) => {
+                const row = tbody.insertRow();
+                row.className = (editingRow && editingRow.tableId === tableId && editingRow.index === index) ? 'editing' : '';
+                const isEditing = editingRow && editingRow.tableId === tableId && editingRow.index === index;
+                
+                let numeroCellContent, nomeCellContent, actionsCellContent;
+                
+                if (isEditing) {
+                    numeroCellContent = `<input type="number" class="inline-input" value="${player.numero || ''}" min="1" max="99" data-field="numero">`;
+                    nomeCellContent = `<input type="text" class="inline-input" value="${player.nome || ''}" data-field="nome">`;
+                    actionsCellContent = `
+                        <div class="button-group">
+                            <button class="save-btn" data-action="save" data-index="${index}" data-table="${tableId}">Guardar</button>
+                            <button class="cancel-btn" data-action="cancel" data-index="${index}" data-table="${tableId}">Cancelar</button>
+                        </div>
+                    `;
+                } else {
+                    numeroCellContent = `<span class="editable-cell" data-action="edit-inline" data-field="numero" data-index="${index}" data-table="${tableId}">${player.numero || ''}</span>`;
+                    nomeCellContent = `<span class="editable-cell" data-action="edit-inline" data-field="nome" data-index="${index}" data-table="${tableId}">${player.nome || ''}</span>`;
+                    actionsCellContent = `
+                        <div class="button-group">
+                            <button class="edit-btn" data-action="edit" data-index="${index}" data-table="${tableId}">Editar</button>
+                            <button class="delete-btn" data-action="delete" data-index="${index}" data-table="${tableId}">Apagar</button>
+                        </div>
+                    `;
+                }
+                
+                row.innerHTML = `
+                    <td>${numeroCellContent}</td>
+                    <td>${nomeCellContent}</td>
+                    <td class="checkbox-cell"><input type="checkbox" ${player.pse ? 'checked' : ''} data-action="toggle-checkbox" data-field="pse" data-index="${index}" data-table="${tableId}"></td>
+                    <td class="checkbox-cell"><input type="checkbox" ${player.estatisticas ? 'checked' : ''} data-action="toggle-checkbox" data-field="estatisticas" data-index="${index}" data-table="${tableId}"></td>
+                    <td>${actionsCellContent}</td>
+                `;
+            });
+        }
+
+        function renderTables() {
+            renderTable('fieldPlayersTable', fieldPlayers);
+            renderTable('goalKeepersTable', goalKeepers, true);
+        }
+
+        // --- Event Handlers ---
+        addPlayerBtn.addEventListener('click', async () => {
+            const numero = parseInt(numeroInput.value);
+            const nome = nomeInput.value.trim();
+            const pse = pseCheckbox.checked;
+            const estatisticas = estatisticasCheckbox.checked;
+            const gr = grCheckbox.checked;
+
+            if (isNaN(numero) || numero < 1 || numero > 99 || nome === '') {
+                showError('Por favor, preencha o número (1-99) e o nome do jogador.');
+                return;
+            }
+
+            // Check for duplicate number
+            const isDuplicate = (gr ? goalKeepers : fieldPlayers).some(p => p.numero === numero);
+            if (isDuplicate) {
+                showError(`Já existe um jogador com o número ${numero} na categoria ${gr ? 'Guarda-Redes' : 'Campo'}.`);
+                return;
+            }
+
+            const newPlayer = { numero, nome, pse, estatisticas };
+
+            // Optimistic UI update
+            if (gr) {
+                goalKeepers.push(newPlayer);
+            } else {
+                fieldPlayers.push(newPlayer);
+            }
+            sortPlayers();
+            renderTables(); // Re-render immediately
+
+            clearForm(); // Clear form after adding
+
+            // Save to Firebase asynchronously
+            try {
+                addPlayerBtn.disabled = true; // Disable button during save
+                await saveData();
+                console.log('Player added locally and saved to Firestore.');
+            } catch (error) {
+                console.error('Error adding player to Firestore:', error);
+                showError('Erro ao adicionar jogador: ' + error.message);
+                // Revert local changes if save fails (optional, but good for consistency)
+                if (gr) {
+                    goalKeepers = goalKeepers.filter(p => p.numero !== numero || p.nome !== nome);
+                } else {
+                    fieldPlayers = fieldPlayers.filter(p => p.numero !== numero || p.nome !== nome);
+                }
+                sortPlayers();
+                renderTables();
+            } finally {
+                addPlayerBtn.disabled = false; // Re-enable button
+            }
+        });
+
+        // Delegated event listener for table actions (edit, delete, checkboxes)
+        document.addEventListener('click', async (event) => {
+            const target = event.target;
+            const action = target.dataset.action;
+            const index = parseInt(target.dataset.index);
+            const tableId = target.dataset.table;
+            const field = target.dataset.field;
+
+            let playerList = (tableId === 'fieldPlayersTable') ? fieldPlayers : goalKeepers;
+
+            if (action === 'edit') {
+                startEdit(index, tableId);
+            } else if (action === 'delete') {
+                if (confirm(`Tem certeza que deseja apagar o jogador ${playerList[index].nome} (${playerList[index].numero})?`)) {
+                    if (tableId === 'fieldPlayersTable') {
+                        fieldPlayers.splice(index, 1);
+                    } else {
+                        goalKeepers.splice(index, 1);
+                    }
+                    renderTables(); // Optimistic UI update
+                    await saveData(); // Save to Firebase
+                }
+            } else if (action === 'save') {
+                const row = target.closest('tr');
+                const newNumero = parseInt(row.querySelector('[data-field="numero"]').value);
+                const newNome = row.querySelector('[data-field="nome"]').value.trim();
+
+                if (isNaN(newNumero) || newNumero < 1 || newNumero > 99 || newNome === '') {
+                    showError('Por favor, preencha o número (1-99) e o nome do jogador.');
+                    return;
+                }
+
+                // Check for duplicate number (excluding the player being edited)
+                const isDuplicate = playerList.some((p, i) => i !== index && p.numero === newNumero);
+                if (isDuplicate) {
+                    showError(`Já existe um jogador com o número ${newNumero}.`);
+                    return;
+                }
+
+                playerList[index].numero = newNumero;
+                playerList[index].nome = newNome;
+                editingRow = null; // Exit editing mode
+                sortPlayers();
+                renderTables(); // Optimistic UI update
+                await saveData(); // Save to Firebase
+            } else if (action === 'cancel') {
+                editingRow = null; // Exit editing mode
+                renderTables(); // Re-render to show original data
+            } else if (action === 'toggle-checkbox') {
+                playerList[index][field] = target.checked;
+                await saveData(); // Save to Firebase
+            } else if (action === 'edit-inline') {
+                startInlineEdit(target, field, index, tableId);
+            }
+        });
+
+        function startEdit(index, tableId) {
+            editingRow = { index, tableId };
+            renderTables(); // Re-render to show inputs
+        }
+
+        function startInlineEdit(element, field, index, tableId) {
+            // Only allow inline edit if not already editing a row
+            if (editingRow) return;
+
+            const playerList = (tableId === 'fieldPlayersTable') ? fieldPlayers : goalKeepers;
+            const player = playerList[index];
+            const originalValue = player[field];
+
+            const input = document.createElement(field === 'numero' ? 'input' : 'input');
+            input.type = field === 'numero' ? 'number' : 'text';
+            input.className = 'inline-input';
+            input.value = originalValue;
+            if (field === 'numero') {
+                input.min = "1";
+                input.max = "99";
+            }
+
+            element.replaceWith(input);
+            input.focus();
+
+            const saveInlineEdit = async () => {
+                const newValue = field === 'numero' ? parseInt(input.value) : input.value.trim();
+
+                if (field === 'numero' && (isNaN(newValue) || newValue < 1 || newValue > 99)) {
+                    showError('Número inválido (1-99).');
+                    input.replaceWith(element); // Revert
+                    return;
+                }
+                if (field === 'nome' && newValue === '') {
+                    showError('Nome não pode ser vazio.');
+                    input.replaceWith(element); // Revert
+                    return;
+                }
+
+                // Check for duplicate number (only if editing 'numero' and it's a field player)
+                if (field === 'numero') {
+                    const isDuplicate = playerList.some((p, i) => i !== index && p.numero === newValue);
+                    if (isDuplicate) {
+                        showError(`Já existe um jogador com o número ${newValue}.`);
+                        input.replaceWith(element); // Revert
+                        return;
+                    }
+                }
+
+                player[field] = newValue;
+                sortPlayers();
+                renderTables(); // Re-render to update UI and exit inline edit mode
+                await saveData(); // Save to Firebase
+            };
+
+            input.addEventListener('blur', saveInlineEdit);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.removeEventListener('blur', saveInlineEdit); // Prevent blur from firing twice
+                    saveInlineEdit();
+                } else if (e.key === 'Escape') {
+                    input.replaceWith(element); // Revert to original span
+                }
+            });
+        }
+
+        deleteAllBtn.addEventListener('click', async () => {
+            if (confirm('Tem certeza que deseja eliminar TODOS os jogadores? Esta ação não pode ser desfeita.')) {
+                fieldPlayers = [];
+                goalKeepers = [];
+                renderTables(); // Optimistic UI update
+                try {
+                    await deleteFirebaseData(FB_PATHS.fieldPlayers);
+                    await deleteFirebaseData(FB_PATHS.goalKeepers);
+                    console.log('All players deleted from Firestore.');
+                } catch (error) {
+                    console.error('Error deleting all players from Firestore:', error);
+                    showError('Erro ao eliminar todos os jogadores: ' + error.message);
+                }
+            }
+        });
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('configall.html: DOMContentLoaded - Starting initialization...');
+            addPlayerBtn.disabled = true; // Disable button until Firebase is ready
+
+            try {
+                // Run migration first (transfers old localStorage to Firebase)
+                await migrateLocalStorageToFirebase();
+                console.log('configall.html: LocalStorage migration complete.');
+
+                // Setup Firebase listeners
+                setupFirebaseListeners();
+                
+                // Set flag that Firebase is ready
+                firebaseReady = true;
+                addPlayerBtn.disabled = false; // Enable button
+                console.log('configall.html: Firebase initialized and ready.');
+
+            } catch (error) {
+                console.error('configall.html: Error during Firebase initialization:', error);
+                showError('Erro ao inicializar a aplicação: ' + error.message);
+                // Render empty tables as a fallback if Firebase init fails
+                renderTables();
+            }
+        });
+    </script>
+</body>
+</html>
