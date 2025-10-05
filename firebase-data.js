@@ -11,15 +11,20 @@ const firebaseConfig = {
 
 // Firebase Imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { 
+  getFirestore, doc, setDoc, getDoc, onSnapshot, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { 
+  getAuth, signInAnonymously, onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
 let currentUserId = null;
 
-// ---- PATHS ----
+// ✅ Firebase Paths
 export const FB_PATHS = {
   fieldPlayers: 'players/fieldPlayers',
   goalKeepers: 'players/goalKeepers',
@@ -33,7 +38,7 @@ export const FB_PATHS = {
   teamLogo: 'config/teamLogo'
 };
 
-// ---- AUTH ----
+// ✅ Ensure anonymous auth
 async function ensureAuth() {
   return new Promise((resolve, reject) => {
     onAuthStateChanged(auth, (user) => {
@@ -46,28 +51,29 @@ async function ensureAuth() {
             currentUserId = cred.user.uid;
             resolve(cred.user);
           })
-          .catch((err) => reject(err));
+          .catch(reject);
       }
     });
   });
 }
 
-// ---- FIRESTORE HELPERS ----
+// ✅ Build proper Firestore reference
 function getUserDocRef(path) {
-  if (!currentUserId) return null;
-  return doc(db, `users/${currentUserId}/${path}`);
+  if (!currentUserId) throw new Error("User not authenticated yet");
+  const pathParts = ['users', currentUserId, ...path.split('/')];
+  return doc(db, ...pathParts);
 }
 
+// ✅ CRUD
 export async function setFirebaseData(path, data) {
   await ensureAuth();
   const ref = getUserDocRef(path);
-  if (ref) await setDoc(ref, data, { merge: true });
+  await setDoc(ref, data, { merge: true });
 }
 
 export async function getFirebaseData(path) {
   await ensureAuth();
   const ref = getUserDocRef(path);
-  if (!ref) return null;
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
@@ -75,11 +81,10 @@ export async function getFirebaseData(path) {
 export async function onFirebaseDataChange(path, callback) {
   await ensureAuth();
   const ref = getUserDocRef(path);
-  if (!ref) return () => {};
   return onSnapshot(ref, (snap) => {
     callback(snap.exists() ? snap.data() : null);
-  }, (error) => {
-    console.error("Snapshot error:", error);
+  }, (err) => {
+    console.error("Listener error for", path, err);
     callback(null);
   });
 }
@@ -87,10 +92,10 @@ export async function onFirebaseDataChange(path, callback) {
 export async function deleteFirebaseData(path) {
   await ensureAuth();
   const ref = getUserDocRef(path);
-  if (ref) await deleteDoc(ref);
+  await deleteDoc(ref);
 }
 
-// ---- MIGRATION ----
+// ✅ Migrate localStorage → Firebase (preserves existing functionalities)
 export async function migrateLocalStorageToFirebase() {
   await ensureAuth();
 
@@ -107,7 +112,6 @@ export async function migrateLocalStorageToFirebase() {
     { lsKey: 'teamLogoBase64', fbPath: FB_PATHS.teamLogo }
   ];
 
-  console.log("Migrating localStorage data → Firebase...");
   for (const { lsKey, fbPath } of migrationKeys) {
     const data = localStorage.getItem(lsKey);
     if (!data) continue;
@@ -121,11 +125,9 @@ export async function migrateLocalStorageToFirebase() {
       localStorage.removeItem(lsKey);
       console.log(`Migrated ${lsKey} → ${fbPath}`);
     } catch (err) {
-      console.error(`Error migrating ${lsKey}:`, err);
+      console.warn(`Failed to migrate ${lsKey}:`, err);
     }
   }
-  console.log("Migration complete.");
 }
 
-// ---- Initialize ----
 ensureAuth().then(() => migrateLocalStorageToFirebase());
