@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Exportar PSE PDF</title>
+
+  <!-- jsPDF + autoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<script>
+  async function exportToPDF() {
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 40;
+      let yOffset = margin;
+
+      // ---------- Carregar dados PSE ----------
+      let pseData = [];
+      const savedPSE = localStorage.getItem("pseData");
+      if (savedPSE) {
+        try {
+          pseData = JSON.parse(savedPSE);
+        } catch (err) { pseData = []; }
+      }
+
+      // ---------- Carregar logo ----------
+      let savedLogoData = JSON.parse(localStorage.getItem('estatisticas_separadas') || '{}');
+      let teamLogoBase64 = savedLogoData.logo || '';
+
+      async function addLogoToPage(pdfInstance, currentPageNum = 1) {
+        if (!teamLogoBase64) return;
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const maxWidth = 120;
+            const ratio = img.width / img.height || 1;
+            let w = maxWidth, h = w / ratio;
+            if (h > 80) { h = 80; w = h * ratio; }
+            const x = (pageWidth - w) / 2;
+            const y = 10;
+            pdfInstance.addImage(img, 'PNG', x, y, w, h);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = teamLogoBase64;
+        });
+      }
+
+      // ---------- Cabeçalho ----------
+      await addLogoToPage(pdf, 1);
+      pdf.setFontSize(20);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Relatório PSE da Equipa', pageWidth / 2, 110, { align: 'center' });
+      pdf.setFont(undefined, 'normal');
+      pdf.setFontSize(12);
+      pdf.setLineWidth(0.5);
+      pdf.setDrawColor(52, 152, 219);
+      pdf.line(margin, 115, pageWidth - margin, 115);
+      pdf.setDrawColor(0, 0, 0);
+      yOffset = 135;
+
+      // ---------- Função cor PSE ----------
+      function getPSEColor(pseValue) {
+        const value = Number(pseValue) || 0;
+        if (value >= 8) return [255, 0, 0];       // vermelho
+        else if (value >= 6) return [255, 215, 0]; // amarelo
+        else if (value >= 4) return [76, 175, 80]; // verde
+        else return [173, 216, 230];              // azul claro
+      }
+
+      // ---------- Rodapé ----------
+      function addFooter(pdfInstance, currentPage) {
+        const totalPages = pdfInstance.internal.getNumberOfPages();
+        pdfInstance.setFontSize(9);
+        pdfInstance.setTextColor(128, 128, 128);
+        pdfInstance.text(`Página ${currentPage} de ${totalPages}`, pageWidth - margin, pageHeight - 20, { align: 'right' });
+        pdfInstance.setTextColor(0, 0, 0);
+      }
+
+      // ---------- Preparar bodyData ----------
+      let bodyData = [];
+      if (pseData.length > 0) {
+        bodyData = pseData.map(item => [
+          item.name || "Sem Nome",
+          item.pse,
+          item.desc || "",
+          new Date(item.datetime).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+        ]);
+      } else {
+        bodyData = [
+          ["João", 7, "Vigoroso", "25/09/2025 10:00"],
+          ["Maria", 5, "Moderado", "25/09/2025 10:15"]
+        ];
+      }
+
+      // ---------- Construir tabela ----------
+      const enhancedBody = bodyData.map((row) => {
+        const newRow = [...row];
+        const pseVal = newRow[1];
+        const color = getPSEColor(pseVal);
+        newRow[1] = { content: pseVal.toString(), styles: { fillColor: color, textColor: [0,0,0] } };
+        return newRow;
+      });
+
+      pdf.autoTable({
+        head: [["Atleta", "PSE", "Descrição", "Data/Hora"]],
+        body: enhancedBody,
+        startY: yOffset,
+        theme: 'plain',
+        headStyles: { 
+          fillColor: [52, 152, 219],
+          textColor: [255, 255, 255],
+          fontSize: 12,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        bodyStyles: { fontSize: 10, textColor: [51,51,51] },
+        alternateRowStyles: { fillColor: [248,249,250] },
+        columnStyles: {
+          0: { halign: 'left' },
+          1: { halign: 'center' },
+          2: { halign: 'left' },
+          3: { halign: 'center' }
+        },
+        styles: { cellPadding: 6, lineWidth: 0.3, lineColor: [189,195,199] },
+        margin: { left: margin, right: margin },
+        didDrawPage: (data) => {
+          addFooter(pdf, data.pageNumber);
+          addLogoToPage(pdf, data.pageNumber);
+        }
+      });
+
+      // ---------- Salvar PDF ----------
+      const today = new Date().toISOString().slice(0, 10);
+      pdf.save(`pse_equipa_${today}.pdf`);
+
+      setTimeout(()=>{ window.location.href = 'index.html'; }, 1000);
+
+    } catch (error) {
+      console.error('Erro na exportação PDF:', error);
+      alert('Erro ao gerar o PDF: ' + error.message);
+      setTimeout(()=>{ window.location.href = 'index.html'; }, 1000);
+    }
+  }
+
+  window.onload = exportToPDF;
+</script>
+</body>
+</html>

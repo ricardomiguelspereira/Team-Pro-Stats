@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Jogo</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --border-color: #ccc;
+            --text-color: #2c3e50;
+            --bg-color: #f0f0f0;
+            --white: #ffffff;
+            --shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 15px;
+            line-height: 1.4;
+        }
+
+        #container {
+            width: 100%;
+            max-width: 720px;
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .tab-content {
+            padding: 20px;
+            display: block; /* Always visible since no tabs */
+        }
+
+        form#jogoForm {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        form#jogoForm label {
+            display: flex;
+            flex-direction: column;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        form#jogoForm input[type="text"],
+        form#jogoForm input[type="date"],
+        form#jogoForm input[type="time"],
+        form#jogoForm select {
+            margin-top: 6px;
+            padding: 12px 10px; /* Larger padding for touch */
+            font-size: 16px; /* Larger font for mobile */
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            outline-color: var(--primary-color);
+            text-transform: uppercase;
+            width: 100%;
+        }
+
+        form#jogoForm select {
+            background: var(--white);
+            cursor: pointer;
+        }
+
+        #notification {
+            margin-top: 15px;
+            color: var(--primary-color);
+            font-weight: 600;
+            text-align: center;
+            padding: 10px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 6px;
+            display: none; /* Hidden by default */
+            transition: opacity 0.3s ease;
+        }
+
+        #clearButton {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: none; /* Hidden by default; show if you want */
+        }
+
+        #clearButton:hover {
+            background: #c0392b;
+        }
+
+        /* Media Queries for Mobile/Tablet Optimization */
+        @media (min-width: 768px) {
+            html, body {
+                padding: 20px;
+            }
+
+            #container {
+                width: 720px;
+            }
+
+            .header {
+                font-size: 20px;
+                padding: 25px;
+            }
+
+            .tab-content {
+                padding: 30px;
+            }
+
+            form#jogoForm {
+                grid-template-columns: repeat(4, 1fr); /* Four columns for precise 1/4 and 3/4 sizing */
+                gap: 20px 12px;
+            }
+
+            /* First line: Escalão (1/4 width, span 1), Competição (3/4 width, span 3) */
+            form#jogoForm label:nth-child(1) { /* Escalão */
+                grid-column: 1;
+                grid-row: 1;
+            }
+            form#jogoForm label:nth-child(2) { /* Competição */
+                grid-column: 2 / -1; /* Spans columns 2-4 (3/4 width) */
+                grid-row: 1;
+            }
+
+            /* Second line: Fase and Grupo (each 1/2 width, span 2 each) */
+            form#jogoForm label:nth-child(3) { /* Fase */
+                grid-column: 1 / 3; /* Spans columns 1-2 (1/2 width) */
+                grid-row: 2;
+            }
+            form#jogoForm label:nth-child(4) { /* Grupo */
+                grid-column: 3 / -1; /* Spans columns 3-4 (1/2 width) */
+                grid-row: 2;
+            }
+
+            /* Third line: Jornada, Data, Hora (each same size, span 1 each - 1/4 width each, equal) */
+            form#jogoForm label:nth-child(5) { /* Jornada */
+                grid-column: 1;
+                grid-row: 3;
+            }
+            form#jogoForm label:nth-child(6) { /* Data */
+                grid-column: 2;
+                grid-row: 3;
+            }
+            form#jogoForm label:nth-child(7) { /* Hora */
+                grid-column: 3;
+                grid-row: 3;
+            }
+
+            /* Fourth line: Local (full width) */
+            form#jogoForm label:nth-child(8) { /* Local */
+                grid-column: 1 / -1;
+                grid-row: 4;
+            }
+
+            /* Fifth line: Adversário (full width) */
+            form#jogoForm label:nth-child(9) { /* Adversário */
+                grid-column: 1 / -1;
+                grid-row: 5;
+            }
+        }
+
+        @media (max-width: 480px) {
+            html, body {
+                padding: 10px;
+                align-items: stretch; /* Full height on very small screens */
+            }
+
+            #container {
+                border-radius: 0; /* Full width on phone */
+                box-shadow: none;
+                height: 100vh;
+                max-height: 100vh;
+            }
+
+            .header {
+                padding: 15px;
+                font-size: 16px;
+            }
+
+            .tab-content {
+                padding: 15px;
+                overflow-y: auto;
+            }
+
+            form#jogoForm input[type="text"],
+            form#jogoForm input[type="date"],
+            form#jogoForm input[type="time"],
+            form#jogoForm select {
+                padding: 14px 10px; /* Even larger touch target on phone */
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div class="header">CONFIGURAR JOGO</div>
+
+    <div id="jogo" class="tab-content">
+        <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
+            <!-- First line: Escalão (reduced width) and Competição (3/4 bigger) -->
+            <label for="escalao">Escalão
+                <select id="escalao" name="escalao">
+                    <option value="">---</option>
+                    <option value="SUB-13">SUB-13</option>
+                    <option value="SUB-15">SUB-15</option>
+                    <option value="SUB-17">SUB-17</option>
+                    <option value="SUB-19">SUB-19</option>
+                    <option value="SUB-23">SUB-23</option>
+                    <option value="SÉNIORES">SÉNIORES</option>
+                </select>
+            </label>
+
+            <label for="competicao">Competição
+                <input type="text" id="competicao" name="competicao" />
+            </label>
+
+            <!-- Second line: Fase and Grupo (same size) -->
+            <label for="fase">Fase
+                <input type="text" id="fase" name="fase" />
+            </label>
+            <label for="grupo">Grupo
+                <input type="text" id="grupo" name="grupo" />
+            </label>
+
+            <!-- Third line: Jornada, Data, Hora (same size each) -->
+            <label for="jornada">Jornada
+                <input type="text" id="jornada" name="jornada" />
+            </label>
+            <label for="data">Data
+                <input type="date" id="data" name="data" />
+            </label>
+            <label for="hora">Hora
+                <input type="time" id="hora" name="hora" />
+            </label>
+
+            <!-- Fourth line: Local -->
+            <label for="local">Local
+                <input type="text" id="local" name="local" />
+            </label>
+
+            <!-- Fifth line: Adversário -->
+            <label for="adversario">Adversário
+                <input type="text" id="adversario" name="adversario" />
+            </label>
+
+            <!-- Optional: Clear button (uncomment or style to show) -->
+            <!-- <button type="button" id="clearButton">Limpar Dados Salvos</button> -->
+        </form>
+    </div>
+
+    <div id="notification"></div>
+</div>
+
+<script>
+    // LocalStorage for Jogo Data
+    const STORAGE_KEY_JOGO = 'jogo_form_data';
+    const jogoForm = document.getElementById('jogoForm');
+    const notification = document.getElementById('notification');
+    // const clearButton = document.getElementById('clearButton'); // Uncomment if using the button
+
+    // Debounce function to limit save frequency on text inputs
+    function debounce(func, delay) {
+        let timeoutId;
+        return function (...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    function showNotification(message, isError = false) {
+        notification.textContent = message;
+        notification.style.background = isError ? 'rgba(231, 76, 60, 0.1)' : 'rgba(52, 152, 219, 0.1)';
+        notification.style.color = isError ? '#e74c3c' : 'var(--primary-color)';
+        notification.style.display = 'block';
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => { notification.style.display = 'none'; notification.style.opacity = '1'; }, 300);
+        }, 3000);
+    }
+
+    function saveJogoData() {
+        const data = {};
+        for (const el of jogoForm.elements) {
+            if (el.name) {
+                data[el.name] = el.value || ''; // Capture value, default to empty string
+            }
+        }
+        localStorage.setItem(STORAGE_KEY_JOGO, JSON.stringify(data));
+        console.log('Dados salvos:', data); // For debugging
+    }
+
+    function loadJogoData() {
+        const saved = localStorage.getItem(STORAGE_KEY_JOGO);
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                for (const [k, v] of Object.entries(data)) {
+                    const input = jogoForm.elements[k];
+                    if (input) {
+                        input.value = v || '';
+                    }
+                }
+                showNotification('✅ Dados carregados com sucesso!');
+            } catch (e) {
+                console.error('Erro ao carregar dados:', e);
+                showNotification('❌ Erro ao carregar dados salvos.', true);
+                localStorage.removeItem(STORAGE_KEY_JOGO); // Clear corrupted data
+            }
+        }
+    }
+
+    function clearJogoData() {
+        localStorage.removeItem(STORAGE_KEY_JOGO);
+        jogoForm.reset(); // Reset form visually
+        showNotification('🗑️ Dados salvos limpos!');
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        loadJogoData();
+
+        // Auto-save on changes
+        const debouncedSave = debounce(saveJogoData, 200); // 200ms delay for text/date/time
+        const allInputs = jogoForm.querySelectorAll('input, select');
+
+        allInputs.forEach(input => {
+            // For selects: save immediately on change
+            if (input.tagName === 'SELECT') {
+                input.addEventListener('change', saveJogoData);
+            } else {
+                // For text/date/time: save on input (debounced) and change (immediate on blur)
+                input.addEventListener('input', debouncedSave);
+                input.addEventListener('change', saveJogoData);
+            }
+        });
+
+        // Optional: Clear button listener (uncomment if using the button)
+        // clearButton.addEventListener('click', clearJogoData);
+    });
+</script>
+</body>
+</html>

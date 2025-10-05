@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório Tempo em Jogo - Detalhes</title>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1400px;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+  h3 {
+    margin: 0 0 10px 0;
+    text-align: center;
+    font-size: 1.2rem;
+  }
+  .responsive {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    width: 100%;
+    overflow-x: auto;
+  }
+  table.part-table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: auto;
+    min-width: 0; /* allow shrinking */
+  }
+  table.part-table th,
+  table.part-table td {
+    border: 1px solid #eee;
+    padding: 8px;
+    font-size: 0.9rem;
+    text-align: center;
+    word-wrap: break-word;
+    white-space: normal; /* allow wrapping */
+  }
+  table.part-table th {
+    background: #2980b9;
+    color: #fff;
+    font-weight: 600;
+  }
+  table.part-table tr:nth-child(even) {
+    background: #f9f9f9;
+  }
+
+  /* Game tables: smart widths */
+  .game-table th:first-child,
+  .game-table td:first-child { width: 10%; min-width: 40px; }
+  .game-table th:nth-child(2),
+  .game-table td:nth-child(2) { width: 50%; min-width: 100px; }
+  .game-table th:nth-child(3),
+  .game-table td:nth-child(3) { width: 40%; min-width: 60px; }
+
+  /* Summary table: flexible columns */
+  .summary-table th,
+  .summary-table td {
+    white-space: normal;
+    padding: 6px;
+  }
+
+  footer {
+    width: 100%;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 0.8em;
+    color: #666;
+    font-family: Tahoma, sans-serif;
+  }
+
+  /* Responsive font scaling */
+  @media (max-width: 1200px) {
+    h1 { font-size: 1.8rem; }
+    h3 { font-size: 1.1rem; }
+    table.part-table th, table.part-table td { font-size: 0.85rem; padding: 6px; }
+  }
+  @media (max-width: 992px) {
+    .game-table th:nth-child(2),
+    .game-table td:nth-child(2) { width: 45%; }
+    .game-table th:nth-child(3),
+    .game-table td:nth-child(3) { width: 45%; }
+  }
+  @media (max-width: 768px) {
+    h1 { font-size: 1.5rem; }
+    h3 { font-size: 1rem; }
+    table.part-table th, table.part-table td { font-size: 0.8rem; padding: 5px; }
+  }
+  @media (max-width: 480px) {
+    h1 { font-size: 1.3rem; }
+    h3 { font-size: 0.9rem; }
+    table.part-table th, table.part-table td { font-size: 0.75rem; padding: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Relatório: Tempo em Jogo</h1>
+
+  <div class="responsive">
+    <h3>Jogo Normal - 1ª Parte</h3>
+    <table id="normal1" class="part-table game-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Jogo Normal - 2ª Parte</h3>
+    <table id="normal2" class="part-table game-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Prolongamento - 1ª Parte</h3>
+    <table id="extra1" class="part-table game-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Prolongamento - 2ª Parte</h3>
+    <table id="extra2" class="part-table game-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Resumo Total por Jogador</h3>
+    <table id="summary" class="part-table summary-table"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<script>
+const STORAGE_NORMAL='estatisticas_valores';
+const STORAGE_EXTRA='estatisticas_separadas_extra';
+
+function formatTime(minutesDecimal){
+  const mins = Math.floor(minutesDecimal);
+  const secs = Math.round((minutesDecimal - mins)*60);
+  return `${mins}:${secs.toString().padStart(2,'0')}`;
+}
+
+function loadData(storageKey){
+  const saved = JSON.parse(localStorage.getItem(storageKey)||'{}');
+  const inOut = saved.inOut || {};
+  const fieldPlayers = JSON.parse(localStorage.getItem("fieldPlayers")||"[]").filter(p=>p.estatisticas);
+  const goalKeepers = JSON.parse(localStorage.getItem("goalKeepers")||"[]").filter(p=>p.estatisticas);
+  return {players:[...fieldPlayers,...goalKeepers], inOut};
+}
+
+function getIntervalsForLevel(level){
+  const defaultIntervals=["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+  const sub13=["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+  const sub15_17=["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+  const map={sub13, sub15:sub15_17, sub17:sub15_17, sub19:defaultIntervals, sub23:defaultIntervals, seniores:defaultIntervals};
+  return map[level]||defaultIntervals;
+}
+
+function calculateTime(players,inOut,intervals,part){
+  return players.map(p=>{
+    let totalSecs=0, inside=false, startIndex=null;
+    for(let i=0;i<intervals.length;i++){
+      const val=inOut[`tableInOut${part}_${p.numero||p.id}_${intervals[i]}`]||'';
+      if(val==='E' && !inside){ inside=true; startIndex=i; }
+      else if(val==='S' && inside){ totalSecs+=(i-startIndex)*30; inside=false; startIndex=null; }
+    }
+    if(inside && startIndex!==null){ totalSecs+=(intervals.length-startIndex)*30; }
+    return {num:p.numero||p.id, nome:p.nome||p.name, tempo:formatTime(totalSecs/60)};
+  });
+}
+
+function renderTable(tableId,data){
+  const table = document.getElementById(tableId);
+  const thead = "<tr><th>#</th><th>Nome</th><th>Tempo</th></tr>";
+  table.querySelector('thead').innerHTML = thead;
+  table.querySelector('tbody').innerHTML = data.map(d=>`<tr><td>${d.num}</td><td>${d.nome}</td><td>${d.tempo}</td></tr>`).join('');
+}
+
+function renderSummary(normal1, normal2, extra1, extra2, players){
+  const summary = players.map((p,i)=>{
+    const t1 = normal1[i]?.tempo || '0:00';
+    const t2 = normal2[i]?.tempo || '0:00';
+    const e1 = extra1[i]?.tempo || '0:00';
+    const e2 = extra2[i]?.tempo || '0:00';
+    function toSec(str){ const [m,s]=str.split(':'); return parseInt(m)*60+parseInt(s); }
+    function toMMSS(sec){ const m=Math.floor(sec/60); const s=sec%60; return `${m}:${s.toString().padStart(2,'0')}`; }
+    const totalSec = toSec(t1)+toSec(t2)+toSec(e1)+toSec(e2);
+    return {num:p.numero||p.id, nome:p.nome||p.name, normal1:t1, normal2:t2, extra1:e1, extra2:e2, total:toMMSS(totalSec)};
+  });
+  const sumTable = document.getElementById('summary');
+  sumTable.querySelector('thead').innerHTML = `<tr><th>#</th><th>Nome</th><th>JN 1ªP</th><th>JN 2ªP</th><th>Prol 1ªP</th><th>Prol 2ªP</th><th>Total</th></tr>`;
+  sumTable.querySelector('tbody').innerHTML = summary.map(d=>`<tr><td>${d.num}</td><td>${d.nome}</td><td>${d.normal1}</td><td>${d.normal2}</td><td>${d.extra1}</td><td>${d.extra2}</td><td>${d.total}</td></tr>`).join('');
+}
+
+function renderAll(){
+  const level = 'sub19';
+  const intervals = getIntervalsForLevel(level);
+  const normalData = loadData(STORAGE_NORMAL);
+  const extraData = loadData(STORAGE_EXTRA);
+  const normal1 = calculateTime(normalData.players, normalData.inOut, intervals, '1');
+  const normal2 = calculateTime(normalData.players, normalData.inOut, intervals, '2');
+  const extra1 = calculateTime(extraData.players, extraData.inOut, intervals, '1');
+  const extra2 = calculateTime(extraData.players, extraData.inOut, intervals, '2');
+  renderTable('normal1', normal1);
+  renderTable('normal2', normal2);
+  renderTable('extra1', extra1);
+  renderTable('extra2', extra2);
+  renderSummary(normal1, normal2, extra1, extra2, normalData.players);
+}
+
+window.addEventListener('load', renderAll);
+window.addEventListener('storage', renderAll);
+</script>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+</body>
+</html>

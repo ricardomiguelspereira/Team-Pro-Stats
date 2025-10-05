@@ -1,0 +1,285 @@
+body {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: #e0e0e0; /* Medium grey for the entire page */
+  color: #333;
+  margin: 0;
+  padding: 20px;
+}
+
+h2 { margin-bottom: 15px; }
+
+/* Títulos das tabelas */
+h3#titleCampo {
+  color: #2980b9;  /* azul */
+  margin-top: 25px;
+  margin-bottom: 10px;
+}
+h3#titleGR {
+  color: #27ae60;  /* verde */
+  margin-top: 25px;
+  margin-bottom: 10px;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Botões subtabs (Estatísticas + Entradas/Saídas) */
+.tab-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #e0e0e0;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.tab-btn:hover { background: #d5d5d5; }
+.tab-btn.active {
+  background: #27ae60;
+  color: #fff;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+/* Botões de navegação azuis (Abrir / Voltar) */
+.nav-btn {
+  background: #2980b9;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.3s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.nav-btn:hover { background: #3498db; }
+
+/* Conteúdo das tabs */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Tabelas gerais */
+.part-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 25px;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  table-layout: auto;
+}
+.part-table th {
+  background: #2980b9;
+  color: #fff;
+  font-size: 13px;
+  padding: 8px;
+  white-space: nowrap;
+}
+.part-table td {
+  border: 1px solid #eee;
+  padding: 6px;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+  height: 36px; /* linhas mais altas para tablets */
+}
+.part-table tr:nth-child(even) { background: #f9f9f9; }
+
+/* Colunas fixas (# e Nome) */
+.fixed-col {
+  position: sticky;
+  background: #fff;
+  z-index: 2;
+}
+.part-table th:first-child,
+.part-table td:first-child {
+  left: 0;
+  width: 40px;
+}
+.part-table th:nth-child(2),
+.part-table td:nth-child(2) {
+  left: 40px;
+  width: 150px;
+  text-align: left;
+  padding-left: 6px;
+}
+
+/* Totais da equipa: colunas com largura fixa */
+#teamTotals,
+#totalsCampo,
+#totalsGR {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#teamTotals th, #teamTotals td,
+#totalsCampo th, #totalsCampo td,
+#totalsGR th, #totalsGR td {
+  width: 25%;
+  text-align: center;
+}
+
+/* Destaque visual das tabelas de totais */
+#totalsCampo {
+  border: 2px solid #2980b9;
+  border-radius: 8px;
+}
+#totalsGR {
+  border: 2px solid #27ae60;
+  border-radius: 8px;
+}
+
+#totalsCampo th {
+  background: #2980b9;
+  color: #fff;
+}
+#totalsGR th {
+  background: #27ae60;
+  color: #fff;
+}
+
+#totalsCampo tbody tr:nth-child(even) { background: #eaf4fc; }
+#totalsGR tbody tr:nth-child(even) { background: #e8f7e8; }
+
+/* Seções responsivas */
+.responsive {
+  margin-bottom: 30px;
+  padding: 10px;
+  background: #fdfdfd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+/* Botões +/- */
+.button-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+.inc, .dec {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.inc { background: #27ae60; color: #fff; }
+.dec { background: #e74c3c; color: #fff; }
+.inc:hover { background: #219150; }
+.dec:hover { background: #c0392b; }
+.inc.disabled, .dec.disabled { background: #aaa; cursor: not-allowed; }
+
+.valueInput {
+  width: 40px;
+  height: 28px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 12px;
+  background: #f9f9f9;
+}
+
+/* Notificação */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #27ae60;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 8px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+  z-index: 200;
+}
+.notification.show { opacity: 1; }
+
+/* Entradas/Saídas: scroll horizontal + colunas fixas */
+.responsive-inout {
+  overflow-x: auto;
+  margin-bottom: 30px;
+  padding: 10px;
+  background: #fdfdfd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.part-table-inout {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: auto;
+}
+
+.part-table-inout th {
+  background: #2980b9;
+  color: #fff;
+  padding: 8px;
+  white-space: nowrap;
+  height: 10px; /* cabeçalho com altura padrão */
+  font-family: Tahoma, sans-serif; /* cabeçalho com Tahoma */
+  font-size: 14px; /* Reduced by 10% from assumed 12px default */
+  /* Border may be inherited or not explicitly set; often defaults to none or light */
+  border: 1px solid #ccc; /* If present, it's light grey */
+}
+
+.part-table-inout td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+  height: 30px; /* linhas mais altas para tablets */
+}
+
+.part-table-inout tr:nth-child(even) { background: #f9f9f9; }
+
+
+/* Colunas fixas 1ª e 2ª */
+.part-table-inout th:first-child,
+.part-table-inout td:first-child {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 3;
+  min-width: 40px;
+}
+
+.part-table-inout th:nth-child(2),
+.part-table-inout td:nth-child(2) {
+  position: sticky;
+  left: 40px;
+  background: #fff;
+  z-index: 2;
+  min-width: 150px;
+  text-align: left;
+  padding-left: 6px;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+/* Colunas do meio em diante (mais estreitas, -25%) */
+.part-table-inout th:nth-child(n+3),
+.part-table-inout td:nth-child(n+3) {
+  width: 40px;
+  max-width: 40px;
+  min-width: 40px;
+}
+
+/* Footer */
+footer {
+  font-size: 14px; /* ou qualquer tamanho desejado */
+  text-align: center;
+  padding: 8px 0;
+  color: #666; /* opcional, cor do texto */
+  font-family: Tahoma, sans-serif;
+}

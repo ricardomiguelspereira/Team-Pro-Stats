@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Entradas / Saídas</title>
+<link rel="stylesheet" href="estatisticas.css" />
+<style>
+  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; }
+  table.part-table-inout { border-collapse: collapse; width: 100%; min-width: 600px; }
+  table.part-table-inout thead tr { background-color: #3498db; color: white; }
+  table.part-table-inout th, table.part-table-inout td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; font-size: 12px; white-space: nowrap; cursor: pointer; }
+  table.part-table-inout th:first-child, table.part-table-inout td:first-child { text-align: left; cursor: default; }
+  .header-container { margin-bottom: 15px; }
+  .title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px; gap: 8px; }
+  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .tab-btn, .nav-btn { height: 32px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none; user-select: none; }
+  .tab-btn { background-color: #ccc; color: black; }
+  .tab-btn.active { background-color: #2ecc71; color: white; }
+  .nav-btn { background-color: #3498db; color: white; }
+  .nav-btn:hover { background-color: #5dade2; }
+  .tab-btn:hover { opacity: 0.85; }
+  .notification { margin-top: 10px; font-size: 12px; color: #e74c3c; }
+</style>
+</head>
+<body>
+
+<div class="header-container">
+  <div class="title-row">
+    <h2>Entradas / Saídas</h2>
+  </div>
+  <div class="controls-row">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="inOutPart1" type="button">1ª Parte</button>
+      <button class="tab-btn" data-tab="inOutPart2" type="button">2ª Parte</button>
+      <button id="backStats" class="nav-btn" type="button">Estatísticas</button>
+    </div>
+  </div>
+</div>
+
+<div id="inOutPart1" class="tab-content active">
+  <div class="responsive-inout">
+    <table id="tableInOut1" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 1ª Parte">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="inOutPart2" class="tab-content">
+  <div class="responsive-inout">
+    <table id="tableInOut2" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 2ª Parte">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
+<div class="notification" id="notification"></div>
+
+<script>
+const STORAGE_KEY = 'estatisticas_valores';
+let inOutData = {};
+let playersCampo = [], playersGR = [];
+
+// Intervalos por escalão
+const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+const levelIntervalsMap = {sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals};
+
+function getIntervalsForLevel(level){return levelIntervalsMap[level]||defaultIntervals;}
+
+// Função para normalizar texto com remoção de acentos
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD') // Decompõe acentos em caracteres base + diacríticos
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacríticos
+    .replace(/[^a-z0-9]/g, ''); // Remove tudo que não for alfanumérico
+}
+
+function getLevelFromConfig() {
+  const jogoDataRaw = localStorage.getItem('jogo_form_data');
+  if (!jogoDataRaw) return 'sub13';
+  try {
+    const jogoData = JSON.parse(jogoDataRaw);
+    let esc = normalizeText(jogoData.escalao || '');
+    const map = { 
+      sub13: 'sub13', 
+      sub15: 'sub15', 
+      sub17: 'sub17', 
+      sub19: 'sub19', 
+      sub23: 'sub23', 
+      seniores: 'seniores', 
+      seniors: 'seniores' // Fallback para "seniors" sem acento
+    };
+    return map[esc] || 'sub13';
+  } catch { return 'sub13'; }
+}
+
+// Carregar jogadores com estatísticas ativas
+function loadPlayersFromConfig(){
+  const fieldPlayers = JSON.parse(localStorage.getItem("fieldPlayers")) || [];
+  const goalKeepers = JSON.parse(localStorage.getItem("goalKeepers")) || [];
+  playersCampo = fieldPlayers.filter(p=>p.estatisticas);
+  playersGR = goalKeepers.filter(p=>p.estatisticas);
+}
+
+// Render In/Out
+function renderInOut(){
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  inOutData = saved.inOut || {};
+  loadPlayersFromConfig();
+  const allPlayers = [...playersCampo, ...playersGR];
+  const intervals = getIntervalsForLevel(getLevelFromConfig());
+
+  function buildHeader(table){
+    const tr = table.querySelector('thead tr');
+    tr.innerHTML = '<th>#</th><th>Nome</th>';
+    intervals.forEach(iv=>{ tr.innerHTML += `<th>${iv}</th>`; });
+  }
+
+  function buildBody(table,part){
+    const tbody = table.querySelector('tbody');
+    tbody.innerHTML='';
+    allPlayers.forEach(p=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${p.numero}</td><td>${p.nome}</td>`;
+      intervals.forEach(iv=>{
+        const td = document.createElement('td');
+        const key = `tableInOut${part}_${p.numero}_${iv}`;
+        const val = inOutData[key]||'';
+        td.dataset.key=key; td.dataset.state=val; td.textContent=val;
+        if(val==='E'){td.style.background='green';td.style.color='white';}
+        else if(val==='S'){td.style.background='orange';td.style.color='white';}
+        td.addEventListener('click',()=>{
+          let state=td.dataset.state||'';
+          if(state==='') state='E'; else if(state==='E') state='S'; else state='';
+          td.dataset.state=state; td.textContent=state;
+          td.style.background= state==='E'?'green': state==='S'?'orange':''; 
+          td.style.color= state? 'white':'';
+          inOutData[key]=state;
+          saved.inOut=inOutData;
+          localStorage.setItem(STORAGE_KEY,JSON.stringify(saved));
+        });
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  const t1=document.getElementById('tableInOut1'), t2=document.getElementById('tableInOut2');
+  buildHeader(t1); buildBody(t1,'1');
+  buildHeader(t2); buildBody(t2,'2');
+}
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    localStorage.setItem('activeInOutTab',btn.dataset.tab);
+  });
+});
+
+// Back button
+document.getElementById('backStats').addEventListener('click',()=>{ window.location.href='estatisticas.html'; });
+
+// Inicialização
+window.addEventListener('load',()=>{
+  const savedTab = localStorage.getItem('activeInOutTab');
+  if(savedTab){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.querySelector(`.tab-btn[data-tab="${savedTab}"]`)?.classList.add('active');
+    document.getElementById(savedTab)?.classList.add('active');
+  }
+  renderInOut();
+});
+
+// Sincronização em tempo real
+window.addEventListener("storage",(e)=>{
+  if(e.key==="fieldPlayers"||e.key==="goalKeepers"||e.key==="jogo_form_data"||e.key===STORAGE_KEY){
+    renderInOut();
+  }
+});
+</script>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+</body>
+</html>

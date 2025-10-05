@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Team Pro Stats</title>
+  <style>
+    /* Reset & base styles */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background-color: #ffffff;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Container with fade-in animation */
+    .container {
+      flex: 1; /* take available vertical space */
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* vertical centering */
+      align-items: center;     /* horizontal centering */
+      text-align: center;
+      opacity: 0;
+      animation: fadeIn 1.5s ease-in forwards;
+      padding: 20px; /* small padding so it doesn't hug edges on tiny screens */
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Logo styling */
+    img.logo {
+      width: 220px;
+      max-width: 80%;
+      height: auto;
+      border-radius: 12px;
+      object-fit: cover;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+      display: block;
+    }
+
+    img.logo:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    /* Text styling */
+    .page-title { font-size: 2em; font-weight: bold; margin-bottom: 8px; }
+    .powered-by { font-size: 0.9em; color: #555; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 12px 0;
+      font-size: 0.8em;
+      color: #666;
+    }
+
+    /* Responsive typography */
+    @media (max-width: 480px) {
+      .page-title { font-size: 1.5em; }
+      .powered-by { font-size: 0.8em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img alt="Ricardo Pereira Team Logo" class="logo"
+         src="/images/339/15149621/Logo_RP-JfcACn1USyHS6tvtbWfLKA.png" />
+    <p class="page-title">TEAM PRO STATS</p>
+    <p class="powered-by">powered by RP Technology</p>
+  </div>
+
+  <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+</body>
+</html>

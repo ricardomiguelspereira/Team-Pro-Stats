@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório Tempo em Jogo</title>
+
+<!-- jsPDF + autoTable -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<script>
+const STORAGE_NORMAL='estatisticas_valores';
+const STORAGE_EXTRA='estatisticas_separadas_extra';
+const LOGO_STORAGE='teamLogoBase64';
+
+// Convert decimal minutes to MM:SS
+function formatTime(decimalMin){
+  const totalSecs=Math.round(decimalMin*60);
+  const mins=Math.floor(totalSecs/60);
+  const secs=totalSecs%60;
+  return `${mins}:${secs.toString().padStart(2,'0')}`;
+}
+
+async function exportTempoJogoPDF(){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','pt','a4');
+  const margin=40;
+  const pageWidth=pdf.internal.pageSize.getWidth();
+  const pageHeight=pdf.internal.pageSize.getHeight();
+  let yOffset=margin;
+
+  // === Load logo ===
+  let logoData = localStorage.getItem(LOGO_STORAGE) || '';
+  async function drawHeader(){
+    if(logoData && logoData.startsWith('data:image/')){
+      const img=new Image();
+      await new Promise(resolve=>{
+        img.onload=()=>{
+          const maxWidth=120;
+          const ratio=img.width/img.height||1;
+          let w=maxWidth,h=w/ratio;
+          if(h>80){h=80; w=h*ratio;}
+          const x=(pageWidth-w)/2;
+          pdf.addImage(img,'PNG',x,10,w,h);
+          resolve();
+        };
+        img.onerror=()=>resolve();
+        img.src=logoData;
+      });
+    }
+    pdf.setFontSize(20); pdf.setFont(undefined,'bold');
+    pdf.text('Relatório: Tempo em Jogo',pageWidth/2,100,{align:'center'});
+    yOffset=130;
+  }
+
+  // Override addPage to draw header on every page
+  const origAddPage = pdf.addPage.bind(pdf);
+  pdf.addPage = async function(){
+    origAddPage();
+    await drawHeader();
+  }
+
+  await drawHeader();
+
+  // === Utilities ===
+  function ensureSpace(h){
+    if(yOffset + h > pageHeight - 60){
+      pdf.addPage();
+    }
+  }
+  function normalizeText(text){
+    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  }
+  function getLevelFromConfig(){
+    const raw = localStorage.getItem('jogo_form_data');
+    if(!raw) return 'sub13';
+    try{
+      const d=JSON.parse(raw);
+      const esc=normalizeText(d.escalao||'');
+      const map={sub13:'sub13',sub15:'sub15',sub17:'sub17',sub19:'sub19',sub23:'sub23',seniores:'seniores',seniors:'seniores'};
+      return map[esc]||'sub13';
+    }catch{return 'sub13';}
+  }
+  function getIntervalsForLevel(level){
+    const def=["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+    const sub13=["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+    const sub15_17=["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+    const map={sub13,sub15:sub15_17,sub17:sub15_17,sub19:def,sub23:def,seniores:def};
+    return map[level]||def;
+  }
+
+  // === Load players and InOut ===
+  function loadData(storageKey){
+    const saved = localStorage.getItem(storageKey);
+    if(!saved) return {players:[], inOut:{}};
+    try{
+      const data=JSON.parse(saved);
+      const inOut=data.inOut||{};
+      const fieldPlayers=JSON.parse(localStorage.getItem("fieldPlayers")||"[]");
+      const goalKeepers=JSON.parse(localStorage.getItem("goalKeepers")||"[]");
+      const players=[...fieldPlayers.filter(p=>p.estatisticas),...goalKeepers.filter(p=>p.estatisticas)];
+      return {players,inOut};
+    }catch{return {players:[],inOut:{}};}
+  }
+
+  // === Compute time in game ===
+  function calculateTime(players,inOut,intervals,part){
+    const report=[];
+    players.forEach(p=>{
+      let totalSecs=0;
+      let inside=false;
+      let startIndex=null;
+      for(let i=0;i<intervals.length;i++){
+        const iv=intervals[i];
+        const val=inOut[`tableInOut${part}_${p.numero||p.id}_${iv}`]||'';
+        if(val==='E' && !inside){
+          inside=true;
+          startIndex=i;
+        }else if(val==='S' && inside){
+          totalSecs += (i - startIndex) * 30;
+          inside=false;
+          startIndex=null;
+        }
+      }
+      if(inside && startIndex!==null){
+        totalSecs += (intervals.length - startIndex) * 30;
+      }
+      const totalMin=totalSecs/60;
+      report.push({num:p.numero||p.id,nome:p.nome||p.name,tempo:totalMin});
+    });
+    return report;
+  }
+
+  // === Add Section with summary ===
+  function addSection(title,storageKey,summaryObj=null){
+    const {players,inOut}=loadData(storageKey);
+    if(players.length===0) return;
+    const intervals=getIntervalsForLevel(getLevelFromConfig());
+    ['1','2'].forEach(part=>{
+      const data=calculateTime(players,inOut,intervals,part);
+      if(data.every(d=>d.tempo===0)) return;
+      ensureSpace(60);
+      pdf.setFontSize(16); pdf.setFont(undefined,'bold');
+      pdf.text(`${title} - ${part==='1'?'1ª Parte':'2ª Parte'}`,pageWidth/2,yOffset,{align:'center'});
+      yOffset+=15;
+      const headers=['#','Nome','Tempo em jogo (MM:SS)'];
+      const body=data.map(d=>[d.num,d.nome,formatTime(d.tempo)]);
+      pdf.autoTable({
+        startY:yOffset,
+        head:[headers],
+        body:body,
+        theme:'grid',
+        headStyles:{fillColor:[52,152,219],textColor:[255,255,255]},
+        bodyStyles:{fontSize:10,halign:'center'},
+        columnStyles:{0:{halign:'left'},1:{halign:'left'}},
+        margin:{left:margin,right:margin},
+        didDrawPage:(data)=>{yOffset=data.cursor.y+20;}
+      });
+      yOffset+=20;
+
+      if(summaryObj){
+        data.forEach(d=>{
+          if(!summaryObj[d.num]) summaryObj[d.num]={num:d.num,nome:d.nome,n1:0,n2:0,e1:0,e2:0};
+          const key=title.includes('Prolongamento') ? 'e'+part : 'n'+part;
+          summaryObj[d.num][key]=d.tempo;
+        });
+      }
+    });
+  }
+
+  const summaryObj={};
+
+  // Page 1: Jogo Normal
+  await addSection('Tempo em Jogo (Tempo Normal)',STORAGE_NORMAL,summaryObj);
+
+  // Page 2: Prolongamento
+  pdf.addPage();
+  await drawHeader();
+  await addSection('Tempo em Jogo (Prolongamento)',STORAGE_EXTRA,summaryObj);
+
+  // Page 3: Resumo
+  pdf.addPage();
+  await drawHeader();
+  ensureSpace(60);
+  pdf.setFontSize(16); pdf.setFont(undefined,'bold');
+  pdf.text('Resumo de Tempo por Jogador',pageWidth/2,yOffset,{align:'center'});
+  yOffset+=25;
+
+  const summaryBody=Object.values(summaryObj).map(s=>{
+    const total=s.n1+s.n2+s.e1+s.e2;
+    return [
+      s.num,
+      s.nome,
+      formatTime(s.n1),
+      formatTime(s.n2),
+      formatTime(s.e1),
+      formatTime(s.e2),
+      formatTime(total)
+    ];
+  });
+
+  pdf.autoTable({
+    startY:yOffset,
+    head:[['#','Nome','Jogo Normal 1ª Parte','Jogo Normal 2ª Parte','Prolongamento 1ª Parte','Prolongamento 2ª Parte','Total']],
+    body:summaryBody,
+    theme:'grid',
+    headStyles:{fillColor:[46,204,113],textColor:[255,255,255],fontStyle:'bold',halign:'center'},
+    bodyStyles:{fontSize:11,halign:'center'},
+    columnStyles:{0:{halign:'left'},1:{halign:'left'}},
+    margin:{left:margin,right:margin},
+    didDrawPage:(data)=>{yOffset=data.cursor.y+20;}
+  });
+
+  const today=new Date().toISOString().slice(0,10);
+  pdf.save(`tempo_jogo_${today}.pdf`);
+  setTimeout(()=>{window.location.href='index.html';},1000);
+}
+
+// Auto run
+window.onload=exportTempoJogoPDF;
+</script>
+</body>
+</html>

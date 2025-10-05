@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Entradas / Saídas Prolongamento</title>
+<link rel="stylesheet" href="estatisticas.css" />
+<style>
+  .tabs { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px; font-size: 14px; }
+  .tab-btn { padding: 10px 16px; border: none; border-radius: 8px; background: #e0e0e0; cursor: pointer; font-weight: 500; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: #333; }
+  .tab-btn:hover { background: #d5d5d5; }
+  .tab-btn.active { background: #27ae60; color: #fff; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
+  .nav-btn { background-color: #2980b9; border: none; color: white; padding: 8px 14px; cursor: pointer; font-size: 14px; border-radius: 4px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+  .nav-btn:hover { background-color: #3498db; }
+  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; }
+  table.part-table-inout { border-collapse: collapse; width: auto; table-layout: auto; min-width: 100%; }
+  table.part-table-inout thead tr { background-color: #3498db; color: white; }
+  table.part-table-inout th, table.part-table-inout td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; font-size: 12px; white-space: nowrap; }
+  table.part-table-inout th:first-child, table.part-table-inout td:first-child, table.part-table-inout th:nth-child(2), table.part-table-inout td:nth-child(2) { width: 1%; white-space: nowrap; }
+  table.part-table-inout th:nth-child(n+3), table.part-table-inout td:nth-child(n+3) { width: 25px; max-width: 25px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-container { margin-bottom: 15px; text-align: center; }
+  .header-container h2 { margin: 0; }
+  .notification { margin-top: 10px; font-size: 12px; color: #e74c3c; text-align: center; }
+  footer { text-align: center; margin-top: 20px; font-size: 12px; color: #555; }
+  @media (max-width: 900px) { .responsive-inout { overflow-x: auto; } table.part-table-inout { width: max-content; } }
+</style>
+</head>
+<body>
+
+<div class="header-container">
+  <h2>Entradas / Saídas Prolongamento</h2>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="inOutPart1" type="button">1ª Parte</button>
+  <button class="tab-btn" data-tab="inOutPart2" type="button">2ª Parte</button>
+  <button id="openExtraTime" class="nav-btn" type="button">Estatísticas Prolongamento</button>
+</div>
+
+<div id="inOutPart1" class="tab-content active">
+  <div id="scrollContainer1" class="responsive-inout">
+    <table id="tableInOut1" class="part-table-inout">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="inOutPart2" class="tab-content">
+  <div id="scrollContainer2" class="responsive-inout">
+    <table id="tableInOut2" class="part-table-inout">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="lastSaved" style="font-size:10px;margin-top:10px;text-align:center;"></div>
+<div class="notification" id="notification"></div>
+
+<script>
+const fixedIntervals = ["5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+const STORAGE_KEY_EXTRA = 'estatisticas_separadas_extra';
+const SCROLL_KEY_PREFIX = 'scrollPos_extra_';
+
+// Init extra data storage
+if(!localStorage.getItem(STORAGE_KEY_EXTRA)){
+  localStorage.setItem(STORAGE_KEY_EXTRA, JSON.stringify({inOut:{}, lastSaved:new Date().toLocaleString()}));
+}
+
+// ---------- Fetch players in real-time ----------
+function getPlayers(){
+  const fieldPlayers = JSON.parse(localStorage.getItem("fieldPlayers")||"[]");
+  const goalKeepers = JSON.parse(localStorage.getItem("goalKeepers")||"[]");
+  const fieldWithStats = fieldPlayers.filter(p=>p.estatisticas);
+  const goalWithStats = goalKeepers.filter(p=>p.estatisticas);
+  return [...fieldWithStats, ...goalWithStats].map(p=>({id:p.numero,name:p.nome}));
+}
+
+// ---------- Render ----------
+function renderInOut(){
+  const allPlayers = getPlayers();
+  const extraDataStr = localStorage.getItem(STORAGE_KEY_EXTRA);
+  let extraData = {};
+  try{ extraData = JSON.parse(extraDataStr); } catch{ extraData={inOut:{}, lastSaved:''}; }
+
+  function buildTableHeader(table, intervals){
+    const theadTr = table.querySelector('thead tr');
+    theadTr.innerHTML = '<th>#</th><th>Nome</th>';
+    intervals.forEach(iv=>{ const th=document.createElement('th'); th.textContent=iv; theadTr.appendChild(th); });
+  }
+
+  function makeCellInteractive(td,key){
+    let isScrolling = false;
+    let startX;
+    td.addEventListener('touchstart', e => { startX = e.touches[0].clientX; isScrolling = false; }, {passive:true});
+    td.addEventListener('touchmove', e => { if(Math.abs(e.touches[0].clientX - startX) > 5) isScrolling = true; }, {passive:true});
+    td.addEventListener('click', toggleState);
+    td.addEventListener('touchend', e => { if(!isScrolling) toggleState(e); });
+
+    function toggleState(e){
+      e.preventDefault();
+      let state = td.dataset.state||'';
+      if(state==='') state='E'; else if(state==='E') state='S'; else state='';
+      td.dataset.state = state;
+      td.textContent = state;
+      td.style.backgroundColor = state==='E'?'green':state==='S'?'orange':'';
+      td.style.color = state?'white':'';
+      extraData.inOut[key] = state;
+      extraData.lastSaved = new Date().toLocaleString();
+      localStorage.setItem(STORAGE_KEY_EXTRA, JSON.stringify(extraData));
+      document.getElementById('lastSaved').textContent = `Última gravação: ${extraData.lastSaved}`;
+    }
+  }
+
+  function buildTableBody(table, intervals, partPrefix){
+    const tbody = table.querySelector('tbody'); tbody.innerHTML='';
+    allPlayers.forEach(p=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML=`<td>${p.id||''}</td><td>${p.name||''}</td>`;
+      intervals.forEach(iv=>{
+        const td=document.createElement('td');
+        const key=`tableInOut${partPrefix}_${p.id}_${iv}`;
+        td.dataset.state = extraData.inOut[key] || '';
+        td.textContent = td.dataset.state;
+        if(td.dataset.state==='E'){ td.style.backgroundColor='green'; td.style.color='white'; }
+        else if(td.dataset.state==='S'){ td.style.backgroundColor='orange'; td.style.color='white'; }
+        makeCellInteractive(td,key);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  buildTableHeader(document.getElementById('tableInOut1'), fixedIntervals);
+  buildTableBody(document.getElementById('tableInOut1'), fixedIntervals, '1');
+  buildTableHeader(document.getElementById('tableInOut2'), fixedIntervals);
+  buildTableBody(document.getElementById('tableInOut2'), fixedIntervals, '2');
+
+  // Restore scroll
+  document.getElementById('scrollContainer1').scrollLeft = localStorage.getItem(SCROLL_KEY_PREFIX+'1') || 0;
+  document.getElementById('scrollContainer2').scrollLeft = localStorage.getItem(SCROLL_KEY_PREFIX+'2') || 0;
+  document.getElementById('lastSaved').textContent = extraData.lastSaved ? `Última gravação: ${extraData.lastSaved}` : '';
+  document.getElementById('notification').textContent='';
+}
+
+// Save scroll positions
+['scrollContainer1','scrollContainer2'].forEach(id=>{
+  const container = document.getElementById(id);
+  container.addEventListener('scroll', e=>{
+    localStorage.setItem(SCROLL_KEY_PREFIX+id.slice(-1), e.target.scrollLeft);
+  });
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    localStorage.setItem('activeInOutTab_extra', btn.dataset.tab);
+  });
+});
+
+// Open extra-time page
+document.getElementById('openExtraTime').addEventListener('click', ()=>{
+  const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
+  localStorage.setItem('activeInOutTab_extra', currentTab);
+  window.location.href='extra-time.html';
+});
+
+// Real-time sync when names or numbers update
+window.addEventListener('storage', e=>{
+  if(e.key==='fieldPlayers' || e.key==='goalKeepers'){
+    renderInOut();
+  }
+});
+
+// Initial render
+window.addEventListener('load', ()=>{
+  const savedTab = localStorage.getItem('activeInOutTab_extra');
+  if(savedTab){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    const btn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+    if(btn){ btn.classList.add('active'); document.getElementById(savedTab).classList.add('active'); }
+  }
+  renderInOut();
+});
+</script>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+</body>
+</html>

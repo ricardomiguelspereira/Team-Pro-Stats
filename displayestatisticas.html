@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Detalhes Estatísticas por Jogador</title>
+<link rel="stylesheet" href="estatisticas.css">
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    max-height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  h1 { 
+    font-size: 1.8em; 
+    margin-bottom: 15px; 
+    text-align: center; 
+    flex-shrink: 0;
+  }
+  h3 { margin: 0 0 10px 0; text-align: center; }
+  .tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .nav-btn {
+    background: #2980b9;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.3s;
+    flex-shrink: 0;
+  }
+  .nav-btn:hover { background: #3498db; }
+  .responsive {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    max-width: 1000px;
+    width: 100%;
+  }
+  table.part-table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed; /* equal widths for all but first two */
+    margin: 0 auto;
+  }
+  table.part-table th, table.part-table td {
+    border: 1px solid #eee;
+    padding: 6px 8px;
+    font-size: 13px;
+    text-align: center;
+    word-wrap: break-word;
+  }
+  table.part-table th {
+    background: #2980b9;
+    color: #fff;
+  }
+  table.part-table tr:nth-child(even) { background:#f9f9f9; }
+  /* first column small, second column wide, rest equal */
+  table.part-table th:first-child,
+  table.part-table td:first-child {
+    width: 40px;
+    flex-shrink: 0;
+  }
+  table.part-table th:nth-child(2),
+  table.part-table td:nth-child(2) {
+    width: 180px;
+    text-align: left;
+    padding-left: 6px;
+  }
+  footer { 
+    width: 100%; 
+    text-align: center; 
+    padding: 12px 0; 
+    font-size: 0.8em; 
+    color: #666; 
+    font-family: Tahoma, sans-serif; 
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Detalhes Estatísticas por Jogador</h1>
+
+  <div class="tabs">
+    <button id="totaisStats" class="nav-btn">Totais Equipa</button>
+    <button id="backStats" class="nav-btn">Estatísticas Principais</button>
+    <button id="extraTime" class="nav-btn">Estatísticas Prolongamento</button>
+  </div>
+
+  <div class="responsive">
+    <h3>Jogadores de Campo - 1ª Parte (Jogo Normal)</h3>
+    <table id="campo_main1" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Jogadores de Campo - 2ª Parte (Jogo Normal)</h3>
+    <table id="campo_main2" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Guarda-Redes - 1ª Parte (Jogo Normal)</h3>
+    <table id="gr_main1" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Guarda-Redes - 2ª Parte (Jogo Normal)</h3>
+    <table id="gr_main2" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Jogadores de Campo - 1ª Parte (Prolongamento)</h3>
+    <table id="campo_extra1" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Jogadores de Campo - 2ª Parte (Prolongamento)</h3>
+    <table id="campo_extra2" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Guarda-Redes - 1ª Parte (Prolongamento)</h3>
+    <table id="gr_extra1" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="responsive">
+    <h3>Guarda-Redes - 2ª Parte (Prolongamento)</h3>
+    <table id="gr_extra2" class="part-table"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<script src="estatisticas.js"></script>
+<script>
+const STORAGE_KEY_ET = 'estatisticas_extra_time'; // From extra-time.html
+
+// Navigation buttons
+document.getElementById('backStats').addEventListener('click', () => {
+  window.location.href = 'estatisticas.html';
+});
+document.getElementById('totaisStats').addEventListener('click', () => {
+  window.location.href = 'totais.html';
+});
+document.getElementById('extraTime').addEventListener('click', () => {
+  window.location.href = 'extra-time.html';
+});
+
+// Build table header dynamically using shared constants from estatisticas.js
+function buildTableHeader(tableId, keys, labels) {
+  const table = document.getElementById(tableId);
+  const thead = table.querySelector("thead");
+  let header = "<tr><th>#</th><th>Nome</th>";
+  keys.forEach(key => {
+    header += `<th>${labels[key]}</th>`;
+  });
+  header += "</tr>";
+  thead.innerHTML = header;
+}
+
+// Fill table rows with data
+function fillTable(tableId, playerArray, statArray, keys, timePeriod, half) {
+  const tbody = document.getElementById(tableId).querySelector("tbody");
+  tbody.innerHTML = "";
+  if (!playerArray || playerArray.length === 0) return;
+
+  const suffix = timePeriod === 'main' ? half : 'ET' + half;
+
+  // Ensure statArray matches playerArray length (pad with empty objects)
+  const paddedStats = Array(playerArray.length).fill().map((_, i) => statArray[i] || {});
+
+  playerArray.forEach((player, idx) => {
+    const playerStats = paddedStats[idx];
+    let row = `<tr><td>${player.id}</td><td>${player.name || ''}</td>`;
+    keys.forEach(statKey => {
+      const key = statKey + suffix;
+      const value = playerStats[key] !== undefined ? playerStats[key] : (player[key] !== undefined ? player[key] : 0);
+      row += `<td>${value}</td>`;
+    });
+    row += "</tr>";
+    tbody.innerHTML += row;
+  });
+}
+
+function loadStats() {
+  // Initialize from estatisticas.js to populate playersCampo, playersGR, and statsData
+  if (typeof init === 'function') init();
+
+  // Load extra time data from localStorage
+  const extraData = JSON.parse(localStorage.getItem(STORAGE_KEY_ET) || '{}');
+  const extraCampo = extraData.campo || [];
+  const extraGR = extraData.gr || [];
+
+  // playersCampo and playersGR are already filtered by estatisticas: true in estatisticas.js
+  const campoPlayers = playersCampo || [];
+  const grPlayers = playersGR || [];
+
+  // Build headers using shared constants
+  buildTableHeader("campo_main1", STAT_KEYS_CAMPO, LABELS);
+  buildTableHeader("campo_main2", STAT_KEYS_CAMPO, LABELS);
+  buildTableHeader("gr_main1", STAT_KEYS_GR, LABELS);
+  buildTableHeader("gr_main2", STAT_KEYS_GR, LABELS);
+  buildTableHeader("campo_extra1", STAT_KEYS_CAMPO, LABELS);
+  buildTableHeader("campo_extra2", STAT_KEYS_CAMPO, LABELS);
+  buildTableHeader("gr_extra1", STAT_KEYS_GR, LABELS);
+  buildTableHeader("gr_extra2", STAT_KEYS_GR, LABELS);
+
+  // Fill main time tables: use playersCampo/GR for both players and stats (they contain the normal time values)
+  fillTable("campo_main1", campoPlayers, campoPlayers, STAT_KEYS_CAMPO, 'main', '1');
+  fillTable("campo_main2", campoPlayers, campoPlayers, STAT_KEYS_CAMPO, 'main', '2');
+  fillTable("gr_main1", grPlayers, grPlayers, STAT_KEYS_GR, 'main', '1');
+  fillTable("gr_main2", grPlayers, grPlayers, STAT_KEYS_GR, 'main', '2');
+
+  // Fill extra time tables: use playersCampo/GR for names/numbers, extraCampo/extraGR for stats (by index)
+  fillTable("campo_extra1", campoPlayers, extraCampo, STAT_KEYS_CAMPO, 'extra', '1');
+  fillTable("campo_extra2", campoPlayers, extraCampo, STAT_KEYS_CAMPO, 'extra', '2');
+  fillTable("gr_extra1", grPlayers, extraGR, STAT_KEYS_GR, 'extra', '1');
+  fillTable("gr_extra2", grPlayers, extraGR, STAT_KEYS_GR, 'extra', '2');
+}
+
+// On load: init from estatisticas.js, then load stats
+window.addEventListener('load', () => {
+  loadStats();
+});
+
+// On storage change: reload from estatisticas.js logic, then stats (mirrors estatisticas.js storage listener)
+window.addEventListener('storage', (e) => {
+  if (e.key === "fieldPlayers" || e.key === "goalKeepers" || e.key === STORAGE_KEY || e.key === STORAGE_KEY_ET) {
+    if (typeof loadPlayersFromConfig === 'function') loadPlayersFromConfig();
+    if (typeof render === 'function') render();
+    loadStats();
+  }
+});
+</script>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+</body>
+</html>

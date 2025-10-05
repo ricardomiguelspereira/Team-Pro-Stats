@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Exportar Totais Estatísticas da Equipa</title>
+
+  <!-- jsPDF + autoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="estatisticas.js"></script>
+</head>
+<body>
+<script>
+  const STORAGE_KEY_EXTRA = 'estatisticas_extra_time';
+
+  async function exportToPDF() {
+    try {
+      if (typeof init === 'function') init();
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+
+      const marginLR = 30;
+      const footerHeight = 40;
+      const spacingAfterTable = 28;
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // column widths more balanced
+      const colWidths = [130, 60, 60, 65, 65, 65];
+      const totalColWidth = colWidths.reduce((a, b) => a + b, 0);
+      const tableLeft = (pageWidth - totalColWidth) / 2;
+
+      const teamLogoBase64 = localStorage.getItem('teamLogoBase64') || '';
+
+      async function loadLogoDimensions() {
+        return new Promise((resolve) => {
+          if (!teamLogoBase64) return resolve({ w: 0, h: 0 });
+          const img = new Image();
+          img.onload = () => resolve({ w: img.width, h: img.height });
+          img.onerror = () => resolve({ w: 0, h: 0 });
+          img.src = teamLogoBase64;
+        });
+      }
+
+      const logoDims = await loadLogoDimensions();
+      const maxLogoWidth = 90;
+      let logoW = 0, logoH = 0;
+      if (logoDims.w && logoDims.h) {
+        logoW = Math.min(maxLogoWidth, logoDims.w);
+        logoH = logoW * (logoDims.h / logoW);
+      }
+
+      // ====== TOP MARGIN & SPACING SETTINGS ======
+      const topMargin = 60;             // top margin from page
+      const spacingLogoTitle = 20;      // spacing between logo and title
+      const spacingTitleTable = 30;     // spacing between title and first table
+
+      const logoTopY = topMargin;
+      const titleTopY = logoTopY + logoH + spacingLogoTitle;
+      let yOffset = titleTopY + spacingTitleTable;
+      // ==========================================
+
+      // Title + logo
+      if (teamLogoBase64 && logoW > 0 && logoH > 0) {
+        const xLogo = (pageWidth - logoW) / 2;
+        pdf.addImage(teamLogoBase64, 'PNG', xLogo, logoTopY, logoW, logoH);
+      }
+      pdf.setFontSize(20);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Totais Estatísticas da Equipa', pageWidth / 2, titleTopY, { align: 'center' });
+
+      // load players
+      const campoPlayers = playersCampo || [];
+      const grPlayers = playersGR || [];
+      let extraData = {};
+      try { extraData = JSON.parse(localStorage.getItem(STORAGE_KEY_EXTRA) || '{}'); } catch(e) {}
+      const extraCampo = extraData.campo || [];
+      const extraGR = extraData.gr || [];
+
+      const STAT_KEYS_CAMPO = window.STAT_KEYS_CAMPO || ['rem','stopped','fora','goals','wrongPasses','fouls'];
+      const STAT_KEYS_GR = window.STAT_KEYS_GR || ['grOnNet','grStopped','grGoals','fouls'];
+      const LABELS = window.LABELS || {
+        rem:"Remates", stopped:"Interceptados", fora:"Fora", goals:"Golos",
+        wrongPasses:"Passes Errados", fouls:"Faltas",
+        grOnNet:"Defesas", grStopped:"Interceptados", grGoals:"Golos Sofridos"
+      };
+
+      function calculateTotals(players, extraPlayers, statKeys) {
+        const totals = {};
+        statKeys.forEach(st => {
+          let n1=0,n2=0,et1=0,et2=0;
+          players.forEach(p => { n1+=p[st+'1']||0; n2+=p[st+'2']||0; });
+          extraPlayers.forEach(p => { et1+=p[st+'ET1']||0; et2+=p[st+'ET2']||0; });
+          totals[st] = { n1, n2, et1, et2, total: n1+n2+et1+et2 };
+        });
+        return totals;
+      }
+
+      const totalsCampo = calculateTotals(campoPlayers, extraCampo, STAT_KEYS_CAMPO);
+      const totalsGR = calculateTotals(grPlayers, extraGR, STAT_KEYS_GR);
+
+      function buildTotalsBody(totals, statKeys, labels) {
+        if (Object.keys(totals).length === 0) return [];
+        return statKeys.map(st => {
+          const d = totals[st];
+          return [
+            labels[st] || st,
+            d.n1, d.n2, d.et1, d.et2, d.total
+          ];
+        });
+      }
+      function totalsArrayToObjects(bodyArray) {
+        const keys = ['dimensao','normal1','normal2','extra1','extra2','total'];
+        return bodyArray.map(row => {
+          const obj = {}; keys.forEach((k,i)=>obj[k]=row[i]); return obj;
+        });
+      }
+      function prepareTotalsColumns() {
+        return [
+          { header: 'Dimensão', dataKey: 'dimensao' },
+          { header: '1ª Parte', dataKey: 'normal1' },
+          { header: '2ª Parte', dataKey: 'normal2' },
+          { header: '1ª ET', dataKey: 'extra1' },
+          { header: '2ª ET', dataKey: 'extra2' },
+          { header: 'Total', dataKey: 'total' }
+        ];
+      }
+
+      async function addTotalsTable(title, totals, statKeys, labels) {
+        let body = buildTotalsBody(totals, statKeys, labels);
+        if (body.length === 0) body = [['Nenhum dado disponível','-','-','-','-','-']];
+        const columns = prepareTotalsColumns();
+        const bodyObjects = totalsArrayToObjects(body);
+
+        const isCampo = title.includes("Campo");
+        const headColor = isCampo ? [41,128,185] : [39,174,96];
+        const altFill = isCampo ? [236,245,252] : [236,252,240];
+
+        pdf.setFontSize(14);
+        pdf.setFont(undefined, 'bold');
+        pdf.text(title, pageWidth/2, yOffset, {align:'center'});
+        yOffset += 20;
+
+        pdf.autoTable({
+          columns,
+          body: bodyObjects,
+          startY: yOffset,
+          theme: 'striped',
+          tableLineWidth: 0.6,
+          tableLineColor: [200,200,200],
+          headStyles: {
+            fillColor: headColor,
+            textColor: 255,
+            fontStyle: 'bold',
+            fontSize: 11,
+            halign: 'center',
+            valign: 'middle'
+          },
+          bodyStyles: {
+            fontSize: 10,
+            cellPadding: 5,
+            textColor: [40,40,40],
+            halign: 'center'
+          },
+          alternateRowStyles: { fillColor: altFill },
+          columnStyles: {
+            0: { cellWidth: colWidths[0], halign:'left', fontStyle:'bold' },
+            1: { cellWidth: colWidths[1] },
+            2: { cellWidth: colWidths[2] },
+            3: { cellWidth: colWidths[3] },
+            4: { cellWidth: colWidths[4] },
+            5: { cellWidth: colWidths[5], fillColor:[245,245,245], fontStyle:'bold' }
+          },
+          margin: { left: tableLeft, right: tableLeft },
+          pageBreak: 'auto'
+        });
+
+        yOffset = pdf.lastAutoTable.finalY + spacingAfterTable;
+      }
+
+      await addTotalsTable("Jogadores de Campo", totalsCampo, STAT_KEYS_CAMPO, LABELS);
+      await addTotalsTable("Guarda-Redes", totalsGR, STAT_KEYS_GR, LABELS);
+
+      // Footer on every page
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let i=1;i<=totalPages;i++){
+        pdf.setPage(i);
+        pdf.setFontSize(9);
+        pdf.setTextColor(120,120,120);
+        pdf.text(`${i} de ${totalPages}`, pageWidth/2, pageHeight-26, {align:'center'});
+        pdf.setFontSize(8);
+        pdf.text("© 2025 Team Pro Stats · Powered by RP Technology", pageWidth/2, pageHeight-12, {align:'center'});
+      }
+
+      const today = new Date().toISOString().slice(0,10);
+      pdf.save(`totais_estatisticas_equipa_${today}.pdf`);
+      setTimeout(()=>{window.location.href='index.html';},800);
+
+    } catch (err) {
+      console.error("Erro PDF:", err);
+      alert("Erro ao gerar PDF. Redirecionando.");
+      setTimeout(()=>{window.location.href='index.html';},1000);
+    }
+  }
+  window.onload = exportToPDF;
+</script>
+</body>
+</html>

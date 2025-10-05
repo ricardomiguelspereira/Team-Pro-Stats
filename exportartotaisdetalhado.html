@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Exportar Detalhes por Jogador - Landscape</title>
+
+  <!-- jsPDF + autoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="estatisticas.js"></script>
+</head>
+<body>
+<script>
+  const STORAGE_KEY_EXTRA = 'estatisticas_extra_time';
+
+  async function exportToPDF() {
+    try {
+      // Initialize from estatisticas.js to populate playersCampo, playersGR, and statsData for normal time
+      if (typeof init === 'function') init();
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('l', 'pt', 'a4'); // landscape, points
+
+      // Layout constants
+      const marginLR = 20;
+      const footerHeight = 28;
+      const minTableHeight = 40; // reserve a bit more space for a table
+      const titleFontSize = 13;
+      const titleHeight = titleFontSize + 6;
+      const spacingAfterTitle = 6;
+      const spacingAfterTable = 24; // increased spacing
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Load extra time data from localStorage
+      let extraData = {};
+      try { extraData = JSON.parse(localStorage.getItem(STORAGE_KEY_EXTRA) || '{}'); } catch(e) { extraData = {}; }
+
+      // Logo data
+      const teamLogoBase64 = localStorage.getItem('teamLogoBase64') || '';
+
+      async function loadLogoDimensions() {
+        return new Promise((resolve) => {
+          if (!teamLogoBase64) return resolve({ w: 0, h: 0 });
+          const img = new Image();
+          img.onload = () => resolve({ w: img.width, h: img.height });
+          img.onerror = () => resolve({ w: 0, h: 0 });
+          img.src = teamLogoBase64;
+        });
+      }
+
+      const logoDims = await loadLogoDimensions();
+      const maxLogoWidth = 100;
+      let logoW = 0, logoH = 0;
+      if (logoDims.w && logoDims.h) {
+        logoW = Math.min(maxLogoWidth, logoDims.w);
+        logoH = logoW * (logoDims.h / logoDims.w);
+      }
+
+      // Increased top margin
+      const topMarginOffset = 30; // new offset to move title lower
+      const logoTopY = 10 + topMarginOffset;
+      const titleTopY = logoTopY + logoH + 8;
+      const headerReservedHeight = Math.max((titleTopY + 8), 70 + topMarginOffset);
+
+      // Draw logo + main report title on page 1
+      if (teamLogoBase64 && logoW > 0 && logoH > 0) {
+        const xLogo = (pageWidth - logoW) / 2;
+        pdf.addImage(teamLogoBase64, 'PNG', xLogo, logoTopY, logoW, logoH);
+      }
+      pdf.setFontSize(18);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Relatório Detalhado por Jogador', pageWidth / 2, titleTopY, { align: 'center' });
+
+      let yOffset = headerReservedHeight + 4;
+
+      // Labels (matching estatisticas.js LABELS, but for table headers as in details page)
+      const labelsCampo = {
+        rem: "GR / Postes",
+        stopped: "Interceptados",
+        fora: "Fora",
+        goals: "Golos",
+        wrongPasses: "Passes Errados",
+        fouls: "Faltas"
+      };
+
+      const labelsGR = {
+        grOnNet: "Defesas",
+        grStopped: "Interceptados",
+        grGoals: "Golos Sofridos",
+        fouls: "Faltas"
+      };
+
+      // Get active players from globals (already filtered by estatisticas: true in estatisticas.js)
+      const campoPlayers = playersCampo || [];
+      const grPlayers = playersGR || [];
+
+      // Load extra time data
+      const extraCampo = extraData.campo || [];
+      const extraGR = extraData.gr || [];
+
+      // Helpers
+      function buildBody(playerArray, statArray, labels, timePeriod, half) {
+        if (!playerArray || playerArray.length === 0) return [];
+        const suffix = timePeriod === 'main' ? half : 'ET' + half;
+
+        // Ensure statArray matches playerArray length (pad with empty objects if needed)
+        const paddedStats = Array(playerArray.length).fill().map((_, i) => statArray[i] || {});
+
+        return playerArray.map((player, idx) => {
+          const playerStats = paddedStats[idx];
+          const row = [ player.id || '', player.name || '' ];
+          Object.keys(labels).forEach(statKey => {
+            const key = statKey + suffix;
+            const value = playerStats[key] !== undefined ? playerStats[key] : (player[key] !== undefined ? player[key] : 0);
+            row.push(value);
+          });
+          return row;
+        });
+      }
+
+      function prepareColumns(labels) {
+        const cols = [
+          { header: '#', dataKey: 'num' },
+          { header: 'Nome', dataKey: 'name' }
+        ];
+        Object.values(labels).forEach(label => cols.push({ header: label, dataKey: label }));
+        return cols;
+      }
+
+      function bodyArrayToObjects(bodyArray, labels) {
+        const keys = ['num', 'name', ...Object.values(labels)];
+        return bodyArray.map(row => {
+          const obj = {};
+          keys.forEach((k, i) => obj[k] = row[i]);
+          return obj;
+        });
+      }
+
+      async function addDetailedTable(title, playerArray, statArray, labels, timePeriod, half) {
+        const body = buildBody(playerArray, statArray, labels, timePeriod, half);
+        if (body.length === 0) return;
+
+        const required = titleHeight + spacingAfterTitle + minTableHeight;
+        const availableHeight = pageHeight - footerHeight - yOffset;
+        if (availableHeight < required) {
+          pdf.addPage();
+          yOffset = headerReservedHeight + 4;
+        }
+
+        pdf.setFontSize(titleFontSize);
+        pdf.setFont(undefined, 'bold');
+        pdf.text(title, marginLR, yOffset);
+        yOffset += titleHeight + spacingAfterTitle;
+
+        const columns = prepareColumns(labels);
+        const bodyObjects = bodyArrayToObjects(body, labels);
+
+        pdf.autoTable({
+          columns: columns,
+          body: bodyObjects,
+          startY: yOffset,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+            fontStyle: 'bold',
+            fontSize: 9,
+            halign: 'center',
+            valign: 'middle'
+          },
+          bodyStyles: {
+            fontSize: 8,
+            textColor: [51, 51, 51]
+          },
+          columnStyles: {
+            0: { cellWidth: 22, halign: 'center' },
+            1: { cellWidth: 120, halign: 'left' }
+          },
+          margin: { top: headerReservedHeight, left: marginLR, right: marginLR, bottom: footerHeight },
+          pageBreak: 'auto',
+          didParseCell: function (data) {
+            if (data.column.index > 1) {
+              data.cell.styles.halign = 'center';
+            }
+          }
+        });
+
+        if (pdf.lastAutoTable && pdf.lastAutoTable.finalY) {
+          yOffset = pdf.lastAutoTable.finalY + spacingAfterTable;
+        } else {
+          yOffset += minTableHeight + spacingAfterTable;
+        }
+      }
+
+      async function addAllTables() {
+        await addDetailedTable('Jogadores de Campo - 1ª Parte (Jogo Normal)', campoPlayers, campoPlayers, labelsCampo, 'main', '1');
+        await addDetailedTable('Jogadores de Campo - 2ª Parte (Jogo Normal)', campoPlayers, campoPlayers, labelsCampo, 'main', '2');
+        await addDetailedTable('Guarda-Redes - 1ª Parte (Jogo Normal)', grPlayers, grPlayers, labelsGR, 'main', '1');
+        await addDetailedTable('Guarda-Redes - 2ª Parte (Jogo Normal)', grPlayers, grPlayers, labelsGR, 'main', '2');
+        await addDetailedTable('Jogadores de Campo - 1ª Parte (Prolongamento)', campoPlayers, extraCampo, labelsCampo, 'extra', '1');
+        await addDetailedTable('Jogadores de Campo - 2ª Parte (Prolongamento)', campoPlayers, extraCampo, labelsCampo, 'extra', '2');
+        await addDetailedTable('Guarda-Redes - 1ª Parte (Prolongamento)', grPlayers, extraGR, labelsGR, 'extra', '1');
+        await addDetailedTable('Guarda-Redes - 2ª Parte (Prolongamento)', grPlayers, extraGR, labelsGR, 'extra', '2');
+      }
+
+      await addAllTables();
+
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        if (teamLogoBase64 && logoW > 0 && logoH > 0) {
+          const xLogo = (pageWidth - logoW) / 2;
+          pdf.addImage(teamLogoBase64, 'PNG', xLogo, logoTopY, logoW, logoH);
+        }
+        pdf.setFontSize(9);
+        pdf.setFont(undefined, 'normal');
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`Página ${i} de ${totalPages}`, pageWidth - marginLR, pageHeight - 10, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      pdf.save(`relatorio_detalhado_jogadores_${today}.pdf`);
+
+      setTimeout(() => { window.location.href = 'index.html'; }, 800);
+
+    } catch (error) {
+      console.error('Erro na exportação PDF:', error);
+      alert('Erro ao gerar o PDF: ' + (error && error.message ? error.message : error) + '. Redirecionando.');
+      setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+    }
+  }
+
+  window.onload = exportToPDF;
+</script>
+</body>
+</html>

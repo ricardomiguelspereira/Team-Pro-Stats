@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Repor Tudo (Exceto Logo)</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f5f5f5;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .popup-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .popup {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      padding: 30px 40px;
+      text-align: center;
+      max-width: 380px;
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+
+    .popup-overlay.active .popup {
+      transform: translateY(0);
+    }
+
+    .popup h2 {
+      font-size: 22px;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .popup p {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    button {
+      padding: 12px 22px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .cancel-btn {
+      background: #95a5a6; /* Gray */
+      color: #fff;
+    }
+    .cancel-btn:hover {
+      background: #7f8c8d;
+    }
+
+    .confirm-btn {
+      background: #e74c3c; /* Red */
+      color: #fff;
+    }
+    .confirm-btn:hover {
+      background: #c0392b;
+    }
+
+    .success-popup h2 {
+      color: #27ae60; /* Green */
+    }
+
+    .info-popup h2 {
+      color: #3498db; /* Blue */
+    }
+  </style>
+</head>
+<body>
+
+<div id="popupOverlay" class="popup-overlay">
+  <div id="mainPopup" class="popup">
+    <h2>⚠️ Confirmação de Eliminação</h2>
+    <p>Tem a certeza que pretende eliminar <strong>TODOS os dados</strong> da aplicação, exceto o logo da equipa?<br>Esta ação não pode ser desfeita.</p>
+    <div class="buttons">
+      <button id="cancelAction" class="cancel-btn">Cancelar</button>
+      <button id="confirmAction" class="confirm-btn">Eliminar Tudo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const popupOverlay = document.getElementById('popupOverlay');
+    const confirmButton = document.getElementById('confirmAction');
+    const cancelButton = document.getElementById('cancelAction');
+
+    // Show the initial confirmation popup
+    popupOverlay.classList.add('active');
+
+    confirmButton.addEventListener('click', function() {
+      popupOverlay.classList.remove('active'); // Hide current popup
+      clearAllDataExceptLogo();
+    });
+
+    cancelButton.addEventListener('click', function() {
+      popupOverlay.classList.remove('active'); // Hide current popup
+      showInfoPopup('Operação Cancelada', 'Nenhum dado foi eliminado. Será redirecionado em breve.', 'index.html');
+    });
+
+    function showInfoPopup(title, message, redirectUrl) {
+      const infoPopup = document.createElement('div');
+      infoPopup.className = 'popup info-popup';
+      infoPopup.innerHTML = `
+        <h2>${title}</h2>
+        <p>${message}</p>
+      `;
+      popupOverlay.innerHTML = ''; // Clear previous popup content
+      popupOverlay.appendChild(infoPopup);
+      popupOverlay.classList.add('active');
+
+      // Automatic redirection after 3 seconds
+      setTimeout(() => {
+        popupOverlay.classList.remove('active');
+        setTimeout(() => { window.location.href = redirectUrl; }, 300); // Small delay for smooth transition
+      }, 3000);
+    }
+
+    function showSuccessPopup(title, message, redirectUrl) {
+      const successPopup = document.createElement('div');
+      successPopup.className = 'popup success-popup';
+      successPopup.innerHTML = `
+        <h2>${title}</h2>
+        <p>${message}</p>
+      `;
+      popupOverlay.innerHTML = ''; // Clear previous popup content
+      popupOverlay.appendChild(successPopup);
+      popupOverlay.classList.add('active');
+
+      // Automatic redirection after 3 seconds
+      setTimeout(() => {
+        popupOverlay.classList.remove('active');
+        setTimeout(() => { window.location.href = redirectUrl; }, 300); // Small delay for smooth transition
+      }, 3000);
+    }
+
+    function clearAllDataExceptLogo() {
+      let logo = '';
+      try {
+        const mainStatsData = JSON.parse(localStorage.getItem('estatisticas_separadas') || '{}');
+        if (mainStatsData.logo) logo = mainStatsData.logo;
+      } catch(e) { console.error("Error parsing estatisticas_separadas for logo:", e); }
+      try {
+        const etStatsData = JSON.parse(localStorage.getItem('estatisticas_extra_time') || '{}');
+        if (!logo && etStatsData.logo) logo = etStatsData.logo;
+      } catch(e) { console.error("Error parsing estatisticas_extra_time for logo:", e); }
+      
+      if (!logo) {
+          logo = localStorage.getItem('teamLogoBase64') || '';
+      }
+
+      // Clear ALL relevant keys
+      localStorage.removeItem('estatisticas_separadas');
+      localStorage.removeItem('estatisticas_valores');
+      localStorage.removeItem('jogo_form_data');
+      localStorage.removeItem('fieldPlayers');
+      localStorage.removeItem('goalKeepers');
+      localStorage.removeItem('pseData');
+      localStorage.removeItem('estatisticas_extra_time');
+      localStorage.removeItem('activeExtraTimeTab');
+      localStorage.removeItem('estatisticas_separadas_extra');
+      localStorage.removeItem('activeInOutTab_extra');
+      localStorage.removeItem('scrollPos_extra_1');
+      localStorage.removeItem('scrollPos_extra_2');
+      localStorage.removeItem('teamLogoBase64');
+
+      // Regravar apenas o logo
+      if (logo) {
+          localStorage.setItem('estatisticas_separadas', JSON.stringify({ logo: logo }));
+          localStorage.setItem('teamLogoBase64', logo);
+      } else {
+          localStorage.setItem('estatisticas_separadas', JSON.stringify({}));
+      }
+
+      showSuccessPopup('Dados Eliminados!', 'Todos os dados foram eliminados com sucesso (exceto o logo). Será redirecionado em breve.', 'index.html');
+    }
+  });
+</script>
+</body>
+</html>
