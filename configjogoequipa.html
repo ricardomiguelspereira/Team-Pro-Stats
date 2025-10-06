@@ -5,193 +5,122 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Configurar Jogo e Equipa</title>
   <style>
-    body {
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 20px;
-      color: #333;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    h3 {
-      margin-top: 0;
-      color: #2980b9;
-    }
-
-    button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      transition: background 0.3s;
-      margin-top: 10px;
-    }
-
-    .new-game-btn {
-      background: #2980b9;
-      color: #fff;
-    }
-
-    .new-game-btn:hover {
-      background: #3498db;
-    }
-
-    .game-list-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 15px;
-      margin-bottom: 8px;
-      background: #f9f9f9;
-      border-radius: 5px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .game-list-item button {
-      padding: 5px 10px;
-      font-size: 14px;
-      border-radius: 3px;
-      margin-left: 10px;
-      background: #27ae60;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-
-    .no-games {
-      text-align: center;
-      color: #666;
-      font-style: italic;
-      padding: 10px;
-    }
+    body { font-family:"Segoe UI",Tahoma,sans-serif; background:#f4f4f4; margin:0; padding:20px; color:#333; }
+    .container { max-width:800px; margin:0 auto; background:#fff; padding:25px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.1); }
+    h3 { color:#2980b9; margin-top:0; }
+    button { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:bold; margin-top:10px; transition:background .3s; }
+    .new-game-btn { background:#2980b9; color:#fff; }
+    .new-game-btn:hover { background:#3498db; }
+    .game-list-item { display:flex; justify-content:space-between; align-items:center; padding:10px 15px; margin-bottom:8px; background:#f9f9f9; border-radius:5px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+    .game-list-item button { padding:5px 10px; font-size:14px; border-radius:3px; background:#27ae60; color:#fff; border:none; cursor:pointer; }
+    .no-games { text-align:center; color:#666; font-style:italic; padding:10px; }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h3>Lista de Jogos Salvos</h3>
-    <button id="listGamesBtn" class="new-game-btn">Listar Jogos</button>
-    <div id="gamesListContainer" style="margin-top:15px;">
-      <div class="no-games">Nenhum jogo carregado</div>
-    </div>
+<div class="container">
+  <h3>Lista de Jogos Salvos</h3>
+  <button id="listGamesBtn" class="new-game-btn">Listar Jogos</button>
+  <div id="gamesListContainer" style="margin-top:15px;">
+    <div class="no-games">Nenhum jogo carregado</div>
   </div>
+</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
-    // Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-      authDomain: "team-pro-stats.firebaseapp.com",
-      projectId: "team-pro-stats",
-      storageBucket: "team-pro-stats.firebasestorage.app",
-      messagingSenderId: "758444286089",
-      appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
-      measurementId: "G-D1GDDBPD55"
-    };
+// ---------- Firebase Config ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+  authDomain: "team-pro-stats.firebaseapp.com",
+  projectId: "team-pro-stats",
+  storageBucket: "team-pro-stats.firebasestorage.app",
+  messagingSenderId: "758444286089",
+  appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
+  measurementId: "G-D1GDDBPD55"
+};
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+// ---------- Initialize Firebase ----------
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-    let currentUserId = null;
-    let activeGameId = localStorage.getItem("activeGameId");
+let currentUserId = null;
+let activeGameId = localStorage.getItem("activeGameId");
 
-    // Ensure Authenticated
-    async function ensureAuth() {
-      if (currentUserId) return currentUserId;
-      return new Promise((resolve, reject) => {
-        const unsub = onAuthStateChanged(auth, user => {
-          if (user) {
-            currentUserId = user.uid;
-            unsub();
-            resolve(currentUserId);
-          } else {
-            signInAnonymously(auth)
-              .then(cred => {
-                currentUserId = cred.user.uid;
-                unsub();
-                resolve(currentUserId);
-              })
-              .catch(e => {
-                console.error(e);
-                reject(e);
-              });
-          }
-        });
-      });
-    }
-
-    // DOM Elements
-    const listBtn = document.getElementById("listGamesBtn");
-    const container = document.getElementById("gamesListContainer");
-
-    // List Games Function
-    async function listGames() {
-      await ensureAuth();
-      const col = collection(db, "users", currentUserId, "games");
-      const snaps = await getDocs(col);
-      container.innerHTML = "";
-
-      if (snaps.empty) {
-        container.innerHTML = '<div class="no-games">Nenhum jogo encontrado</div>';
-        return;
+// ---------- Auth ----------
+async function ensureAuth() {
+  if(currentUserId) return currentUserId;
+  return new Promise((resolve, reject) => {
+    const unsub = onAuthStateChanged(auth, user => {
+      if(user){ currentUserId=user.uid; unsub(); resolve(currentUserId); }
+      else {
+        signInAnonymously(auth).then(cred => { currentUserId=cred.user.uid; unsub(); resolve(currentUserId); })
+        .catch(e => { console.error("Firebase Auth Error:", e); reject(e); });
       }
+    });
+  });
+}
 
-      const games = [];
-      for (const docSnap of snaps.docs) {
-        const id = docSnap.id;
-        const dataSnap = await getDoc(doc(db, "users", currentUserId, "games", id, "config", "jogoFormData"));
-        const data = dataSnap.exists() ? dataSnap.data() : { adversario: "Sem Adversário", competicao: "N/A", data: "" };
-        games.push({ id, data });
-      }
+// ---------- DOM Elements ----------
+const listBtn = document.getElementById("listGamesBtn");
+const container = document.getElementById("gamesListContainer");
 
-      // Sort by date descending
-      games.sort((a, b) => (b.data.data || "").localeCompare(a.data.data || ""));
+// ---------- List Games ----------
+async function listGames() {
+  await ensureAuth();
+  const colRef = collection(db, "users", currentUserId, "games");
+  const snaps = await getDocs(colRef);
 
-      // Render games
-      for (const { id, data } of games) {
-        const div = document.createElement("div");
-        div.className = "game-list-item";
-        div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data || "N/A"}</div>`;
+  container.innerHTML = "";
 
-        const btn = document.createElement("button");
-        btn.textContent = "Carregar";
-        btn.onclick = () => loadGame(id);
-        div.appendChild(btn);
+  if(snaps.empty){
+    container.innerHTML='<div class="no-games">Nenhum jogo encontrado</div>';
+    return;
+  }
 
-        container.appendChild(div);
-      }
-    }
+  const games = [];
 
-    // Load Game Function
-    async function loadGame(id) {
-      await ensureAuth();
-      activeGameId = id;
-      localStorage.setItem("activeGameId", id);
-      alert("Jogo " + id + " carregado como ativo!");
-    }
+  for(const docSnap of snaps.docs){
+    const id = docSnap.id;
+    const dataSnap = await getDoc(doc(db, "users", currentUserId, "games", id, "config","jogoFormData"));
+    const data = dataSnap.exists() ? dataSnap.data() : { adversario:"Sem Adversário", competicao:"N/A", data:"" };
+    games.push({ id, data });
+  }
 
-    // Button Click Event
-    listBtn.onclick = listGames;
+  // Sort by date descending
+  games.sort((a,b) => (b.data.data || "").localeCompare(a.data.data || ""));
 
-    // Auto-authenticate (optional)
-    ensureAuth();
-  </script>
+  for(const {id, data} of games){
+    const div = document.createElement("div");
+    div.className = "game-list-item";
+    div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data || "N/A"}</div>`;
 
+    const btn = document.createElement("button");
+    btn.textContent = "Carregar";
+    btn.onclick = () => loadGame(id);
+    div.appendChild(btn);
+
+    container.appendChild(div);
+  }
+}
+
+// ---------- Load Game ----------
+async function loadGame(id){
+  await ensureAuth();
+  activeGameId = id;
+  localStorage.setItem("activeGameId", id);
+  alert("Jogo " + id + " carregado como ativo!");
+}
+
+// ---------- Button Event ----------
+listBtn.onclick = listGames;
+
+// ---------- Auto Auth ----------
+ensureAuth();
+
+</script>
 </body>
 </html>
