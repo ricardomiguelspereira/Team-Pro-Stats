@@ -61,7 +61,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
 // Firebase config
@@ -75,7 +75,6 @@ const firebaseConfig = {
   measurementId: "G-D1GDDBPD55"
 };
 
-// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -89,15 +88,15 @@ const saveGameBtn = document.getElementById("saveGameBtn");
 const gamesListContainer = document.getElementById("gamesListContainer");
 const gameForm = document.getElementById("gameForm");
 
-// Auth
+// Ensure Firebase auth
 async function ensureAuth() {
   if(currentUserId) return currentUserId;
   return new Promise((resolve,reject)=>{
-    const unsub = onAuthStateChanged(auth,user=>{
+    const unsub = onAuthStateChanged(auth, user=>{
       if(user){ currentUserId=user.uid; unsub(); resolve(currentUserId);}
       else {
         signInAnonymously(auth).then(cred=>{ currentUserId=cred.user.uid; unsub(); resolve(currentUserId); })
-        .catch(e=>{ console.error("Auth error:",e); reject(e); });
+        .catch(err=>reject(err));
       }
     });
   });
@@ -108,19 +107,18 @@ function generateGameId() {
   return doc(collection(db, "users", currentUserId, "games")).id;
 }
 
-// Create New Game
+// Create new game
 newGameBtn.onclick = async () => {
   await ensureAuth();
   activeGameId = generateGameId();
-  // Save activeGame field in Firebase
   await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
   gameForm.reset();
   alert("Novo jogo criado. Preencha os dados e clique Guardar Jogo.");
 }
 
-// Save Game
+// Save game
 saveGameBtn.onclick = async () => {
-  if(!activeGameId) {
+  if(!activeGameId){
     alert("Crie ou carregue um jogo antes de guardar.");
     return;
   }
@@ -129,94 +127,85 @@ saveGameBtn.onclick = async () => {
   for(const el of gameForm.elements){
     if(el.name) data[el.name]=el.value;
   }
-  await setDoc(doc(db, "users", currentUserId, "games", activeGameId, "config","jogoFormData"), data, {merge:true});
-  // Also set activeGame in Firebase
-  await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
+  await setDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"), data, {merge:true});
+  await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, {merge:true});
   alert("Jogo guardado!");
   listGames();
 }
 
-// List Games
+// List games
 listGamesBtn.onclick = listGames;
 
-async function listGames() {
+async function listGames(){
   await ensureAuth();
-  const colRef = collection(db, "users", currentUserId, "games");
-  const snaps = await getDocs(colRef);
-  gamesListContainer.innerHTML="";
+  const colRef = collection(db,"users",currentUserId,"games");
 
-  if(snaps.empty){
-    gamesListContainer.innerHTML='<div class="no-games">Nenhum jogo encontrado</div>';
-    return;
-  }
+  onSnapshot(colRef, async snapshot => {
+    gamesListContainer.innerHTML="";
+    if(snapshot.empty){
+      gamesListContainer.innerHTML='<div class="no-games">Nenhum jogo encontrado</div>';
+      return;
+    }
 
-  for(const docSnap of snaps.docs){
-    const id = docSnap.id;
-    const dataSnap = await getDoc(doc(db,"users",currentUserId,"games",id,"config","jogoFormData"));
-    const data = dataSnap.exists() ? dataSnap.data() : { adversario:"Sem Adversário", competicao:"N/A", data:"" };
-    
-    const div = document.createElement("div");
-    div.className="game-item";
-    div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data || "N/A"}</div>`;
+    snapshot.forEach(async docSnap=>{
+      const gameId = docSnap.id;
+      const dataSnap = await getDoc(doc(db,"users",currentUserId,"games",gameId,"config","jogoFormData"));
+      const data = dataSnap.exists() ? dataSnap.data() : { adversario:"Sem Adversário", competicao:"N/A", data:"N/A" };
 
-    const loadBtn = document.createElement("button");
-    loadBtn.textContent="Carregar";
-    loadBtn.className="btn-load";
-    loadBtn.onclick = async () => {
-      activeGameId = id;
-      // Save active game in Firebase
-      await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
-      // Load the game data into form
-      for(const el of gameForm.elements){
-        if(el.name) el.value = data[el.name] || "";
-      }
-    };
+      const div = document.createElement("div");
+      div.className="game-item";
+      div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data}</div>`;
 
-    const delBtn = document.createElement("button");
-    delBtn.textContent="Eliminar";
-    delBtn.className="btn-delete";
-    delBtn.onclick = async () => {
-      if(confirm("Deseja realmente eliminar este jogo?")){
-        await deleteDoc(doc(db,"users",currentUserId,"games",id));
-        // If deleted active game, remove activeGame field
-        if(activeGameId===id) {
-          activeGameId=null;
-          await setDoc(doc(db,"users",currentUserId), { activeGame: null }, { merge:true });
-          gameForm.reset();
-        }
-        listGames();
-      }
-    };
-
-    div.appendChild(loadBtn);
-    div.appendChild(delBtn);
-    gamesListContainer.appendChild(div);
-  }
-}
-
-// Auto-load last active game from Firebase
-async function loadLastActiveGame() {
-  await ensureAuth();
-  const userDocSnap = await getDoc(doc(db,"users",currentUserId));
-  if(userDocSnap.exists()){
-    const userData = userDocSnap.data();
-    if(userData.activeGame){
-      activeGameId = userData.activeGame;
-      const snap = await getDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"));
-      if(snap.exists()){
-        const data = snap.data();
+      const loadBtn = document.createElement("button");
+      loadBtn.textContent="Carregar";
+      loadBtn.className="btn-load";
+      loadBtn.onclick = async () => {
+        activeGameId = gameId;
+        await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
         for(const el of gameForm.elements){
           if(el.name) el.value = data[el.name] || "";
         }
-      } else {
-        activeGameId = null;
+      };
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent="Eliminar";
+      delBtn.className="btn-delete";
+      delBtn.onclick = async () => {
+        if(confirm("Deseja realmente eliminar este jogo?")){
+          await deleteDoc(doc(db,"users",currentUserId,"games",gameId));
+          if(activeGameId===gameId){
+            activeGameId=null;
+            await setDoc(doc(db,"users",currentUserId), { activeGame:null }, { merge:true });
+            gameForm.reset();
+          }
+        }
+      };
+
+      div.appendChild(loadBtn);
+      div.appendChild(delBtn);
+      gamesListContainer.appendChild(div);
+    });
+  });
+}
+
+// Load last active game
+async function loadLastActiveGame(){
+  await ensureAuth();
+  const userSnap = await getDoc(doc(db,"users",currentUserId));
+  if(userSnap.exists() && userSnap.data().activeGame){
+    activeGameId = userSnap.data().activeGame;
+    const snap = await getDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"));
+    if(snap.exists()){
+      const data = snap.data();
+      for(const el of gameForm.elements){
+        if(el.name) el.value = data[el.name] || "";
       }
-    }
+    } else activeGameId=null;
   }
 }
 
 // Initialize
-ensureAuth().then(() => {
+ensureAuth().then(()=>{
   loadLastActiveGame();
   listGames();
 });
