@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Estatísticas do Jogo</title>
+<style>
+body { font-family:"Segoe UI",Tahoma,sans-serif; background:#f4f4f4; margin:0; padding:20px; color:#333; }
+.container { max-width:1200px; margin:0 auto; background:#fff; padding:25px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.1);}
+h2 { text-align:center; color:#2980b9; }
+.section { margin-bottom:25px; }
+.button-group { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px; }
+button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; cursor:pointer; color:#fff; }
+.btn-stat { background:#2980b9; } .btn-stat:hover { background:#3498db; }
+#gameInfo { background:#f0f8ff; padding:15px; border-radius:5px; }
+.responsive { overflow-x:auto; margin-top:10px; }
+.part-table { border-collapse:collapse; width:100%; }
+.part-table th, .part-table td { border:1px solid #ccc; padding:8px; text-align:center; }
+.fixed-col { position:sticky; left:0; background:#f9f9f9; z-index:1; }
+.notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+.notification.error { background:#ffdede; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Estatísticas do Jogo</h2>
+
+  <!-- 1st section: Active Game Info -->
+  <div id="gameInfo" class="section">
+    <strong>Jogo Ativo:</strong>
+    <div id="activeGameDetails">Carregando informações do jogo...</div>
+  </div>
+
+  <!-- 2nd section: Buttons -->
+  <div class="button-group section">
+    <button class="btn-stat" id="estat1Btn">Estatísticas 1ª Parte</button>
+    <button class="btn-stat" id="estat2Btn">Estatísticas 2ª Parte</button>
+    <button class="btn-stat" id="extra1Btn">Prolongamento 1ª Parte</button>
+    <button class="btn-stat" id="extra2Btn">Prolongamento 2ª Parte</button>
+  </div>
+
+  <!-- 3rd section: Tables (like estatisticas.html) -->
+  <div class="section">
+    <div id="tablesContainer">
+      <!-- Tables will be rendered here dynamically -->
+      <div class="responsive">
+        <table id="tableCampo" class="part-table">
+          <thead>
+            <tr>
+              <th class="fixed-col">#</th>
+              <th class="fixed-col">Nome</th>
+              <th>GR / Postes</th>
+              <th>Interceptados</th>
+              <th>Fora</th>
+              <th>Golos</th>
+              <th>Passes Errados</th>
+              <th>Faltas</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="responsive" style="margin-top:15px;">
+        <table id="tableGR" class="part-table">
+          <thead>
+            <tr>
+              <th class="fixed-col">#</th>
+              <th class="fixed-col">Nome</th>
+              <th>Defesas</th>
+              <th>Interceptados</th>
+              <th>Golos Sofridos</th>
+              <th>Faltas</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="notification" class="notification"></div>
+
+<script type="module">
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  saveSingleStat,
+  onFirebaseDataChange,
+  getFirebaseData,
+  getActiveGameId
+} from './firebase-data.js';
+
+let eligibleFieldPlayers = [];
+let eligibleGoalKeepers = [];
+let statsParte1 = { campo: {}, gr: {} };
+let statsParte2 = { campo: {}, gr: {} };
+let activePart = '1'; // 1 or 2
+const campoStats = ['rem', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas'];
+const grStats = ['defesas', 'interceptados', 'golosSofridos', 'faltas'];
+
+const activeGameDetails = document.getElementById('activeGameDetails');
+const notificationEl = document.getElementById('notification');
+
+function showNotification(msg, isError=false) {
+  notificationEl.textContent = msg;
+  notificationEl.className = isError ? 'notification error' : 'notification';
+  notificationEl.style.display='block';
+  setTimeout(()=>notificationEl.style.display='none',2000);
+}
+
+// Render players tables
+function renderTables() {
+  const campoTbody = document.querySelector('#tableCampo tbody');
+  const grTbody = document.querySelector('#tableGR tbody');
+  campoTbody.innerHTML=''; grTbody.innerHTML='';
+
+  const stats = activePart==='1'? statsParte1 : statsParte2;
+
+  eligibleFieldPlayers.forEach(p=>{
+    const row = campoTbody.insertRow();
+    row.innerHTML = `<td class="fixed-col">${p.numero}</td>
+      <td class="fixed-col">${p.nome}</td>
+      ${campoStats.map(k=>`<td><input type="number" value="${stats.campo?.[p.numero]?.[k]||0}" 
+      data-player="${p.numero}" data-part="${activePart}" data-category="campo" data-stat="${k}" onchange="updateStat(this)"></td>`).join('')}
+    `;
+  });
+
+  eligibleGoalKeepers.forEach(p=>{
+    const row = grTbody.insertRow();
+    row.innerHTML = `<td class="fixed-col">${p.numero}</td>
+      <td class="fixed-col">${p.nome}</td>
+      ${grStats.map(k=>`<td><input type="number" value="${stats.gr?.[p.numero]?.[k]||0}" 
+      data-player="${p.numero}" data-part="${activePart}" data-category="gr" data-stat="${k}" onchange="updateStat(this)"></td>`).join('')}
+    `;
+  });
+}
+
+// Update single stat
+window.updateStat = async function(input){
+  const playerNum = input.dataset.player;
+  const part = input.dataset.part;
+  const category = input.dataset.category;
+  const statKey = input.dataset.stat;
+  const value = parseInt(input.value)||0;
+  const stats = part==='1'? statsParte1 : statsParte2;
+  if(!stats[category]) stats[category]={};
+  if(!stats[category][playerNum]) stats[category][playerNum]={};
+  stats[category][playerNum][statKey]=value;
+  try{
+    await saveSingleStat(part,category,playerNum,statKey,value);
+    showNotification(`Guardado: ${statKey} #${playerNum}`);
+  } catch(e){
+    console.error(e); showNotification('Erro ao guardar',true);
+  }
+};
+
+// Switch part buttons
+document.getElementById('estat1Btn').onclick=()=>{activePart='1'; renderTables();}
+document.getElementById('estat2Btn').onclick=()=>{activePart='2'; renderTables();}
+document.getElementById('extra1Btn').onclick=()=>{alert('Prolongamento 1ª Parte - implementar');}
+document.getElementById('extra2Btn').onclick=()=>{alert('Prolongamento 2ª Parte - implementar');}
+
+async function init(){
+  await initializeFirebase();
+  const activeGameId = getActiveGameId();
+  if(!activeGameId){
+    alert("Nenhum jogo ativo. Vá para Configurar Jogo primeiro."); return;
+  }
+
+  // Load active game info
+  const gameData = await getFirebaseData(FB_PATHS_GAME.jogoFormData);
+  activeGameDetails.innerHTML = `
+    <div><strong>Escalão:</strong> ${gameData.escalao||'-'}</div>
+    <div><strong>Competição:</strong> ${gameData.competicao||'-'}</div>
+    <div><strong>Fase:</strong> ${gameData.fase||'-'}</div>
+    <div><strong>Grupo:</strong> ${gameData.grupo||'-'}</div>
+    <div><strong>Jornada:</strong> ${gameData.jornada||'-'}</div>
+    <div><strong>Data / Hora:</strong> ${gameData.data||'-'} ${gameData.hora||'-'}</div>
+    <div><strong>Local:</strong> ${gameData.local||'-'}</div>
+    <div><strong>Adversário:</strong> ${gameData.adversario||'-'}</div>
+  `;
+
+  // Players listener
+  await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, async (fieldData)=>{
+    const fields = (fieldData?.players||[]).filter(p=>p.estatisticas && !p.gr).sort((a,b)=>a.numero-b.numero);
+    const gkData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
+    const gks = (gkData?.players||[]).filter(p=>p.estatisticas).sort((a,b)=>a.numero-b.numero);
+    const fieldGRs = (fieldData?.players||[]).filter(p=>p.gr && p.estatisticas);
+    eligibleFieldPlayers=fields;
+    eligibleGoalKeepers=[...gks,...fieldGRs].sort((a,b)=>a.numero-b.numero);
+    renderTables();
+  });
+
+  // Stats listeners
+  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data)=>{ statsParte1=data||{campo:{},gr:{}}; renderTables(); });
+  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, (data)=>{ statsParte2=data||{campo:{},gr:{}}; renderTables(); });
+}
+
+init();
+</script>
+
+</body>
+</html>
