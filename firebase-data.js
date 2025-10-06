@@ -84,16 +84,19 @@ export async function ensureAuth() {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser Id = user.uid;
+        console.log("User  authenticated with ID:", currentUser Id);
         unsub();
         resolve(currentUser Id);
       } else {
         signInAnonymously(auth)
           .then((cred) => {
             currentUser Id = cred.user.uid;
+            console.log("Anonymous user signed in with ID:", currentUser Id);
             unsub();
             resolve(currentUser Id);
           })
           .catch((err) => {
+            console.error("Auth error:", err);
             unsub();
             reject(err);
           });
@@ -154,6 +157,9 @@ export async function deleteFirebaseData(path) {
 
 // Generate unique game ID using Firebase auto-ID
 export function generateGameId() {
+  if (!currentUser Id) {
+    throw new Error("User  not authenticated - cannot generate game ID");
+  }
   const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
   return doc(gamesCollectionRef).id;
 }
@@ -164,6 +170,8 @@ export async function getAllGameIds() {
   const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
   const gamesSnapshot = await getDocs(gamesCollectionRef);
   const gameIds = gamesSnapshot.docs.map(doc => doc.id);
+
+  console.log("Found game IDs:", gameIds);
 
   const gamesWithData = [];
   const originalActiveGame = getActiveGameId();
@@ -191,6 +199,7 @@ export async function getAllGameIds() {
     return dateB.localeCompare(dateA);
   });
 
+  console.log("Games with data:", gamesWithData);
   return gamesWithData;
 }
 
@@ -199,6 +208,7 @@ export function onGamesCollectionChange(callback) {
   return ensureAuth().then(() => {
     const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
     const unsubscribe = onSnapshot(gamesCollectionRef, (snapshot) => {
+      console.log("Games collection changed, re-fetching...");
       getAllGameIds().then(callback).catch(err => {
         console.error('Error fetching games in listener:', err);
         callback([]);

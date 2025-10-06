@@ -48,7 +48,7 @@
         .loading { opacity: 0.7; pointer-events: none; }
         .no-games { text-align: center; color: #666; font-style: italic; padding: 20px; }
         .error { color: #e74c3c; background: rgba(231, 76, 60, 0.1); padding: 10px; border-radius: 5px; margin: 10px 0; }
-        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px; }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 10px; vertical-align: middle; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -171,6 +171,8 @@
         const container = document.querySelector('.container');
         container.classList.toggle('loading', loading);
         newGameBtn.disabled = loading;
+        saveGameDetailsBtn.disabled = loading;
+        deleteCurrentGameBtn.disabled = loading;
         const spinner = saveGameDetailsBtn.querySelector('.spinner');
         spinner.style.display = loading ? 'inline-block' : 'none';
     }
@@ -197,10 +199,10 @@
             }
             await setFirebaseData(STORAGE_KEY_JOGO, data);
             showNotification('✅ Detalhes do jogo guardados com sucesso!');
-            console.log('Dados salvos:', data);
+            console.log('Dados salvos para jogo', activeGame, ':', data);
             await renderGameList(); // Update list if details changed
         } catch (error) {
-            console.error('Erro ao salvar dados:', error);
+            console.error('Erro ao salvar dados para jogo', activeGame, ':', error);
             showNotification('❌ Erro ao guardar: ' + (error.message || 'Tente novamente'), true);
         } finally {
             setFormLoading(false);
@@ -208,6 +210,7 @@
     }
 
     async function loadJogoData(gameId) {
+        console.log('Loading jogo data for ID:', gameId);
         setActiveGameId(gameId);
         setFormLoading(true);
         try {
@@ -230,7 +233,7 @@
             }
             await renderGameList(); // Update active state in list
         } catch (error) {
-            console.error('Erro ao carregar dados:', error);
+            console.error('Erro ao carregar dados para jogo', gameId, ':', error);
             showNotification('❌ Erro ao carregar jogo: ' + (error.message || 'Tente novamente'), true);
             clearForm();
         } finally {
@@ -239,22 +242,27 @@
     }
 
     async function createNewGame() {
+        console.log('Creating new game...');
         setFormLoading(true);
         try {
-            clearForm();
+            const newGameId = generateGameId();
+            console.log('New game ID generated:', newGameId);
+            setActiveGameId(newGameId);
+
             const newGameData = {
                 escalao: "", competicao: "", fase: "", grupo: "",
                 jornada: "", data: new Date().toISOString().slice(0, 10), hora: "", local: "", adversario: "Novo Jogo"
             };
-            const newGameId = generateGameId(); // Use Firebase auto-ID
-            setActiveGameId(newGameId);
+
             await setFirebaseData(STORAGE_KEY_JOGO, newGameData);
+            console.log('New game data saved for ID:', newGameId, newGameData);
+
             await loadJogoData(newGameId);
             showNotification('➕ Novo jogo criado com sucesso! Preencha os detalhes e guarde.');
             await renderGameList();
         } catch (error) {
             console.error('Erro ao criar jogo:', error);
-            showNotification('❌ Erro ao criar jogo: ' + (error.message || 'Tente novamente'), true);
+            showNotification('❌ Erro ao criar jogo: ' + (error.message || 'Verifique a conexão e tente novamente'), true);
             setActiveGameId(null); // Clear if failed
         } finally {
             setFormLoading(false);
@@ -262,6 +270,7 @@
     }
 
     async function deleteGame(gameIdToDelete) {
+        console.log('Deleting game:', gameIdToDelete);
         if (!confirm(`Tem certeza que deseja eliminar o jogo "${gameIdToDelete}" e todos os seus dados (estatísticas, PSE, etc.)? Esta ação não pode ser desfeita.`)) {
             return;
         }
@@ -275,6 +284,7 @@
                 pathsToDelete.map(async (path) => {
                     try {
                         await deleteFirebaseData(path);
+                        console.log('Deleted path:', path, 'for game', gameIdToDelete);
                     } catch (err) {
                         console.warn(`Failed to delete ${path} for game ${gameIdToDelete}:`, err);
                     }
@@ -282,6 +292,7 @@
             );
             // Delete the top-level game document
             await deleteFirebaseData(`games/${gameIdToDelete}`);
+            console.log('Top-level game document deleted:', gameIdToDelete);
 
             showNotification(`🗑️ Jogo "${gameIdToDelete}" e dados eliminados com sucesso.`);
             if (getActiveGameId() === gameIdToDelete) {
@@ -290,7 +301,7 @@
             }
             await renderGameList();
         } catch (error) {
-            console.error('Erro ao eliminar jogo:', error);
+            console.error('Erro ao eliminar jogo', gameIdToDelete, ':', error);
             showNotification('❌ Erro ao eliminar jogo: ' + (error.message || 'Tente novamente'), true);
         } finally {
             setFormLoading(false);
@@ -299,6 +310,7 @@
 
     // --- Render Game List ---
     async function renderGameList() {
+        console.log('Rendering game list...');
         gameListDiv.innerHTML = '<div class="no-games">Carregando jogos...</div>';
         try {
             currentGames = await getAllGameIds();
@@ -334,15 +346,4 @@
                 gameListDiv.appendChild(gameItem);
             });
 
-            // Enable buttons if active game exists
-            if (activeGame && currentGames.some(g => g.id === activeGame)) {
-                saveGameDetailsBtn.disabled = false;
-                deleteCurrentGameBtn.disabled = false;
-            }
-        } catch (error) {
-            console.error('Erro ao renderizar lista de jogos:', error);
-            gameListDiv.innerHTML = '<div class="no-games error">Erro ao carregar jogos: ' + (error.message || 'Tente recarregar a página.') + '</div>';
-            showNotification('❌ Erro ao carregar jogos: ' + (error.message || 'Verifique a conexão'), true);
-            clearForm();
-        }
-   
+            // Enable buttons if
