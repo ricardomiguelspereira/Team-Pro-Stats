@@ -5,79 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurar Jogo</title>
     <style>
-        /* ... (your existing styles) ... */
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 25px; color: #2980b9; }
+        form { display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 20px; }
+        label { font-weight: 600; display: flex; flex-direction: column; }
+        input[type="text"], input[type="date"], input[type="time"], select {
+            padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; width: 100%;
+        }
+        .button-group { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s ease; }
+        .save-btn { background: #27ae60; color: #fff; }
+        .save-btn:hover { background: #219150; }
+        .new-game-btn { background: #2980b9; color: #fff; }
+        .new-game-btn:hover { background: #3498db; }
+        .delete-game-btn { background: #e74c3c; color: #fff; }
+        .delete-game-btn:hover { background: #c0392b; }
+        #notification {
+            margin-top: 20px; padding: 10px; border-radius: 5px; text-align: center;
+            background: rgba(52, 152, 219, 0.1); color: #2980b9; display: none; opacity: 1; transition: opacity 0.3s ease;
+        }
+        #gameSelector { width: 100%; margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        .game-list-container { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+        .game-list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; margin-bottom: 8px; background: #f9f9f9; border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .game-list-item.active { background: #e0f7fa; border: 1px solid #00bcd4; }
+        .game-info { flex-grow: 1; text-align: left; }
+        .game-info strong { color: #2980b9; }
+        .game-actions button { margin-left: 8px; padding: 6px 12px; font-size: 14px; }
+        .game-actions .load-btn { background: #27ae60; }
+        .game-actions .load-btn:hover { background: #219150; }
+        .game-actions .delete-btn { background: #e74c3c; }
+        .game-actions .delete-btn:hover { background: #c0392b; }
     </style>
 </head>
 <body>
 
-<div id="container">
+<div class="container">
     <div class="header">CONFIGURAR JOGO</div>
 
-    <div id="jogo" class="tab-content">
-        <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
-            <!-- First line: Escalão (reduced width) and Competição (3/4 bigger) -->
-            <label for="escalao">Escalão
-                <select id="escalao" name="escalao">
-                    <option value="">---</option>
-                    <option value="SUB-13">SUB-13</option>
-                    <option value="SUB-15">SUB-15</option>
-                    <option value="SUB-17">SUB-17</option>
-                    <option value="SUB-19">SUB-19</option>
-                    <option value="SUB-23">SUB-23</option>
-                    <option value="SÉNIORES">SÉNIORES</option>
-                </select>
-            </label>
+    <div class="game-list-container">
+        <h3>Jogos Existentes</h3>
+        <div id="gameList">
+            <!-- Game list items will be rendered here -->
+            <p>Nenhum jogo encontrado. Crie um novo jogo abaixo.</p>
+        </div>
+        <button class="new-game-btn" id="newGameBtn" style="width: 100%; margin-top: 15px;">Criar Novo Jogo</button>
+    </div>
 
-            <label for="competicao">Competição
-                <input type="text" id="competicao" name="competicao" />
-            </label>
+    <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
 
-            <!-- Second line: Fase and Grupo (same size) -->
-            <label for="fase">Fase
-                <input type="text" id="fase" name="fase" />
-            </label>
-            <label for="grupo">Grupo
-                <input type="text" id="grupo" name="grupo" />
-            </label>
+    <h3>Detalhes do Jogo Atual</h3>
+    <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
+        <label for="escalao">Escalão
+            <select id="escalao" name="escalao">
+                <option value="">---</option>
+                <option value="SUB-13">SUB-13</option>
+                <option value="SUB-15">SUB-15</option>
+                <option value="SUB-17">SUB-17</option>
+                <option value="SUB-19">SUB-19</option>
+                <option value="SUB-23">SUB-23</option>
+                <option value="SÉNIORES">SÉNIORES</option>
+            </select>
+        </label>
 
-            <!-- Third line: Jornada, Data, Hora (same size each) -->
-            <label for="jornada">Jornada
-                <input type="text" id="jornada" name="jornada" />
-            </label>
-            <label for="data">Data
-                <input type="date" id="data" name="data" />
-            </label>
-            <label for="hora">Hora
-                <input type="time" id="hora" name="hora" />
-            </label>
+        <label for="competicao">Competição
+            <input type="text" id="competicao" name="competicao" />
+        </label>
 
-            <!-- Fourth line: Local -->
-            <label for="local">Local
-                <input type="text" id="local" name="local" />
-            </label>
+        <label for="fase">Fase
+            <input type="text" id="fase" name="fase" />
+        </label>
+        <label for="grupo">Grupo
+            <input type="text" id="grupo" name="grupo" />
+        </label>
 
-            <!-- Fifth line: Adversário -->
-            <label for="adversario">Adversário
-                <input type="text" id="adversario" name="adversario" />
-            </label>
+        <label for="jornada">Jornada
+            <input type="text" id="jornada" name="jornada" />
+        </label>
+        <label for="data">Data
+            <input type="date" id="data" name="data" />
+        </label>
+        <label for="hora">Hora
+            <input type="time" id="hora" name="hora" />
+        </label>
 
-            <!-- Optional: Clear button (uncomment or style to show) -->
-            <!-- <button type="button" id="clearButton">Limpar Dados Salvos</button> -->
-        </form>
+        <label for="local">Local
+            <input type="text" id="local" name="local" />
+        </label>
+
+        <label for="adversario">Adversário
+            <input type="text" id="adversario" name="adversario" />
+        </label>
+    </form>
+    <div class="button-group">
+        <button class="save-btn" id="saveGameDetailsBtn">Guardar Detalhes do Jogo</button>
+        <button class="delete-game-btn" id="deleteCurrentGameBtn">Eliminar Jogo Atual</button>
     </div>
 
     <div id="notification"></div>
 </div>
 
-<script type="module" src="firebase-data.js"></script>
-<script>
-    // LocalStorage for Jogo Data
-    const STORAGE_KEY_JOGO = FB_PATHS.jogoFormData; // Use Firebase path
+<script type="module">
+    import {
+        FB_PATHS_GAME,
+        setFirebaseData,
+        getFirebaseData,
+        onFirebaseDataChange,
+        deleteFirebaseData,
+        setActiveGameId,
+        getActiveGameId,
+        getAllGameIds,
+        initializeFirebase
+    } from './firebase-data.js';
+
+    const STORAGE_KEY_JOGO = FB_PATHS_GAME.jogoFormData;
     const jogoForm = document.getElementById('jogoForm');
     const notification = document.getElementById('notification');
-    // const clearButton = document.getElementById('clearButton'); // Uncomment if using the button
+    const gameListDiv = document.getElementById('gameList');
+    const newGameBtn = document.getElementById('newGameBtn');
+    const saveGameDetailsBtn = document.getElementById('saveGameDetailsBtn');
+    const deleteCurrentGameBtn = document.getElementById('deleteCurrentGameBtn');
 
-    // Debounce function to limit save frequency on text inputs
+    let currentGames = []; // Stores list of all games
+
+    // --- Utility Functions ---
     function debounce(func, delay) {
         let timeoutId;
         return function (...args) {
@@ -89,26 +144,52 @@
     function showNotification(message, isError = false) {
         notification.textContent = message;
         notification.style.background = isError ? 'rgba(231, 76, 60, 0.1)' : 'rgba(52, 152, 219, 0.1)';
-        notification.style.color = isError ? '#e74c3c' : 'var(--primary-color)';
+        notification.style.color = isError ? '#e74c3c' : '#2980b9';
         notification.style.display = 'block';
+        notification.style.opacity = '1';
         setTimeout(() => {
             notification.style.opacity = '0';
-            setTimeout(() => { notification.style.display = 'none'; notification.style.opacity = '1'; }, 300);
+            setTimeout(() => { notification.style.display = 'none'; }, 300);
         }, 3000);
     }
 
+    function generateGameId(formData) {
+        const date = formData.data || new Date().toISOString().slice(0, 10);
+        const opponent = formData.adversario ? formData.adversario.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() : 'unknown_opponent';
+        const competition = formData.competicao ? formData.competicao.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() : 'unknown_comp';
+        return `${date}_${opponent}_${competition}_${Date.now()}`; // Add timestamp for uniqueness
+    }
+
+    function clearForm() {
+        jogoForm.reset();
+        // Disable save/delete buttons if no game is active
+        saveGameDetailsBtn.disabled = true;
+        deleteCurrentGameBtn.disabled = true;
+    }
+
+    // --- Game Data Operations ---
     async function saveJogoData() {
+        const activeGame = getActiveGameId();
+        if (!activeGame) {
+            showNotification('❌ Nenhum jogo ativo para guardar. Crie ou selecione um jogo.', true);
+            return;
+        }
+
         const data = {};
         for (const el of jogoForm.elements) {
             if (el.name) {
-                data[el.name] = el.value || ''; // Capture value, default to empty string
+                data[el.name] = el.value || '';
             }
         }
         await setFirebaseData(STORAGE_KEY_JOGO, data);
-        console.log('Dados salvos:', data); // For debugging
+        showNotification('✅ Detalhes do jogo guardados com sucesso!');
+        console.log('Dados salvos:', data);
+        // Re-render game list to update details if game name changed
+        await renderGameList();
     }
 
-    async function loadJogoData() {
+    async function loadJogoData(gameId) {
+        setActiveGameId(gameId);
         const data = await getFirebaseData(STORAGE_KEY_JOGO);
         if (data) {
             try {
@@ -118,43 +199,151 @@
                         input.value = v || '';
                     }
                 }
-                showNotification('✅ Dados carregados com sucesso!');
+                showNotification(`✅ Jogo "${data.adversario || 'Sem Nome'}" carregado com sucesso!`);
+                saveGameDetailsBtn.disabled = false;
+                deleteCurrentGameBtn.disabled = false;
             } catch (e) {
                 console.error('Erro ao carregar dados:', e);
                 showNotification('❌ Erro ao carregar dados salvos.', true);
-                // If data is corrupted, consider deleting from Firebase
-                // deleteFirebaseData(STORAGE_KEY_JOGO); 
             }
+        } else {
+            clearForm();
+            showNotification('ℹ️ Nenhum dado encontrado para este jogo. Pode preencher e guardar.', false);
+            saveGameDetailsBtn.disabled = false;
+            deleteCurrentGameBtn.disabled = false;
+        }
+        renderGameList(); // Update active state in list
+    }
+
+    async function createNewGame() {
+        clearForm();
+        const newGameData = {
+            escalao: "", competicao: "", fase: "", grupo: "",
+            jornada: "", data: "", hora: "", local: "", adversario: "Novo Jogo"
+        };
+        const newGameId = generateGameId(newGameData);
+        setActiveGameId(newGameId);
+        await setFirebaseData(STORAGE_KEY_JOGO, newGameData);
+        await loadJogoData(newGameId); // Load the newly created empty game
+        showNotification('➕ Novo jogo criado. Preencha os detalhes e guarde.');
+        await renderGameList(); // Update game list
+    }
+
+    async function deleteGame(gameIdToDelete) {
+        if (!confirm(`Tem certeza que deseja eliminar o jogo "${gameIdToDelete}" e todos os seus dados (estatísticas, PSE, etc.)? Esta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            // List all game-specific paths
+            const pathsToDelete = Object.values(FB_PATHS_GAME);
+
+            // Delete data for each path under the specific gameId
+            setActiveGameId(gameIdToDelete); // Temporarily set active game to construct correct paths
+            await Promise.all(pathsToDelete.map(path => deleteFirebaseData(path)));
+
+            // Finally, delete the game entry itself
+            await deleteFirebaseData(`games/${gameIdToDelete}`);
+
+            showNotification(`🗑️ Jogo "${gameIdToDelete}" e todos os seus dados eliminados.`);
+            // If the deleted game was the active one, clear active game
+            if (getActiveGameId() === gameIdToDelete) {
+                setActiveGameId(null);
+                clearForm();
+            }
+            await renderGameList(); // Refresh game list
+        } catch (error) {
+            console.error('Erro ao eliminar jogo:', error);
+            showNotification('❌ Erro ao eliminar jogo: ' + error.message, true);
         }
     }
 
-    async function clearJogoData() {
-        await deleteFirebaseData(STORAGE_KEY_JOGO);
-        jogoForm.reset(); // Reset form visually
-        showNotification('🗑️ Dados salvos limpos!');
+    // --- Render Game List ---
+    async function renderGameList() {
+        gameListDiv.innerHTML = '';
+        currentGames = await getAllGameIds(); // Fetch all games
+        const activeGame = getActiveGameId();
+
+        if (currentGames.length === 0) {
+            gameListDiv.innerHTML = '<p>Nenhum jogo encontrado. Crie um novo jogo abaixo.</p>';
+            clearForm(); // Clear form if no games exist
+            return;
+        }
+
+        currentGames.sort((a, b) => {
+            const dateA = a.data?.jogoFormData?.data || '';
+            const dateB = b.data?.jogoFormData?.data || '';
+            return dateB.localeCompare(dateA); // Sort by date descending
+        });
+
+        currentGames.forEach(game => {
+            const gameId = game.id;
+            const gameDetails = game.data?.config?.jogoFormData || {};
+            const displayDate = gameDetails.data || 'N/A';
+            const displayOpponent = gameDetails.adversario || 'Sem Adversário';
+            const displayComp = gameDetails.competicao || 'N/A';
+
+            const gameItem = document.createElement('div');
+            gameItem.className = `game-list-item ${activeGame === gameId ? 'active' : ''}`;
+            gameItem.innerHTML = `
+                <div class="game-info">
+                    <strong>${displayOpponent}</strong> (${displayComp}) - ${displayDate}
+                </div>
+                <div class="game-actions">
+                    <button class="load-btn" data-game-id="${gameId}">Carregar</button>
+                    <button class="delete-btn" data-game-id="${gameId}">Eliminar</button>
+                </div>
+            `;
+            gameListDiv.appendChild(gameItem);
+        });
     }
 
-    // Event Listeners
+    // --- Event Listeners ---
     document.addEventListener('DOMContentLoaded', async () => {
-        await loadJogoData(); // Await loading data
+        await initializeFirebase(); // Ensures auth & migration
+
+        // Load active game from localStorage on initial load
+        const storedActiveGameId = getActiveGameId();
+        if (storedActiveGameId) {
+            await loadJogoData(storedActiveGameId);
+        } else {
+            clearForm(); // Clear form if no active game
+        }
+        await renderGameList(); // Render initial list of games
 
         // Auto-save on changes
-        const debouncedSave = debounce(saveJogoData, 200); // 200ms delay for text/date/time
+        const debouncedSave = debounce(saveJogoData, 500);
         const allInputs = jogoForm.querySelectorAll('input, select');
-
         allInputs.forEach(input => {
-            // For selects: save immediately on change
-            if (input.tagName === 'SELECT') {
-                input.addEventListener('change', saveJogoData);
+            input.addEventListener('input', debouncedSave);
+            input.addEventListener('change', debouncedSave);
+        });
+
+        saveGameDetailsBtn.addEventListener('click', saveJogoData);
+        newGameBtn.addEventListener('click', createNewGame);
+        deleteCurrentGameBtn.addEventListener('click', async () => {
+            const activeGame = getActiveGameId();
+            if (activeGame) {
+                await deleteGame(activeGame);
             } else {
-                // For text/date/time: save on input (debounced) and change (immediate on blur)
-                input.addEventListener('input', debouncedSave);
-                input.addEventListener('change', saveJogoData);
+                showNotification('❌ Nenhum jogo selecionado para eliminar.', true);
             }
         });
 
-        // Optional: Clear button listener (uncomment if using the button)
-        // clearButton.addEventListener('click', clearJogoData);
+        gameListDiv.addEventListener('click', async (event) => {
+            const target = event.target;
+            const gameId = target.dataset.gameId;
+            if (gameId) {
+                if (target.classList.contains('load-btn')) {
+                    await loadJogoData(gameId);
+                } else if (target.classList.contains('delete-btn')) {
+                    await deleteGame(gameId);
+                }
+            }
+        });
+
+        // Listen for changes to the games collection to update the list in real-time
+        onFirebaseDataChange('games', renderGameList);
     });
 </script>
 </body>

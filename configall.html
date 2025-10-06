@@ -19,11 +19,11 @@
             --editing-bg: #fff3cd;
             --border-color: #ddd;
         }
-        
+
         * {
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Tahoma', Arial, sans-serif;
             font-size: 14px;
@@ -32,7 +32,7 @@
             background-color: #f4f4f4;
             line-height: 1.4;
         }
-        
+
         .container {
             max-width: 100%;
             margin: 0 auto;
@@ -41,14 +41,14 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
+
         h1 {
             font-size: 24px;
             color: #333;
             text-align: center;
             margin: 0 0 20px 0;
         }
-        
+
         h2 {
             font-size: 18px;
             color: #333;
@@ -56,27 +56,27 @@
             padding-bottom: 8px;
             border-bottom: 2px solid var(--primary-color);
         }
-        
+
         .input-section {
             background: var(--light-bg);
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
         }
-        
+
         .input-grid {
             display: grid;
             grid-template-columns: auto 1fr;
             gap: 12px;
             align-items: center;
         }
-        
+
         label {
             font-weight: bold;
             font-size: 14px;
         }
-        
-        input[type="number"], 
+
+        input[type="number"],
         input[type="text"] {
             padding: 10px;
             border: 1px solid #ccc;
@@ -84,11 +84,11 @@
             font-size: 15px;
             width: 100%;
         }
-        
+
         input[type="text"] {
             text-transform: uppercase;
         }
-        
+
         .checkbox-group {
             grid-column: 1 / span 2;
             display: flex;
@@ -96,13 +96,13 @@
             gap: 15px;
             margin: 10px 0;
         }
-        
+
         .checkbox-item {
             display: flex;
             align-items: center;
             gap: 5px;
         }
-        
+
         .add-btn {
             grid-column: 1 / span 2;
             padding: 12px;
@@ -116,44 +116,44 @@
             margin-top: 5px;
             position: relative;
         }
-        
+
         .add-btn:hover:not(:disabled) {
             background: var(--primary-hover);
         }
-        
+
         .add-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
-        
+
         .add-btn .spinner {
             display: none;
             margin-left: 8px;
         }
-        
+
         .add-btn.loading .spinner {
             display: inline-block;
         }
-        
+
         .table-container {
             overflow-x: auto;
             margin-bottom: 25px;
             border-radius: 6px;
             border: 1px solid var(--border-color);
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             min-width: 600px;
         }
-        
+
         th, td {
             padding: 10px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
         }
-        
+
         th {
             background: var(--primary-color);
             color: white;
@@ -161,15 +161,15 @@
             position: sticky;
             top: 0;
         }
-        
+
         .checkbox-cell {
             text-align: center;
         }
-        
+
         input[type="checkbox"] {
             transform: scale(1.3);
         }
-        
+
         .edit-btn {
             background: var(--success-color);
             padding: 6px 10px;
@@ -179,11 +179,11 @@
             cursor: pointer;
             font-size: 12px;
         }
-        
+
         .edit-btn:hover {
             background: var(--success-hover);
         }
-        
+
         .save-btn {
             background: var(--success-color);
             padding: 6px 10px;
@@ -193,11 +193,11 @@
             cursor: pointer;
             font-size: 12px;
         }
-        
+
         .save-btn:hover {
             background: var(--success-hover);
         }
-        
+
         .cancel-btn {
             background: var(--gray-color);
             padding: 6px 10px;
@@ -208,11 +208,11 @@
             font-size: 12px;
             margin-left: 5px;
         }
-        
+
         .cancel-btn:hover {
             background: var(--gray-hover);
         }
-        
+
         .delete-btn {
             background: var(--danger-color);
             padding: 6px 10px;
@@ -222,15 +222,15 @@
             cursor: pointer;
             font-size: 12px;
         }
-        
+
         .delete-btn:hover {
             background: var(--danger-hover);
         }
-        
+
         .editing {
             background-color: var(--editing-bg);
         }
-        
+
         #error {
             color: var(--danger-color);
             margin: 10px 0;
@@ -241,7 +241,7 @@
             border-radius: 4px;
             display: none;
         }
-        
+
         .inline-input {
             padding: 5px;
             border: 1px solid var(--primary-color);
@@ -250,23 +250,23 @@
             text-transform: uppercase;
             width: 100%;
         }
-        
+
         .editable-cell {
             cursor: pointer;
             color: #34495e;
             padding: 5px 0;
         }
-        
+
         .editable-cell:hover {
             text-decoration: underline;
         }
-        
+
         .button-group {
             display: flex;
             gap: 5px;
             flex-wrap: wrap;
         }
-        
+
         .delete-all {
             background: var(--danger-color);
             padding: 10px 15px;
@@ -280,7 +280,7 @@
             width: 100%;
             margin-top: 20px;
         }
-        
+
         .delete-all:hover {
             background: var(--danger-hover);
         }
@@ -289,38 +289,38 @@
 <body>
     <div class="container">
         <h1>Gestão de Jogadores</h1>
-        
+
         <div class="input-section">
             <div class="input-grid">
                 <label for="numero">Nº:</label>
                 <input type="number" id="numero" min="1" max="99" required>
-                
+
                 <label for="nome">Nome:</label>
                 <input type="text" id="nome" required>
-                
+
                 <div class="checkbox-group">
                     <div class="checkbox-item">
                         <input type="checkbox" id="pse">
                         <label for="pse">PSE</label>
                     </div>
-                    
+
                     <div class="checkbox-item">
                         <input type="checkbox" id="estatisticas">
                         <label for="estatisticas">Estatísticas</label>
                     </div>
-                    
+
                     <div class="checkbox-item">
                         <input type="checkbox" id="gr">
                         <label for="gr">Guarda-Redes</label>
                     </div>
                 </div>
-                
+
                 <button class="add-btn" id="addPlayerBtn" disabled>Adicionar</button>
             </div>
         </div>
-        
+
         <div id="error"></div>
-        
+
         <div class="section">
             <h2>Jogadores de Campo</h2>
             <div class="table-container">
@@ -338,7 +338,7 @@
                 </table>
             </div>
         </div>
-        
+
         <div class="section">
             <h2>Guarda-Redes</h2>
             <div class="table-container">
@@ -356,27 +356,27 @@
                 </table>
             </div>
         </div>
-        
+
         <button class="delete-all" id="deleteAllBtn">Eliminar Tudo</button>
     </div>
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { 
-            FB_PATHS, 
-            setFirebaseData, 
-            getFirebaseData, 
-            onFirebaseDataChange, 
+        import {
+            FB_PATHS_GLOBAL,
+            setFirebaseData,
+            getFirebaseData,
+            onFirebaseDataChange,
             deleteFirebaseData,
-            migrateLocalStorageToFirebase // Import migration function
-        } from './firebase-data.js'; // Ensure this path is correct
+            initializeFirebase
+        } from './firebase-data.js';
 
         let fieldPlayers = [];
         let goalKeepers = [];
-        let editingRow = null; // Track the currently editing row
-        let unsubscribeField = null; // To unsubscribe from Firebase listeners
+        let editingRow = null;
+        let unsubscribeField = null;
         let unsubscribeGoal = null;
-        let firebaseReady = false; // Flag to indicate Firebase is initialized and ready
+        let firebaseReady = false;
 
         // DOM Elements
         const numeroInput = document.getElementById('numero');
@@ -417,8 +417,8 @@
                 return;
             }
             try {
-                await setFirebaseData(FB_PATHS.fieldPlayers, { players: fieldPlayers });
-                await setFirebaseData(FB_PATHS.goalKeepers, { players: goalKeepers });
+                await setFirebaseData(FB_PATHS_GLOBAL.fieldPlayers, { players: fieldPlayers });
+                await setFirebaseData(FB_PATHS_GLOBAL.goalKeepers, { players: goalKeepers });
                 console.log('Data saved successfully to Firestore.');
             } catch (error) {
                 console.error('Error saving data to Firestore:', error);
@@ -427,20 +427,17 @@
         }
 
         function setupFirebaseListeners() {
-            // Unsubscribe previous listeners if they exist
             if (unsubscribeField) unsubscribeField();
             if (unsubscribeGoal) unsubscribeGoal();
 
-            // Listen for changes to field players
-            unsubscribeField = onFirebaseDataChange(FB_PATHS.fieldPlayers, (data) => {
+            unsubscribeField = onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, (data) => {
                 console.log('Firestore: Field players updated:', data);
                 fieldPlayers = data ? (data.players || []) : [];
                 sortPlayers();
                 renderTables();
             });
 
-            // Listen for changes to goal keepers
-            unsubscribeGoal = onFirebaseDataChange(FB_PATHS.goalKeepers, (data) => {
+            unsubscribeGoal = onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, (data) => {
                 console.log('Firestore: Goal keepers updated:', data);
                 goalKeepers = data ? (data.players || []) : [];
                 sortPlayers();
@@ -449,18 +446,18 @@
         }
 
         // --- Render Tables ---
-        function renderTable(tableId, players, isGoalKeeperTable = false) {
+        function renderTable(tableId, players) {
             const tbody = document.querySelector(`#${tableId} tbody`);
             if (!tbody) return;
-            
+
             tbody.innerHTML = '';
             players.forEach((player, index) => {
                 const row = tbody.insertRow();
                 row.className = (editingRow && editingRow.tableId === tableId && editingRow.index === index) ? 'editing' : '';
                 const isEditing = editingRow && editingRow.tableId === tableId && editingRow.index === index;
-                
+
                 let numeroCellContent, nomeCellContent, actionsCellContent;
-                
+
                 if (isEditing) {
                     numeroCellContent = `<input type="number" class="inline-input" value="${player.numero || ''}" min="1" max="99" data-field="numero">`;
                     nomeCellContent = `<input type="text" class="inline-input" value="${player.nome || ''}" data-field="nome">`;
@@ -480,7 +477,7 @@
                         </div>
                     `;
                 }
-                
+
                 row.innerHTML = `
                     <td>${numeroCellContent}</td>
                     <td>${nomeCellContent}</td>
@@ -493,7 +490,7 @@
 
         function renderTables() {
             renderTable('fieldPlayersTable', fieldPlayers);
-            renderTable('goalKeepersTable', goalKeepers, true);
+            renderTable('goalKeepersTable', goalKeepers);
         }
 
         // --- Event Handlers ---
@@ -509,8 +506,8 @@
                 return;
             }
 
-            // Check for duplicate number
-            const isDuplicate = (gr ? goalKeepers : fieldPlayers).some(p => p.numero === numero);
+            const targetList = gr ? goalKeepers : fieldPlayers;
+            const isDuplicate = targetList.some(p => p.numero === numero);
             if (isDuplicate) {
                 showError(`Já existe um jogador com o número ${numero} na categoria ${gr ? 'Guarda-Redes' : 'Campo'}.`);
                 return;
@@ -518,26 +515,23 @@
 
             const newPlayer = { numero, nome, pse, estatisticas };
 
-            // Optimistic UI update
             if (gr) {
                 goalKeepers.push(newPlayer);
             } else {
                 fieldPlayers.push(newPlayer);
             }
             sortPlayers();
-            renderTables(); // Re-render immediately
+            renderTables();
 
-            clearForm(); // Clear form after adding
+            clearForm();
 
-            // Save to Firebase asynchronously
             try {
-                addPlayerBtn.disabled = true; // Disable button during save
+                addPlayerBtn.disabled = true;
                 await saveData();
                 console.log('Player added locally and saved to Firestore.');
             } catch (error) {
                 console.error('Error adding player to Firestore:', error);
                 showError('Erro ao adicionar jogador: ' + error.message);
-                // Revert local changes if save fails (optional, but good for consistency)
                 if (gr) {
                     goalKeepers = goalKeepers.filter(p => p.numero !== numero || p.nome !== nome);
                 } else {
@@ -546,11 +540,10 @@
                 sortPlayers();
                 renderTables();
             } finally {
-                addPlayerBtn.disabled = false; // Re-enable button
+                addPlayerBtn.disabled = false;
             }
         });
 
-        // Delegated event listener for table actions (edit, delete, checkboxes)
         document.addEventListener('click', async (event) => {
             const target = event.target;
             const action = target.dataset.action;
@@ -569,8 +562,8 @@
                     } else {
                         goalKeepers.splice(index, 1);
                     }
-                    renderTables(); // Optimistic UI update
-                    await saveData(); // Save to Firebase
+                    renderTables();
+                    await saveData();
                 }
             } else if (action === 'save') {
                 const row = target.closest('tr');
@@ -582,7 +575,6 @@
                     return;
                 }
 
-                // Check for duplicate number (excluding the player being edited)
                 const isDuplicate = playerList.some((p, i) => i !== index && p.numero === newNumero);
                 if (isDuplicate) {
                     showError(`Já existe um jogador com o número ${newNumero}.`);
@@ -591,16 +583,16 @@
 
                 playerList[index].numero = newNumero;
                 playerList[index].nome = newNome;
-                editingRow = null; // Exit editing mode
+                editingRow = null;
                 sortPlayers();
-                renderTables(); // Optimistic UI update
-                await saveData(); // Save to Firebase
+                renderTables();
+                await saveData();
             } else if (action === 'cancel') {
-                editingRow = null; // Exit editing mode
-                renderTables(); // Re-render to show original data
+                editingRow = null;
+                renderTables();
             } else if (action === 'toggle-checkbox') {
                 playerList[index][field] = target.checked;
-                await saveData(); // Save to Firebase
+                await saveData();
             } else if (action === 'edit-inline') {
                 startInlineEdit(target, field, index, tableId);
             }
@@ -608,11 +600,10 @@
 
         function startEdit(index, tableId) {
             editingRow = { index, tableId };
-            renderTables(); // Re-render to show inputs
+            renderTables();
         }
 
         function startInlineEdit(element, field, index, tableId) {
-            // Only allow inline edit if not already editing a row
             if (editingRow) return;
 
             const playerList = (tableId === 'fieldPlayersTable') ? fieldPlayers : goalKeepers;
@@ -636,38 +627,37 @@
 
                 if (field === 'numero' && (isNaN(newValue) || newValue < 1 || newValue > 99)) {
                     showError('Número inválido (1-99).');
-                    input.replaceWith(element); // Revert
+                    input.replaceWith(element);
                     return;
                 }
                 if (field === 'nome' && newValue === '') {
                     showError('Nome não pode ser vazio.');
-                    input.replaceWith(element); // Revert
+                    input.replaceWith(element);
                     return;
                 }
 
-                // Check for duplicate number (only if editing 'numero' and it's a field player)
                 if (field === 'numero') {
                     const isDuplicate = playerList.some((p, i) => i !== index && p.numero === newValue);
                     if (isDuplicate) {
                         showError(`Já existe um jogador com o número ${newValue}.`);
-                        input.replaceWith(element); // Revert
+                        input.replaceWith(element);
                         return;
                     }
                 }
 
                 player[field] = newValue;
                 sortPlayers();
-                renderTables(); // Re-render to update UI and exit inline edit mode
-                await saveData(); // Save to Firebase
+                renderTables();
+                await saveData();
             };
 
             input.addEventListener('blur', saveInlineEdit);
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    input.removeEventListener('blur', saveInlineEdit); // Prevent blur from firing twice
+                    input.removeEventListener('blur', saveInlineEdit);
                     saveInlineEdit();
                 } else if (e.key === 'Escape') {
-                    input.replaceWith(element); // Revert to original span
+                    input.replaceWith(element);
                 }
             });
         }
@@ -676,10 +666,10 @@
             if (confirm('Tem certeza que deseja eliminar TODOS os jogadores? Esta ação não pode ser desfeita.')) {
                 fieldPlayers = [];
                 goalKeepers = [];
-                renderTables(); // Optimistic UI update
+                renderTables();
                 try {
-                    await deleteFirebaseData(FB_PATHS.fieldPlayers);
-                    await deleteFirebaseData(FB_PATHS.goalKeepers);
+                    await deleteFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+                    await deleteFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
                     console.log('All players deleted from Firestore.');
                 } catch (error) {
                     console.error('Error deleting all players from Firestore:', error);
@@ -691,25 +681,18 @@
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('configall.html: DOMContentLoaded - Starting initialization...');
-            addPlayerBtn.disabled = true; // Disable button until Firebase is ready
+            addPlayerBtn.disabled = true;
 
             try {
-                // Run migration first (transfers old localStorage to Firebase)
-                await migrateLocalStorageToFirebase();
-                console.log('configall.html: LocalStorage migration complete.');
-
-                // Setup Firebase listeners
+                await initializeFirebase();
                 setupFirebaseListeners();
-                
-                // Set flag that Firebase is ready
                 firebaseReady = true;
-                addPlayerBtn.disabled = false; // Enable button
+                addPlayerBtn.disabled = false;
                 console.log('configall.html: Firebase initialized and ready.');
 
             } catch (error) {
                 console.error('configall.html: Error during Firebase initialization:', error);
                 showError('Erro ao inicializar a aplicação: ' + error.message);
-                // Render empty tables as a fallback if Firebase init fails
                 renderTables();
             }
         });

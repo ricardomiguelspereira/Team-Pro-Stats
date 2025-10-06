@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Estatísticas | Prolongamento</title>
+<link rel="stylesheet" href="estatisticas.css">
 <style>
-/* ... (your existing styles) ... */
+/* Add any specific styles for extra-time.html here if needed */
 </style>
 </head>
 <body>
@@ -16,6 +17,7 @@
   <button class="tab-btn active" data-tab="partET1">1ª Parte</button>
   <button class="tab-btn" data-tab="partET2">2ª Parte</button>
   <button id="openInOutExtraTime" class="nav-btn">Entradas / Saídas Prolongamento</button>
+  <button id="backToMainStats" class="nav-btn">Estatísticas Principais</button>
 </div>
 
 <div id="partET1" class="tab-content active">
@@ -25,7 +27,7 @@
         <tr>
           <th class="fixed-col">#</th>
           <th class="fixed-col">Nome</th>
-          <th>GR / Postes</th>
+          <th>Remates</th>
           <th>Interceptados</th>
           <th>Fora</th>
           <th>Golos</th>
@@ -60,7 +62,7 @@
         <tr>
           <th class="fixed-col">#</th>
           <th class="fixed-col">Nome</th>
-          <th>GR / Postes</th>
+          <th>Remates</th>
           <th>Interceptados</th>
           <th>Fora</th>
           <th>Golos</th>
@@ -94,27 +96,26 @@
 <script type="module" src="firebase-data.js"></script>
 <script>
 // ---------- Config ----------
-const STORAGE_KEY_ET = FB_PATHS.estatisticasExtraTime; // Use Firebase path
+const STORAGE_KEY_ET = FB_PATHS_GAME.estatisticasExtraTime; // Use game-specific path
 const DEBOUNCE_MS = 500;
-const STAT_KEYS_CAMPO = ['rem','stopped','fora','goals','wrongPasses','fouls'];
-const STAT_KEYS_GR = ['grOnNet','grStopped','grGoals','fouls'];
+const STAT_KEYS_CAMPO = ['rem','interceptados','fora','golos','passesErrados','faltas']; // Changed 'grPostes' to 'rem' for consistency
+const STAT_KEYS_GR = ['defesas','interceptados','golosSofridos','faltas'];
 
 let playersCampoET=[], playersGRET=[], autoSaveTimerET;
 
 // ---------- Helpers ----------
 function createPlayerET(id, keys){ const p={id,name:''}; keys.forEach(k=>{p[k+'ET1']=0; p[k+'ET2']=0;}); return p;}
-function initPlayersET(){ 
-  // Initialize with empty arrays, data will be loaded from Firebase
-  playersCampoET = []; 
-  playersGRET = []; 
+function initPlayersET(){
+  playersCampoET = [];
+  playersGRET = [];
 }
 function allNamesFilledET(){ return [...playersCampoET,...playersGRET].every(p=>p.name && p.name.trim() !== ''); }
 function isElementET(id){ return document.getElementById(id)!=null; }
 
 // ---------- Load Main Names Real-Time ----------
 async function loadMainNamesRealtime(){
-  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
-  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+  const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
 
   const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
   const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
@@ -122,73 +123,74 @@ async function loadMainNamesRealtime(){
   const fieldWithStats = fieldPlayers.filter(p=>p.estatisticas);
   const goalWithStats = goalKeepers.filter(p=>p.estatisticas);
 
-  // Ensure playersCampoET and playersGRET are populated with correct structure
-  // If they are empty, initialize them based on fieldWithStats/goalWithStats
-  if (playersCampoET.length === 0 && fieldWithStats.length > 0) {
-    playersCampoET = fieldWithStats.map(p => createPlayerET(p.numero, STAT_KEYS_CAMPO));
-  }
-  if (playersGRET.length === 0 && goalWithStats.length > 0) {
-    playersGRET = goalWithStats.map(p => createPlayerET(p.numero, STAT_KEYS_GR));
-  }
+  // Update existing players and add new ones
+  const updatePlayerList = (currentList, sourceList, statKeys) => {
+    const newList = [];
+    sourceList.forEach(p => {
+      let existingPlayer = currentList.find(etp => etp.id === p.numero);
+      if (existingPlayer) {
+        existingPlayer.name = p.nome || '';
+        newList.push(existingPlayer);
+      } else {
+        const newPlayer = createPlayerET(p.numero, statKeys);
+        newPlayer.name = p.nome || '';
+        newList.push(newPlayer);
+      }
+    });
+    return newList.sort((a,b) => a.id - b.id);
+  };
 
-  fieldWithStats.forEach((p,i)=>{ 
-    const existingPlayer = playersCampoET.find(etp => etp.id === p.numero);
-    if(existingPlayer){
-      existingPlayer.name = p.nome || '';
-    } else {
-      // Add new player if they don't exist in ET stats yet
-      playersCampoET.push(createPlayerET(p.numero, STAT_KEYS_CAMPO));
-      playersCampoET.sort((a,b) => a.id - b.id); // Keep sorted
-    }
-  });
-  goalWithStats.forEach((p,i)=>{ 
-    const existingPlayer = playersGRET.find(etp => etp.id === p.numero);
-    if(existingPlayer){
-      existingPlayer.name = p.nome || '';
-    } else {
-      // Add new player if they don't exist in ET stats yet
-      playersGRET.push(createPlayerET(p.numero, STAT_KEYS_GR));
-      playersGRET.sort((a,b) => a.id - b.id); // Keep sorted
-    }
-  });
-
-  // Remove players from ET stats if they are no longer in main config
-  playersCampoET = playersCampoET.filter(etp => fieldWithStats.some(p => p.numero === etp.id));
-  playersGRET = playersGRET.filter(etp => goalWithStats.some(p => p.numero === etp.id));
+  playersCampoET = updatePlayerList(playersCampoET, fieldWithStats, STAT_KEYS_CAMPO);
+  playersGRET = updatePlayerList(playersGRET, goalWithStats, STAT_KEYS_GR);
 }
 
 // ---------- Save / AutoSave ----------
-async function saveToLocalET(){ 
-  await setFirebaseData(STORAGE_KEY_ET, {campo:playersCampoET,gr:playersGRET}); 
-  document.getElementById('lastSavedET').textContent='Última gravação ET: '+new Date().toLocaleString('pt-PT'); 
-  showNotificationET('Guardado ET!'); 
+async function saveToLocalET(){
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    showNotificationET('❌ Nenhum jogo ativo para guardar. Selecione ou crie um jogo.', true);
+    return;
+  }
+  await setFirebaseData(STORAGE_KEY_ET, {campo:playersCampoET,gr:playersGRET});
+  document.getElementById('lastSavedET').textContent='Última gravação ET: '+new Date().toLocaleString('pt-PT');
+  showNotificationET('Guardado ET!');
 }
-function scheduleAutoSaveET(){ 
-  clearTimeout(autoSaveTimerET); 
+function scheduleAutoSaveET(){
+  clearTimeout(autoSaveTimerET);
   autoSaveTimerET=setTimeout(saveToLocalET,DEBOUNCE_MS);
 }
-async function loadFromLocalET(){ 
-  const saved = await getFirebaseData(STORAGE_KEY_ET); 
-  if(saved){ 
-    try{ 
-      playersCampoET=saved.campo||playersCampoET; 
-      playersGRET=saved.gr||playersGRET;
+async function loadFromLocalET(){
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game to load extra time stats for.");
+    return;
+  }
+  const saved = await getFirebaseData(STORAGE_KEY_ET);
+  if(saved){
+    try{
+      playersCampoET=saved.campo||[];
+      playersGRET=saved.gr||[];
     }catch(e){console.warn('Erro parse ET',e);}
   }
 }
 
 // ---------- Notification ----------
-function showNotificationET(msg){ 
-  const notif=document.getElementById('notificationET'); 
-  if(!notif) return; 
-  notif.textContent=msg; 
-  notif.classList.add('show'); 
+function showNotificationET(msg, isError = false){
+  const notif=document.getElementById('notificationET');
+  if(!notif) return;
+  notif.textContent=msg;
+  notif.className = isError ? 'notification error show' : 'notification show';
   setTimeout(()=>notif.classList.remove('show'),1500);
 }
 
 // ---------- Increment/Decrement ----------
 document.addEventListener('click', e=>{
   if(!e.target.classList.contains('inc') && !e.target.classList.contains('dec')) return;
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    showNotificationET('❌ Nenhum jogo ativo. Selecione ou crie um jogo.', true);
+    return;
+  }
   if(!allNamesFilledET()){ showNotificationET('Preencha e guarde todos os nomes antes de alterar estatísticas ET'); return; }
   const delta=e.target.classList.contains('inc')?1:-1;
   const id=parseInt(e.target.dataset.id), stat=e.target.dataset.stat, type=e.target.dataset.type;
@@ -217,29 +219,29 @@ function renderPlayers(arr,containerId,part,keys){
     tbody.appendChild(tr);
   });
 }
-function renderAllET(part){ 
-  renderPlayers(playersCampoET, part==='ET1'?'tableCampoET1':'tableCampoET2', part, STAT_KEYS_CAMPO); 
-  renderPlayers(playersGRET, part==='ET1'?'tableGRET1':'tableGRET2', part, STAT_KEYS_GR); 
+function renderAllET(part){
+  renderPlayers(playersCampoET, part==='ET1'?'tableCampoET1':'tableCampoET2', part, STAT_KEYS_CAMPO);
+  renderPlayers(playersGRET, part==='ET1'?'tableGRET1':'tableGRET2', part, STAT_KEYS_GR);
 }
 
 // ---------- Tabs ----------
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); 
-    btn.classList.add('active'); 
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); 
-    document.getElementById(btn.dataset.tab).classList.add('active'); 
-    localStorage.setItem('activeExtraTimeTab', btn.dataset.tab); // Still using localStorage for UI state
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    localStorage.setItem('activeExtraTimeTab', btn.dataset.tab);
   });
 });
 
 // ---------- Real-Time Sync ----------
 // Listen for changes to main player config and extra-time stats
-onFirebaseDataChange(FB_PATHS.fieldPlayers, async () => {
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, async () => {
   await loadMainNamesRealtime();
   renderAllET('ET1'); renderAllET('ET2');
 });
-onFirebaseDataChange(FB_PATHS.goalKeepers, async () => {
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, async () => {
   await loadMainNamesRealtime();
   renderAllET('ET1'); renderAllET('ET2');
 });
@@ -255,17 +257,26 @@ onFirebaseDataChange(STORAGE_KEY_ET, async (data) => {
 
 // ---------- Init ----------
 async function initExtraTime() {
+  await initializeFirebase(); // Ensures auth & migration
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
+
   initPlayersET(); // Initialize empty arrays
-  await loadFromLocalET(); // Load existing ET stats
+  await loadFromLocalET(); // Load existing ET stats for the active game
   await loadMainNamesRealtime(); // Populate names from main config
-  renderAllET('ET1'); 
+  renderAllET('ET1');
   renderAllET('ET2');
 }
 initExtraTime();
 
 // Restore active tab on load
 window.addEventListener('load', () => {
-  const savedTab = localStorage.getItem('activeExtraTimeTab'); // Still using localStorage for UI state
+  const savedTab = localStorage.getItem('activeExtraTimeTab');
   if (savedTab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -280,6 +291,10 @@ window.addEventListener('load', () => {
 // ---------- Open Entradas / Saídas ----------
 document.getElementById('openInOutExtraTime').addEventListener('click',()=>{
   window.location.href = 'entradassaidasextratime.html';
+});
+
+document.getElementById('backToMainStats').addEventListener('click',()=>{
+  window.location.href = 'estatisticas.html';
 });
 
 </script>

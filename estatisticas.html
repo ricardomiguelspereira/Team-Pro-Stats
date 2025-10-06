@@ -19,6 +19,7 @@
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
   <button class="tab-btn" data-tab="part2">2ª Parte</button>
   <button id="openInOut" class="nav-btn">Entradas / Saídas</button>
+  <button id="openExtraTime" class="nav-btn">Prolongamento</button>
 </div>
 
 <!-- Parte 1 -->
@@ -98,14 +99,14 @@
 
 <script type="module">
   import {
-    FB_PATHS,
+    FB_PATHS_GLOBAL,
+    FB_PATHS_GAME,
     initializeFirebase,
     saveSingleStat,
-    saveFullStats,
-    setFirebaseData,
     onFirebaseDataChange,
     getFirebaseData,
-    migrateLocalStorageToFirebase
+    getActiveGameId,
+    setActiveGameId
   } from './firebase-data.js';
 
   // Local state mirrors Firestore structure exactly
@@ -119,7 +120,7 @@
   let unsubStats1 = null;
   let unsubStats2 = null;
 
-  const campoStats = ['grPostes', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas'];
+  const campoStats = ['rem', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas']; // Changed 'grPostes' to 'rem' for consistency
   const grStats = ['defesas', 'interceptados', 'golosSofridos', 'faltas'];
 
   const notificationEl = document.getElementById('notification');
@@ -142,7 +143,6 @@
     tbody.innerHTML = '';
     players.forEach(player => {
       const row = tbody.insertRow();
-      // Ensure player.numero present
       const num = player.numero;
       const name = player.nome || '';
       row.innerHTML = `
@@ -198,18 +198,15 @@
   async function setupFirebaseListeners() {
     // Players listener: combine players/fieldPlayers and players/goalKeepers
     if (unsubPlayers) unsubPlayers();
-    unsubPlayers = await onFirebaseDataChange(FB_PATHS.fieldPlayers, async (fieldData) => {
+    unsubPlayers = await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, async (fieldData) => {
       const fields = (fieldData && Array.isArray(fieldData.players)) ? fieldData.players : [];
-      // Listen goalkeepers doc as well
-      const goalData = await getFirebaseData(FB_PATHS.goalKeepers);
+      const goalData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
       const gks = (goalData && Array.isArray(goalData.players)) ? goalData.players : [];
 
-      // Build eligible lists matching your html logic: estatisticas: true
       eligibleFieldPlayers = fields.filter(p => p.estatisticas === true && !p.gr).sort((a,b) => a.numero - b.numero);
-      // Combine explicit goalKeepers doc plus any field player with gr flag
       eligibleGoalKeepers = [
-        ...gks,
-        ...fields.filter(p => p.gr === true && p.estatisticas === true)
+        ...gks.filter(p => p.estatisticas === true), // Explicit goalKeepers
+        ...fields.filter(p => p.gr === true && p.estatisticas === true) // Field players flagged as GR
       ].sort((a,b) => a.numero - b.numero);
 
       render();
@@ -217,15 +214,14 @@
 
     // Stats Parte 1
     if (unsubStats1) unsubStats1();
-    unsubStats1 = await onFirebaseDataChange(FB_PATHS.estatisticasParte1, (data) => {
+    unsubStats1 = await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data) => {
       statsParte1 = data || { campo: {}, gr: {} };
-      // Re-render only if part1 visible
       render();
     });
 
     // Stats Parte 2
     if (unsubStats2) unsubStats2();
-    unsubStats2 = await onFirebaseDataChange(FB_PATHS.estatisticasParte2, (data) => {
+    unsubStats2 = await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, (data) => {
       statsParte2 = data || { campo: {}, gr: {} };
       render();
     });
@@ -233,22 +229,24 @@
 
   // Initializer: ensure auth, migrate, load initial stats then subscribe
   document.addEventListener('DOMContentLoaded', async () => {
-    try {
-      await initializeFirebase(); // ensures auth & migration
-      firebaseReady = true;
+    await initializeFirebase(); // ensures auth & migration
+    firebaseReady = true;
 
-      // Load any existing stats immediately so UI shows values fast
-      const s1 = await getFirebaseData(FB_PATHS.estatisticasParte1);
-      const s2 = await getFirebaseData(FB_PATHS.estatisticasParte2);
-      statsParte1 = s1 || { campo: {}, gr: {} };
-      statsParte2 = s2 || { campo: {}, gr: {} };
-
-      await setupFirebaseListeners();
-      render();
-    } catch (err) {
-      console.error('Init error:', err);
-      showNotification('Erro ao inicializar Firebase (ver console)', true);
+    const activeGame = getActiveGameId();
+    if (!activeGame) {
+      alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+      window.location.href = 'configjogoequipa.html';
+      return;
     }
+
+    // Load any existing stats immediately so UI shows values fast
+    const s1 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte1);
+    const s2 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte2);
+    statsParte1 = s1 || { campo: {}, gr: {} };
+    statsParte2 = s2 || { campo: {}, gr: {} };
+
+    await setupFirebaseListeners();
+    render();
   });
 
   // Cleanup listeners on unload
@@ -290,6 +288,12 @@
     const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
     localStorage.setItem('activeStatsTab', currentTab);
     window.location.href = 'entradassaidas.html';
+  });
+
+  document.getElementById('openExtraTime').addEventListener('click', () => {
+    const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
+    localStorage.setItem('activeStatsTab', currentTab);
+    window.location.href = 'extra-time.html';
   });
 </script>
 

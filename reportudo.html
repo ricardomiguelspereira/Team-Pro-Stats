@@ -4,11 +4,119 @@
   <meta charset="UTF-8">
   <title>Repor Tudo (Exceto Logo)</title>
   <style>
-    /* ... (your existing styles) ... */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f5f5f5;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .popup-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .popup {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      padding: 30px 40px;
+      text-align: center;
+      max-width: 400px;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .popup h2 {
+      font-size: 22px;
+      margin-bottom: 15px;
+      color: #e74c3c;
+    }
+
+    .popup p {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .cancel-btn, .confirm-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .cancel-btn {
+      background: #ccc;
+      color: #333;
+    }
+
+    .cancel-btn:hover {
+      background: #bbb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .confirm-btn {
+      background: #e74c3c;
+      color: #fff;
+    }
+
+    .confirm-btn:hover {
+      background: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .popup.info-popup h2 { color: #2980b9; }
+    .popup.success-popup h2 { color: #28a745; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 
   <script type="module" src="firebase-data.js"></script>
   <script>
+    import {
+      FB_PATHS_GLOBAL,
+      FB_PATHS_GAME,
+      initializeFirebase,
+      setFirebaseData,
+      getFirebaseData,
+      deleteFirebaseData,
+      getAllGameIds,
+      setActiveGameId
+    } from './firebase-data.js';
+
     document.addEventListener('DOMContentLoaded', function() {
       const popupOverlay = document.getElementById('popupOverlay');
       const confirmButton = document.getElementById('confirmAction');
@@ -17,9 +125,9 @@
       // Show the initial confirmation popup
       popupOverlay.classList.add('active');
 
-      confirmButton.addEventListener('click', function() {
+      confirmButton.addEventListener('click', async function() {
         popupOverlay.classList.remove('active'); // Hide current popup
-        clearAllDataExceptLogo();
+        await clearAllDataExceptLogo();
       });
 
       cancelButton.addEventListener('click', function() {
@@ -38,10 +146,9 @@
         popupOverlay.appendChild(infoPopup);
         popupOverlay.classList.add('active');
 
-        // Automatic redirection after 3 seconds
         setTimeout(() => {
           popupOverlay.classList.remove('active');
-          setTimeout(() => { window.location.href = redirectUrl; }, 300); // Small delay for smooth transition
+          setTimeout(() => { window.location.href = redirectUrl; }, 300);
         }, 3000);
       }
 
@@ -52,36 +159,50 @@
           <h2>${title}</h2>
           <p>${message}</p>
         `;
-        popupOverlay.innerHTML = ''; // Clear previous popup content
+        popupOverlay.innerHTML = '';
         popupOverlay.appendChild(successPopup);
         popupOverlay.classList.add('active');
 
-        // Automatic redirection after 3 seconds
         setTimeout(() => {
           popupOverlay.classList.remove('active');
-          setTimeout(() => { window.location.href = redirectUrl; }, 300); // Small delay for smooth transition
+          setTimeout(() => { window.location.href = redirectUrl; }, 300);
         }, 3000);
       }
 
       async function clearAllDataExceptLogo() {
+        await initializeFirebase(); // Ensure Firebase is initialized and user authenticated
+
         let logo = '';
         try {
-          const teamLogoData = await getFirebaseData(FB_PATHS.teamLogo);
+          const teamLogoData = await getFirebaseData(FB_PATHS_GLOBAL.teamLogo);
           if (teamLogoData && teamLogoData.logo) {
             logo = teamLogoData.logo;
           }
         } catch(e) { console.error("Error fetching team logo:", e); }
-        
-        // List all paths to clear
-        const pathsToClear = Object.values(FB_PATHS).filter(path => path !== FB_PATHS.teamLogo);
 
-        // Delete all data from Firebase
-        await Promise.all(pathsToClear.map(path => deleteFirebaseData(path)));
+        // --- Delete Global Data (except logo) ---
+        const globalPathsToClear = Object.values(FB_PATHS_GLOBAL).filter(path => path !== FB_PATHS_GLOBAL.teamLogo);
+        await Promise.all(globalPathsToClear.map(path => deleteFirebaseData(path)));
+
+        // --- Delete All Game-Specific Data ---
+        const allGames = await getAllGameIds();
+        const gameSpecificPathsToClear = Object.values(FB_PATHS_GAME);
+
+        for (const game of allGames) {
+          const gameId = game.id;
+          setActiveGameId(gameId); // Temporarily set activeGameId to construct correct paths
+          await Promise.all(gameSpecificPathsToClear.map(path => deleteFirebaseData(path)));
+          // Delete the game document itself
+          await deleteFirebaseData(`games/${gameId}`);
+        }
 
         // Re-save only the logo if it existed
         if (logo) {
-          await setFirebaseData(FB_PATHS.teamLogo, { logo: logo });
+          await setFirebaseData(FB_PATHS_GLOBAL.teamLogo, { logo: logo });
         }
+
+        // Clear active game ID from localStorage
+        setActiveGameId(null);
 
         showSuccessPopup('Dados Eliminados!', 'Todos os dados foram eliminados com sucesso (exceto o logo). Será redirecionado em breve.', 'index.html');
       }

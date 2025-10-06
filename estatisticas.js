@@ -1,18 +1,29 @@
 // ---------- Configuração ----------
-const STORAGE_KEY = FB_PATHS.estatisticasValores; // Use Firebase path
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  setFirebaseData,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
+
+const STORAGE_KEY = FB_PATHS_GAME.estatisticasValores; // Use game-specific path
 const DEBOUNCE_MS = 500;
 
-const STAT_KEYS_CAMPO = ['rem','stopped','fora','goals','wrongPasses','fouls'];
-const STAT_KEYS_GR = ['grOnNet','grStopped','grGoals','fouls'];
+const STAT_KEYS_CAMPO = ['rem','interceptados','fora','golos','passesErrados','faltas']; // Changed 'grPostes' to 'rem' for consistency
+const STAT_KEYS_GR = ['defesas','interceptados','golosSofridos','faltas'];
 
 const LABELS = {
-  rem:"Remates", stopped:"Interceptados", fora:"Fora", goals:"Golos",
-  wrongPasses:"Passes Errados", fouls:"Faltas",
-  grOnNet:"Defesas", grStopped:"Interceptados", grGoals:"Golos Sofridos"
+  rem:"Remates", interceptados:"Interceptados", fora:"Fora", golos:"Golos",
+  passesErrados:"Passes Errados", faltas:"Faltas",
+  defesas:"Defesas", golosSofridos:"Golos Sofridos" // Simplified for GR
 };
 
 let playersCampo = [], playersGR = [];
-let autoSaveTimer, statsData = {}, inOutData = {}, statsEnabled = false;
+let autoSaveTimer, statsData = {}, inOutData = {}; // statsEnabled removed as it's always true after init
 const intervals = [];
 
 // Intervalos descendentes de 25:00 até 0:30
@@ -20,6 +31,13 @@ for(let t=25*60; t>=30; t-=30){
   const m = Math.floor(t/60), s = t%60;
   intervals.push(s===0 ? `${m}` : (m===0 ? '30' : `${m}'30`));
 }
+
+// Expose globals for other scripts that import this one
+window.STAT_KEYS_CAMPO = STAT_KEYS_CAMPO;
+window.STAT_KEYS_GR = STAT_KEYS_GR;
+window.LABELS = LABELS;
+window.playersCampo = playersCampo;
+window.playersGR = playersGR;
 
 // ---------- Helpers ----------
 function buildPlayerStats(player, isGR){
@@ -29,51 +47,61 @@ function buildPlayerStats(player, isGR){
   return obj;
 }
 
-// This function now needs to load players from Firebase
 async function loadPlayersFromConfig(){
-  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
-  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+  const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
 
   const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
   const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
 
-  // só quem tem estatísticas ativas
   const fieldWithStats = fieldPlayers.filter(p => p.estatisticas);
   const goalWithStats = goalKeepers.filter(p => p.estatisticas);
 
-  // garantir que existe statsData no storage e atualizar nomes/números
-  fieldWithStats.forEach(p=>{
-    if(!statsData[p.numero]) {
-      statsData[p.numero] = buildPlayerStats(p,false);
-    } else {
-      statsData[p.numero].name = p.nome; // atualizar nome
-      statsData[p.numero].id = p.numero; // atualizar número
-    }
+  // Ensure statsData has entries for all eligible players and update names/numbers
+  const newStatsData = {};
+
+  fieldWithStats.forEach(p => {
+    newStatsData[p.numero] = statsData[p.numero] || buildPlayerStats(p, false);
+    newStatsData[p.numero].name = p.nome;
+    newStatsData[p.numero].id = p.numero;
   });
-  goalWithStats.forEach(p=>{
-    if(!statsData[p.numero]) {
-      statsData[p.numero] = buildPlayerStats(p,true);
-    } else {
-      statsData[p.numero].name = p.nome;
-      statsData[p.numero].id = p.numero;
-    }
+  goalWithStats.forEach(p => {
+    newStatsData[p.numero] = statsData[p.numero] || buildPlayerStats(p, true);
+    newStatsData[p.numero].name = p.nome;
+    newStatsData[p.numero].id = p.numero;
   });
 
-  // listas atuais só com quem tem estatísticas ligadas
-  playersCampo = fieldWithStats.map(p=>statsData[p.numero]);
-  playersGR = goalWithStats.map(p=>statsData[p.numero]);
+  statsData = newStatsData; // Update global statsData
+
+  // Filter playersCampo and playersGR based on current statsData
+  playersCampo = Object.values(statsData).filter(p => p.type === 'Campo' && fieldWithStats.some(fp => fp.numero === p.id));
+  playersGR = Object.values(statsData).filter(p => p.type === 'GR' && goalWithStats.some(gp => gp.numero === p.id));
+
+  // Update global window variables
+  window.playersCampo = playersCampo;
+  window.playersGR = playersGR;
 }
 
 // ---------- Salvamento ----------
-async function saveToLocal(){ 
-  await setFirebaseData(STORAGE_KEY, { stats: statsData, inOut: inOutData }); 
-  if(document.getElementById('lastSaved')) 
-    document.getElementById('lastSaved').textContent='Última gravação: '+new Date().toLocaleString('pt-PT'); 
+async function saveToLocal(){
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game to save stats for.");
+    return;
+  }
+  await setFirebaseData(STORAGE_KEY, { stats: statsData, inOut: inOutData });
+  if(document.getElementById('lastSaved'))
+    document.getElementById('lastSaved').textContent='Última gravação: '+new Date().toLocaleString('pt-PT');
 }
 function scheduleAutoSave(){ clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(saveToLocal, DEBOUNCE_MS); }
 async function loadFromLocal(){
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game to load stats for.");
+    return;
+  }
   const data = await getFirebaseData(STORAGE_KEY);
-  if(data){ 
+  if(data){
     try{
       statsData = data.stats || {};
       inOutData = data.inOut || {};
@@ -82,10 +110,10 @@ async function loadFromLocal(){
 }
 
 // ---------- Totais ----------
-function updateTotals(){ 
+function updateTotals(){
   if(!document.getElementById('totalsCampo')) return;
-  const tbodyCampo = document.getElementById('totalsCampo').querySelector('tbody'); 
-  const tbodyGR = document.getElementById('totalsGR').querySelector('tbody'); 
+  const tbodyCampo = document.getElementById('totalsCampo').querySelector('tbody');
+  const tbodyGR = document.getElementById('totalsGR').querySelector('tbody');
   tbodyCampo.innerHTML=''; tbodyGR.innerHTML='';
 
   const totalsCampo = {}; const totalsGR = {};
@@ -102,6 +130,12 @@ function updateTotals(){
 // ---------- Incremento / Decremento ----------
 document.addEventListener('click', e => {
   if(!e.target.classList.contains('inc') && !e.target.classList.contains('dec')) return;
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    return;
+  }
 
   const delta = e.target.classList.contains('inc') ? 1 : -1;
   const id = parseInt(e.target.dataset.id), stat = e.target.dataset.stat;
@@ -135,61 +169,42 @@ function renderPlayers(arr, containerId, part, keys){
   });
 }
 async function render(){
-  await loadPlayersFromConfig(); // Ensure players are loaded from Firebase
+  await loadPlayersFromConfig();
   renderPlayers(playersCampo,'tableCampo1','part1',STAT_KEYS_CAMPO);
   renderPlayers(playersGR,'tableGR1','part1',STAT_KEYS_GR);
   renderPlayers(playersCampo,'tableCampo2','part2',STAT_KEYS_CAMPO);
   renderPlayers(playersGR,'tableGR2','part2',STAT_KEYS_GR);
-  renderInOut(); updateTotals();
+  // renderInOut(); // This is for entradassaidas.html, not estatisticas.html
+  updateTotals();
 }
 
-// ---------- Entradas / Saídas ----------
-function renderInOutTable(tableId){
-  if(!document.getElementById(tableId)) return;
-  const table = document.getElementById(tableId);
-  const thead = table.querySelector('thead tr'); 
-  thead.innerHTML = '<th>#</th><th>Nome</th>';
-  intervals.forEach(iv => { thead.innerHTML += `<th class="rotate">${iv}</th>`; });
-
-  const tbody = table.querySelector('tbody'); tbody.innerHTML='';
-  const allPlayers = [...playersCampo, ...playersGR];
-
-  allPlayers.forEach(p=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${p.id}</td><td>${p.name||'-'}</td>`;
-    intervals.forEach(iv=>{
-      const cell = document.createElement('td'); cell.className='inout-cell';
-      const key = `${tableId}_${p.id}_${iv}`;
-      cell.textContent = inOutData[key]||'';
-      if(inOutData[key]==='E'){ cell.style.background='#27ae60'; cell.style.color='#fff'; }
-      else if(inOutData[key]==='S'){ cell.style.background='#f39c12'; cell.style.color='#fff'; }
-      cell.addEventListener('click', ()=>{
-        if(!inOutData[key] || inOutData[key]===''){ inOutData[key]='E'; cell.style.background='#27ae60'; cell.style.color='#fff'; }
-        else if(inOutData[key]==='E'){ inOutData[key]='S'; cell.style.background='#f39c12'; cell.style.color='#fff'; }
-        else { inOutData[key]=''; cell.style.background=''; cell.style.color=''; }
-        cell.textContent = inOutData[key]; scheduleAutoSave();
-      });
-      tr.appendChild(cell);
-    });
-    tbody.appendChild(tr);
-  });
-}
-function renderInOut(){
-  renderInOutTable('tableInOut1'); 
-  renderInOutTable('tableInOut2'); 
-}
+// ---------- Entradas / Saídas (moved to entradassaidas.html) ----------
+// The functions renderInOutTable and renderInOut are no longer needed here
+// as they are specific to entradassaidas.html.
 
 // ---------- Inicialização ----------
 async function init(){
-  await loadFromLocal(); // Await loading from Firebase
-  await loadPlayersFromConfig(); // Await loading players from Firebase
-  statsEnabled = true;
+  await initializeFirebase(); // Ensures auth & migration
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game. Redirecting to game config.");
+    // This init is called by other pages, so we don't want to alert/redirect here
+    // The calling page should handle the absence of an active game.
+    return;
+  }
+
+  await loadFromLocal();
+  await loadPlayersFromConfig();
   render();
 }
 
+// Expose init globally for other scripts to call
+window.init = init;
+
 // ---------- Sincronização em tempo real ----------
 // Listen for changes to statsData and player configurations
-onFirebaseDataChange(FB_PATHS.estatisticasValores, (data) => {
+onFirebaseDataChange(STORAGE_KEY, (data) => {
   if (data) {
     statsData = data.stats || {};
     inOutData = data.inOut || {};
@@ -197,13 +212,13 @@ onFirebaseDataChange(FB_PATHS.estatisticasValores, (data) => {
   }
 });
 
-onFirebaseDataChange(FB_PATHS.fieldPlayers, (data) => {
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, () => {
   loadPlayersFromConfig().then(render);
 });
 
-onFirebaseDataChange(FB_PATHS.goalKeepers, (data) => {
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, () => {
   loadPlayersFromConfig().then(render);
 });
 
-// start
-init();
+// No auto-init here, as this file is imported by others.
+// The importing HTML files will call window.init() when ready.

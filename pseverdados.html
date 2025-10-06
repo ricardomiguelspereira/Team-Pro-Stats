@@ -4,8 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tabela PSE</title>
+<link rel="stylesheet" href="estatisticas.css">
 <style>
-  /* ... (your existing styles) ... */
+  /* Add any specific styles for pseverdados.html here if needed */
+  .btn-save, .btn-clear {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 5px;
+  }
+  .btn-save { background: #2980b9; color: #fff; }
+  .btn-save:hover { background: #3498db; }
+  .btn-clear { background: #e74c3c; color: #fff; }
+  .btn-clear:hover { background: #c0392b; }
+  .pse-input {
+    width: 60px;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -23,6 +44,16 @@
 
 <script type="module" src="firebase-data.js"></script>
 <script>
+import {
+  FB_PATHS_GAME,
+  initializeFirebase,
+  setFirebaseData,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
+
 const pseDescriptions = {
   1:'Muito leve', 2:'Leve', 3:'Leve', 4:'Moderado', 5:'Moderado', 6:'Moderado',
   7:'Vigoroso', 8:'Vigoroso', 9:'Muito difícil', 10:'Esforço máximo'
@@ -43,12 +74,18 @@ function getPseColor(value) {
 }
 
 async function loadTable() {
-  const savedPSEData = await getFirebaseData(FB_PATHS.pseData); // Get from Firebase
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game to load PSE data for.");
+    return;
+  }
+
+  const savedPSEData = await getFirebaseData(FB_PATHS_GAME.pseData);
   const pseData = savedPSEData ? savedPSEData.entries || [] : [];
   const table = document.getElementById("pseTable");
 
   if(!pseData.length){
-    table.innerHTML = "<thead><tr><th>Atleta</th><th>PSE</th><th>Data/Hora</th><th>Ações</th></tr></thead><tbody><tr><td colspan='4'>Nenhum dado registado.</td></tr></tbody>";
+    table.innerHTML = "<thead><tr><th>Atleta</th><th>PSE</th><th>Data/Hora</th><th>Ações</th></tr></thead><tbody><tr><td colspan='4'>Nenhum dado registado para este jogo.</td></tr></tbody>";
     return;
   }
 
@@ -81,7 +118,13 @@ async function loadTable() {
 }
 
 async function editEntry(index) {
-  const savedPSEData = await getFirebaseData(FB_PATHS.pseData);
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    return;
+  }
+
+  const savedPSEData = await getFirebaseData(FB_PATHS_GAME.pseData);
   const pseData = savedPSEData ? savedPSEData.entries || [] : [];
   const cell = document.getElementById(`pse-${index}`);
   const btn = document.getElementById(`btn-${index}`);
@@ -101,29 +144,51 @@ async function editEntry(index) {
 }
 
 async function saveEntry(index, value) {
-  const savedPSEData = await getFirebaseData(FB_PATHS.pseData);
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    return;
+  }
+
+  const savedPSEData = await getFirebaseData(FB_PATHS_GAME.pseData);
   const pseData = savedPSEData ? savedPSEData.entries || [] : [];
   const val = parseInt(value);
   if(isNaN(val) || val < 1 || val > 10) { alert("Valor inválido!"); return; }
   pseData[index].pse = val;
-  // pseData[index].desc = pseDescriptions[val]; // optional, kept internally
-  await setFirebaseData(FB_PATHS.pseData, { entries: pseData }); // Save to Firebase
+  await setFirebaseData(FB_PATHS_GAME.pseData, { entries: pseData });
   loadTable();
 }
 
 async function deleteEntry(index) {
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    return;
+  }
+
   if(!confirm("Apagar este registo?")) return;
-  const savedPSEData = await getFirebaseData(FB_PATHS.pseData);
+  const savedPSEData = await getFirebaseData(FB_PATHS_GAME.pseData);
   const pseData = savedPSEData ? savedPSEData.entries || [] : [];
   pseData.splice(index,1);
-  await setFirebaseData(FB_PATHS.pseData, { entries: pseData }); // Save to Firebase
+  await setFirebaseData(FB_PATHS_GAME.pseData, { entries: pseData });
   loadTable();
 }
 
-// Initial load and real-time listener
-window.addEventListener('load', loadTable);
-onFirebaseDataChange(FB_PATHS.pseData, loadTable);
+// Initializer
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeFirebase(); // Ensures auth & migration
 
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
+  loadTable();
+});
+
+// Real-time listener
+onFirebaseDataChange(FB_PATHS_GAME.pseData, loadTable);
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>

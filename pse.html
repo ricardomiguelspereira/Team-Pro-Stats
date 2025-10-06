@@ -6,7 +6,31 @@
 <title>Percepção Subjectiva do Esforço - Seleção Direta</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ... (your existing styles) ... */
+  body { font-family: 'Inter', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; color: #333; }
+  .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+  h1 { font-size: 24px; font-weight: bold; margin-bottom: 25px; color: #2980b9; }
+  .notification {
+    margin-bottom: 20px; padding: 10px; border-radius: 5px; text-align: center;
+    background: rgba(52, 152, 219, 0.1); color: #2980b9; display: none; opacity: 1; transition: opacity 0.3s ease;
+  }
+  .notification.error { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+  .notification.show { display: block; }
+  .input-group { margin-bottom: 20px; }
+  #athleteSelect { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+  #pseTable { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  #pseTable th, #pseTable td { padding: 10px; border: 1px solid #eee; text-align: left; }
+  #pseTable th { background: #2980b9; color: #fff; font-size: 14px; }
+  #pseTable td { font-size: 14px; }
+  #pseTable tbody tr { cursor: pointer; transition: background 0.2s ease; }
+  #pseTable tbody tr:hover { background: #e0f7fa; }
+  #pseTable tbody tr.selected { border: 2px solid #2980b9; box-shadow: 0 0 8px rgba(41, 128, 185, 0.4); }
+  #pseTable .emoji { font-size: 24px; text-align: center; width: 50px; }
+  #pseTable .emoji.bounce { animation: bounce 0.5s; }
+  @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
+  .button-group { text-align: center; }
+  #saveBtn { padding: 12px 25px; background: #27ae60; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; transition: background 0.3s ease; }
+  #saveBtn:hover { background: #219150; }
+  footer { text-align: center; padding: 15px 0; font-size: 0.8em; color: #666; margin-top: 30px; }
 </style>
 </head>
 <body>
@@ -56,15 +80,26 @@
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 
-<script type="module" src="firebase-data.js"></script>
-<script>
-// PASSWORD INIT (not directly related to Firebase data, but kept for context)
-async function hashPassword(password){const e=new TextEncoder();const d=e.encode(password);const h=await crypto.subtle.digest("SHA-256",d);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("");}
-async function initPassword(){if(!localStorage.getItem("passwordHash")){localStorage.setItem("passwordHash",await hashPassword("1234"));}}
+<script type="module">
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  setFirebaseData,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
 
 // NOTIFICATION
 const notification = document.getElementById("notification");
-function showNotification(msg, isError=false){notification.textContent=msg;notification.className="notification"+(isError?" error":"");notification.classList.add("show");setTimeout(()=>notification.classList.remove("show"),2500);}
+function showNotification(msg, isError=false){
+  notification.textContent=msg;
+  notification.className="notification"+(isError?" error":"");
+  notification.classList.add("show");
+  setTimeout(()=>notification.classList.remove("show"),2500);
+}
 
 // TABLE SELECTION
 let selectedLevel = null;
@@ -91,8 +126,8 @@ let pseData = []; // Will be loaded from Firebase
 const athleteSelect=document.getElementById("athleteSelect");
 
 async function loadPSEAthletes(){
-  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
-  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+  const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
 
   const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
   const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
@@ -114,12 +149,17 @@ async function updateAthleteSelect(){
 function isSameDay(d1,d2){return d1.getFullYear()===d2.getFullYear()&&d1.getMonth()===d2.getMonth()&&d1.getDate()===d2.getDate();}
 
 document.getElementById("saveBtn").addEventListener("click",async ()=>{
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    showNotification('❌ Nenhum jogo ativo. Selecione ou crie um jogo.', true);
+    return;
+  }
+
   const selected=athleteSelect.value;
   if(!selected){showNotification("Selecionar Atleta",true);return;}
   if(!selectedLevel){showNotification("Selecionar Nível PSE",true);return;}
-  
-  // Load current pseData from Firebase before checking/saving
-  const currentPseData = await getFirebaseData(FB_PATHS.pseData);
+
+  const currentPseData = await getFirebaseData(FB_PATHS_GAME.pseData);
   pseData = currentPseData ? currentPseData.entries || [] : [];
 
   const now=new Date();
@@ -128,30 +168,38 @@ document.getElementById("saveBtn").addEventListener("click",async ()=>{
     return item.name===selected && isSameDay(itemDate,now);
   });
   if(alreadyRecorded){showNotification("Este atleta já registrou PSE hoje",true);return;}
-  
+
   pseData.push({name:selected,pse:selectedLevel,datetime:now.toISOString()});
-  await setFirebaseData(FB_PATHS.pseData, { entries: pseData }); // Save to Firebase
+  await setFirebaseData(FB_PATHS_GAME.pseData, { entries: pseData });
   showNotification(`PSE guardado: ${selected} - ${selectedLevel}`);
-  
-  // Reset selected level
+
   selectedLevel = null;
-  
-  // Remove row selection
+
   pseTable.querySelectorAll("tbody tr").forEach(r=>{
     r.querySelector(".emoji").classList.remove("bounce");
     r.classList.remove("selected");
   });
-  
-  // Reset dropdown to default
+
   athleteSelect.value = "";
 });
 
-initPassword();
-updateAthleteSelect();
+// Initializer
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeFirebase(); // Ensures auth & migration
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
+
+  updateAthleteSelect();
+});
 
 // Listen for changes to player config to update athlete select
-onFirebaseDataChange(FB_PATHS.fieldPlayers, updateAthleteSelect);
-onFirebaseDataChange(FB_PATHS.goalKeepers, updateAthleteSelect);
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, updateAthleteSelect);
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, updateAthleteSelect);
 </script>
 </body>
 </html>

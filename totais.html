@@ -6,7 +6,7 @@
 <title>Totais Estatísticas da Equipa</title>
 <link rel="stylesheet" href="estatisticas.css">
 <style>
-  /* ... (your existing styles) ... */
+  /* Add any specific styles for totais.html here if needed */
 </style>
 </head>
 <body>
@@ -58,46 +58,74 @@
 </div>
 
 <script type="module" src="firebase-data.js"></script>
-<script src="estatisticas.js"></script>
+<script src="estatisticas.js"></script> <!-- This file is still used for shared constants and init logic -->
 <script>
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
+
 async function updateTotalsWithET(){
-  if(!playersCampo || !playersGR) return;
-  const tbodyCampo = document.getElementById('totalsCampo').querySelector('tbody'); 
-  const tbodyGR = document.getElementById('totalsGR').querySelector('tbody'); 
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game to update totals for.");
+    return;
+  }
+
+  // 'init()' from estatisticas.js populates playersCampo and playersGR
+  // with data for the active game.
+  if(!window.playersCampo || !window.playersGR) {
+    await init(); // Ensure playersCampo and playersGR are loaded
+  }
+
+  const tbodyCampo = document.getElementById('totalsCampo').querySelector('tbody');
+  const tbodyGR = document.getElementById('totalsGR').querySelector('tbody');
   tbodyCampo.innerHTML=''; tbodyGR.innerHTML='';
 
-  const extraStats = await getFirebaseData(FB_PATHS.estatisticasExtraTime) || {}; // Get from Firebase
+  const extraStats = await getFirebaseData(FB_PATHS_GAME.estatisticasExtraTime) || {};
   const extraCampo = extraStats.campo || [];
   const extraGR = extraStats.gr || [];
 
-  STAT_KEYS_CAMPO.forEach(st=>{
+  window.STAT_KEYS_CAMPO.forEach(st=>{
     let n1=0,n2=0,et1=0,et2=0;
-    playersCampo.forEach(p=>{ n1+=p[st+'1']||0; n2+=p[st+'2']||0; });
+    window.playersCampo.forEach(p=>{ n1+=p[st+'1']||0; n2+=p[st+'2']||0; });
     extraCampo.forEach(p=>{ et1+=p[st+'ET1']||0; et2+=p[st+'ET2']||0; });
     const total = n1+n2+et1+et2;
-    tbodyCampo.innerHTML += `<tr><td>${LABELS[st]}</td><td>${n1}</td><td>${n2}</td><td>${et1}</td><td>${et2}</td><td>${total}</td></tr>`;
+    tbodyCampo.innerHTML += `<tr><td>${window.LABELS[st]}</td><td>${n1}</td><td>${n2}</td><td>${et1}</td><td>${et2}</td><td>${total}</td></tr>`;
   });
 
-  STAT_KEYS_GR.forEach(st=>{
+  window.STAT_KEYS_GR.forEach(st=>{
     let n1=0,n2=0,et1=0,et2=0;
-    playersGR.forEach(p=>{ n1+=p[st+'1']||0; n2+=p[st+'2']||0; });
+    window.playersGR.forEach(p=>{ n1+=p[st+'1']||0; n2+=p[st+'2']||0; });
     extraGR.forEach(p=>{ et1+=p[st+'ET1']||0; et2+=p[st+'ET2']||0; });
     const total = n1+n2+et1+et2;
-    tbodyGR.innerHTML += `<tr><td>${LABELS[st]}</td><td>${n1}</td><td>${n2}</td><td>${et1}</td><td>${et2}</td><td>${total}</td></tr>`;
+    tbodyGR.innerHTML += `<tr><td>${window.LABELS[st]}</td><td>${n1}</td><td>${n2}</td><td>${et1}</td><td>${et2}</td><td>${total}</td></tr>`;
   });
 }
 
-window.addEventListener('load',async ()=>{
-  await init(); // Await init from estatisticas.js
+// Initializer
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeFirebase(); // Ensures auth & migration
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
   await updateTotalsWithET();
 });
 
 // Listen for changes to relevant Firebase paths
-onFirebaseDataChange(FB_PATHS.estatisticasValores, updateTotalsWithET);
-onFirebaseDataChange(FB_PATHS.estatisticasExtraTime, updateTotalsWithET);
-onFirebaseDataChange(FB_PATHS.fieldPlayers, updateTotalsWithET);
-onFirebaseDataChange(FB_PATHS.goalKeepers, updateTotalsWithET);
-
+onFirebaseDataChange(FB_PATHS_GAME.estatisticasValores, updateTotalsWithET);
+onFirebaseDataChange(FB_PATHS_GAME.estatisticasExtraTime, updateTotalsWithET);
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, updateTotalsWithET);
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, updateTotalsWithET);
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>

@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Relatório Tempo em Jogo - Detalhes</title>
+<link rel="stylesheet" href="estatisticas.css">
 <style>
-  /* ... (your existing styles) ... */
+  /* Add any specific styles for displayinout.html here if needed */
 </style>
 </head>
 <body>
@@ -41,8 +42,18 @@
 
 <script type="module" src="firebase-data.js"></script>
 <script>
-const STORAGE_NORMAL = FB_PATHS.estatisticasValores;
-const STORAGE_EXTRA = FB_PATHS.estatisticasSeparadasExtra;
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
+
+const STORAGE_NORMAL = FB_PATHS_GAME.estatisticasValores;
+const STORAGE_EXTRA = FB_PATHS_GAME.estatisticasSeparadasExtra;
 
 function formatTime(minutesDecimal){
   const mins = Math.floor(minutesDecimal);
@@ -51,11 +62,14 @@ function formatTime(minutesDecimal){
 }
 
 async function loadData(storageKey){
-  const saved = await getFirebaseData(storageKey) || {}; // Get from Firebase
+  const activeGame = getActiveGameId();
+  if (!activeGame) return {players:[], inOut:{}};
+
+  const saved = await getFirebaseData(storageKey) || {};
   const inOut = saved.inOut || {};
-  
-  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
-  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+
+  const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
 
   const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
   const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
@@ -64,10 +78,13 @@ async function loadData(storageKey){
 }
 
 async function getLevelFromConfig(){
-  const raw = await getFirebaseData(FB_PATHS.jogoFormData); // Get from Firebase
-  if(!raw) return 'sub13';
+  const activeGame = getActiveGameId();
+  if (!activeGame) return 'sub13';
+
+  const jogoDataRaw = await getFirebaseData(FB_PATHS_GAME.jogoFormData);
+  if (!jogoDataRaw) return 'sub13';
   try{
-    const d=raw;
+    const d=jogoDataRaw;
     const esc=d.escalao.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
     const map={sub13:'sub13',sub15:'sub15',sub17:'sub17',sub19:'sub19',sub23:'sub23',seniores:'seniores',seniors:'seniores'};
     return map[esc]||'sub13';
@@ -108,7 +125,7 @@ function renderSummary(normal1, normal2, extra1, extra2, players){
     const t2 = normal2.find(item => item.num === (p.numero || p.id))?.tempo || '0:00';
     const e1 = extra1.find(item => item.num === (p.numero || p.id))?.tempo || '0:00';
     const e2 = extra2.find(item => item.num === (p.numero || p.id))?.tempo || '0:00';
-    
+
     function toSec(str){ const [m,s]=str.split(':'); return parseInt(m)*60+parseInt(s); }
     function toMMSS(sec){ const m=Math.floor(sec/60); const s=sec%60; return `${m}:${s.toString().padStart(2,'0')}`; }
     const totalSec = toSec(t1)+toSec(t2)+toSec(e1)+toSec(e2);
@@ -120,17 +137,24 @@ function renderSummary(normal1, normal2, extra1, extra2, players){
 }
 
 async function renderAll(){
-  const level = await getLevelFromConfig(); // Await getting level
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
+
+  const level = await getLevelFromConfig();
   const intervals = getIntervalsForLevel(level);
-  
+
   const normalData = await loadData(STORAGE_NORMAL);
   const extraData = await loadData(STORAGE_EXTRA);
-  
+
   const normal1 = calculateTime(normalData.players, normalData.inOut, intervals, '1');
   const normal2 = calculateTime(normalData.players, normalData.inOut, intervals, '2');
   const extra1 = calculateTime(extraData.players, extraData.inOut, intervals, '1');
   const extra2 = calculateTime(extraData.players, extraData.inOut, intervals, '2');
-  
+
   renderTable('normal1', normal1);
   renderTable('normal2', normal2);
   renderTable('extra1', extra1);
@@ -138,15 +162,18 @@ async function renderAll(){
   renderSummary(normal1, normal2, extra1, extra2, normalData.players);
 }
 
-window.addEventListener('load', renderAll);
+// Initializer
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeFirebase(); // Ensures auth & migration
+  await renderAll();
+});
 
 // Listen for changes to relevant Firebase paths
-onFirebaseDataChange(FB_PATHS.fieldPlayers, renderAll);
-onFirebaseDataChange(FB_PATHS.goalKeepers, renderAll);
-onFirebaseDataChange(FB_PATHS.jogoFormData, renderAll);
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, renderAll);
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, renderAll);
+onFirebaseDataChange(FB_PATHS_GAME.jogoFormData, renderAll);
 onFirebaseDataChange(STORAGE_NORMAL, renderAll);
 onFirebaseDataChange(STORAGE_EXTRA, renderAll);
-
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>

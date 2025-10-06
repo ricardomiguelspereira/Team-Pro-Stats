@@ -46,6 +46,7 @@
       transition: transform 0.3s ease, box-shadow 0.3s ease;
       cursor: pointer;
       display: block;
+      display: none; /* Hidden by default until loaded */
     }
 
     img.logo:hover {
@@ -74,19 +75,38 @@
 </head>
 <body>
   <div class="container">
-    <img alt="Ricardo Pereira Team Logo" class="logo"
-         src="/images/339/15149621/Logo_RP-JfcACn1USyHS6tvtbWfLKA.png" />
+    <img alt="Team Logo" class="logo" id="teamLogo" src="" />
     <p class="page-title">TEAM PRO STATS</p>
     <p class="powered-by">powered by RP Technology</p>
   </div>
 
-  <!-- Firebase SDKs (optional: for analytics tracking on landing page) -->
   <script type="module" src="firebase-data.js"></script>
   <script type="module">
-    // Optional: Log a page view event to Firebase Analytics
+    import {
+      FB_PATHS_GLOBAL,
+      initializeFirebase,
+      getFirebaseData
+    } from './firebase-data.js';
     import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-    const analytics = getAnalytics();
-    logEvent(analytics, 'page_view', { page_title: 'Team Pro Stats Landing' });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initializeFirebase(); // Ensures auth & migration
+
+      const teamLogoElement = document.getElementById('teamLogo');
+      const teamLogoData = await getFirebaseData(FB_PATHS_GLOBAL.teamLogo);
+      if (teamLogoData && teamLogoData.logo) {
+        teamLogoElement.src = teamLogoData.logo;
+        teamLogoElement.style.display = 'block'; // Show the logo if available
+      }
+
+      // Optional: Log a page view event to Firebase Analytics
+      try {
+        const analytics = getAnalytics();
+        logEvent(analytics, 'page_view', { page_title: 'Team Pro Stats Landing' });
+      } catch (e) {
+        console.warn("Firebase Analytics not available or initialized:", e);
+      }
+    });
   </script>
 
   <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>

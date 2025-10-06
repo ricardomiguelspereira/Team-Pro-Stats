@@ -12,9 +12,17 @@
 </head>
 <body>
 <script>
-const STORAGE_NORMAL = FB_PATHS.estatisticasValores;
-const STORAGE_EXTRA = FB_PATHS.estatisticasSeparadasExtra;
-const LOGO_STORAGE = FB_PATHS.teamLogo; // Use Firebase path
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  getFirebaseData,
+  getActiveGameId
+} from './firebase-data.js';
+
+const STORAGE_NORMAL = FB_PATHS_GAME.estatisticasValores;
+const STORAGE_EXTRA = FB_PATHS_GAME.estatisticasSeparadasExtra;
+const LOGO_STORAGE = FB_PATHS_GLOBAL.teamLogo;
 
 // Convert decimal minutes to MM:SS
 function formatTime(decimalMin){
@@ -25,6 +33,15 @@ function formatTime(decimalMin){
 }
 
 async function exportTempoJogoPDF(){
+  await initializeFirebase(); // Ensure Firebase is initialized
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
+
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF('p','pt','a4');
   const margin=40;
@@ -77,7 +94,7 @@ async function exportTempoJogoPDF(){
     return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
   }
   async function getLevelFromConfig(){
-    const raw = await getFirebaseData(FB_PATHS.jogoFormData); // Get from Firebase
+    const raw = await getFirebaseData(FB_PATHS_GAME.jogoFormData);
     if(!raw) return 'sub13';
     try{
       const d=raw;
@@ -96,12 +113,12 @@ async function exportTempoJogoPDF(){
 
   // === Load players and InOut ===
   async function loadData(storageKey){
-    const saved = await getFirebaseData(storageKey); // Get from Firebase
+    const saved = await getFirebaseData(storageKey);
     if(!saved) return {players:[], inOut:{}};
     try{
       const inOut=saved.inOut||{};
-      const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
-      const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+      const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+      const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
 
       const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
       const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
@@ -143,8 +160,8 @@ async function exportTempoJogoPDF(){
   async function addSection(title,storageKey,summaryObj=null){
     const {players,inOut}=await loadData(storageKey);
     if(players.length===0) return;
-    const intervals=getIntervalsForLevel(await getLevelFromConfig()); // Await getLevelFromConfig
-    for (const part of ['1','2']) { // Use for...of for async operations
+    const intervals=getIntervalsForLevel(await getLevelFromConfig());
+    for (const part of ['1','2']) {
       const data=calculateTime(players,inOut,intervals,part);
       if(data.every(d=>d.tempo===0)) continue;
       ensureSpace(60);

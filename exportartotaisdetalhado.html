@@ -13,12 +13,29 @@
 </head>
 <body>
 <script>
-  const STORAGE_KEY_ET = FB_PATHS.estatisticasExtraTime;
+  import {
+    FB_PATHS_GLOBAL,
+    FB_PATHS_GAME,
+    initializeFirebase,
+    getFirebaseData,
+    getActiveGameId
+  } from './firebase-data.js';
+
+  const STORAGE_KEY_ET = FB_PATHS_GAME.estatisticasExtraTime;
 
   async function exportToPDF() {
+    await initializeFirebase(); // Ensure Firebase is initialized
+
+    const activeGame = getActiveGameId();
+    if (!activeGame) {
+      alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+      window.location.href = 'configjogoequipa.html';
+      return;
+    }
+
     try {
       // Initialize from estatisticas.js to populate playersCampo, playersGR, and statsData for normal time
-      if (typeof init === 'function') await init(); // Await init
+      if (typeof init === 'function') await init();
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('l', 'pt', 'a4'); // landscape, points
@@ -26,20 +43,20 @@
       // Layout constants
       const marginLR = 20;
       const footerHeight = 28;
-      const minTableHeight = 40; // reserve a bit more space for a table
+      const minTableHeight = 40;
       const titleFontSize = 13;
       const titleHeight = titleFontSize + 6;
       const spacingAfterTitle = 6;
-      const spacingAfterTable = 24; // increased spacing
+      const spacingAfterTable = 24;
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
       // Load extra time data from Firebase
       let extraData = await getFirebaseData(STORAGE_KEY_ET) || {};
-      
+
       // Logo data
-      const teamLogoData = await getFirebaseData(FB_PATHS.teamLogo); // Get logo from Firebase
+      const teamLogoData = await getFirebaseData(FB_PATHS_GLOBAL.teamLogo);
       const teamLogoBase64 = teamLogoData ? teamLogoData.logo : '';
 
       async function loadLogoDimensions() {
@@ -61,7 +78,7 @@
       }
 
       // Increased top margin
-      const topMarginOffset = 30; // new offset to move title lower
+      const topMarginOffset = 30;
       const logoTopY = 10 + topMarginOffset;
       const titleTopY = logoTopY + logoH + 8;
       const headerReservedHeight = Math.max((titleTopY + 8), 70 + topMarginOffset);
@@ -79,24 +96,24 @@
 
       // Labels (matching estatisticas.js LABELS, but for table headers as in details page)
       const labelsCampo = {
-        rem: "GR / Postes",
-        stopped: "Interceptados",
+        rem: "Remates",
+        interceptados: "Interceptados",
         fora: "Fora",
-        goals: "Golos",
-        wrongPasses: "Passes Errados",
-        fouls: "Faltas"
+        golos: "Golos",
+        passesErrados: "Passes Errados",
+        faltas: "Faltas"
       };
 
       const labelsGR = {
-        grOnNet: "Defesas",
-        grStopped: "Interceptados",
-        grGoals: "Golos Sofridos",
-        fouls: "Faltas"
+        defesas: "Defesas",
+        interceptados: "Interceptados",
+        golosSofridos: "Golos Sofridos",
+        faltas: "Faltas"
       };
 
       // Get active players from globals (already filtered by estatisticas: true in estatisticas.js)
-      const campoPlayers = playersCampo || [];
-      const grPlayers = playersGR || [];
+      const campoPlayers = window.playersCampo || [];
+      const grPlayers = window.playersGR || [];
 
       // Load extra time data
       const extraCampo = extraData.campo || [];
@@ -107,8 +124,7 @@
         if (!playerArray || playerArray.length === 0) return [];
         const suffix = timePeriod === 'main' ? half : 'ET' + half;
 
-        // Ensure statArray matches playerArray length (pad with empty objects)
-        const paddedStats = Array(playerArray.length).fill().map((_, i) => statArray[i] || {});
+        const paddedStats = Array(playerArray.length).fill().map((_, i) => statArray.find(s => s.id === playerArray[i].id) || {});
 
         return playerArray.map((player, idx) => {
           const playerStats = paddedStats[idx];

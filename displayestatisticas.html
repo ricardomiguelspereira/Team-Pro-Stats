@@ -6,7 +6,7 @@
 <title>Detalhes Estatísticas por Jogador</title>
 <link rel="stylesheet" href="estatisticas.css">
 <style>
-  /* ... (your existing styles) ... */
+  /* Add any specific styles for displayestatisticas.html here if needed */
 </style>
 </head>
 <body>
@@ -62,9 +62,19 @@
 </div>
 
 <script type="module" src="firebase-data.js"></script>
-<script src="estatisticas.js"></script>
+<script src="estatisticas.js"></script> <!-- This file is still used for shared constants and init logic -->
 <script>
-const STORAGE_KEY_ET = FB_PATHS.estatisticasExtraTime; // From extra-time.html
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
+
+const STORAGE_KEY_ET = FB_PATHS_GAME.estatisticasExtraTime; // From extra-time.html
 
 // Navigation buttons
 document.getElementById('backStats').addEventListener('click', () => {
@@ -109,57 +119,64 @@ function fillTable(tableId, playerArray, statArray, keys, timePeriod, half) {
       row += `<td>${value}</td>`;
     });
     row += "</tr>";
-    tbody.innerHTML += row;
   });
 }
 
 async function loadStats() {
-  // Initialize from estatisticas.js to populate playersCampo, playersGR, and statsData
-  if (typeof init === 'function') await init(); // Await init
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
 
-  // Load extra time data from Firebase
+  // Initialize from estatisticas.js to populate playersCampo, playersGR, and statsData
+  // Note: 'init()' from estatisticas.js now uses FB_PATHS_GAME for statsData
+  if (typeof init === 'function') await init();
+
+  // Load extra time data from Firebase for the active game
   const extraData = await getFirebaseData(STORAGE_KEY_ET) || {};
   const extraCampo = extraData.campo || [];
   const extraGR = extraData.gr || [];
 
   // playersCampo and playersGR are already filtered by estatisticas: true in estatisticas.js
-  const campoPlayers = playersCampo || [];
-  const grPlayers = playersGR || [];
+  const campoPlayers = window.playersCampo || []; // Access global from estatisticas.js
+  const grPlayers = window.playersGR || []; // Access global from estatisticas.js
 
-  // Build headers using shared constants
-  buildTableHeader("campo_main1", STAT_KEYS_CAMPO, LABELS);
-  buildTableHeader("campo_main2", STAT_KEYS_CAMPO, LABELS);
-  buildTableHeader("gr_main1", STAT_KEYS_GR, LABELS);
-  buildTableHeader("gr_main2", STAT_KEYS_GR, LABELS);
-  buildTableHeader("campo_extra1", STAT_KEYS_CAMPO, LABELS);
-  buildTableHeader("campo_extra2", STAT_KEYS_CAMPO, LABELS);
-  buildTableHeader("gr_extra1", STAT_KEYS_GR, LABELS);
-  buildTableHeader("gr_extra2", STAT_KEYS_GR, LABELS);
+  // Build headers using shared constants from estatisticas.js
+  buildTableHeader("campo_main1", window.STAT_KEYS_CAMPO, window.LABELS);
+  buildTableHeader("campo_main2", window.STAT_KEYS_CAMPO, window.LABELS);
+  buildTableHeader("gr_main1", window.STAT_KEYS_GR, window.LABELS);
+  buildTableHeader("gr_main2", window.STAT_KEYS_GR, window.LABELS);
+  buildTableHeader("campo_extra1", window.STAT_KEYS_CAMPO, window.LABELS);
+  buildTableHeader("campo_extra2", window.STAT_KEYS_CAMPO, window.LABELS);
+  buildTableHeader("gr_extra1", window.STAT_KEYS_GR, window.LABELS);
+  buildTableHeader("gr_extra2", window.STAT_KEYS_GR, window.LABELS);
 
   // Fill main time tables: use playersCampo/GR for both players and stats (they contain the normal time values)
-  fillTable("campo_main1", campoPlayers, campoPlayers, STAT_KEYS_CAMPO, 'main', '1');
-  fillTable("campo_main2", campoPlayers, campoPlayers, STAT_KEYS_CAMPO, 'main', '2');
-  fillTable("gr_main1", grPlayers, grPlayers, STAT_KEYS_GR, 'main', '1');
-  fillTable("gr_main2", grPlayers, grPlayers, STAT_KEYS_GR, 'main', '2');
+  fillTable("campo_main1", campoPlayers, campoPlayers, window.STAT_KEYS_CAMPO, 'main', '1');
+  fillTable("campo_main2", campoPlayers, campoPlayers, window.STAT_KEYS_CAMPO, 'main', '2');
+  fillTable("gr_main1", grPlayers, grPlayers, window.STAT_KEYS_GR, 'main', '1');
+  fillTable("gr_main2", grPlayers, grPlayers, window.STAT_KEYS_GR, 'main', '2');
 
   // Fill extra time tables: use playersCampo/GR for names/numbers, extraCampo/extraGR for stats (by index)
-  fillTable("campo_extra1", campoPlayers, extraCampo, STAT_KEYS_CAMPO, 'extra', '1');
-  fillTable("campo_extra2", campoPlayers, extraCampo, STAT_KEYS_CAMPO, 'extra', '2');
-  fillTable("gr_extra1", grPlayers, extraGR, STAT_KEYS_GR, 'extra', '1');
-  fillTable("gr_extra2", grPlayers, extraGR, STAT_KEYS_GR, 'extra', '2');
+  fillTable("campo_extra1", campoPlayers, extraCampo, window.STAT_KEYS_CAMPO, 'extra', '1');
+  fillTable("campo_extra2", campoPlayers, extraCampo, window.STAT_KEYS_CAMPO, 'extra', '2');
+  fillTable("gr_extra1", grPlayers, extraGR, window.STAT_KEYS_GR, 'extra', '1');
+  fillTable("gr_extra2", grPlayers, extraGR, window.STAT_KEYS_GR, 'extra', '2');
 }
 
-// On load: init from estatisticas.js, then load stats
-window.addEventListener('load', async () => {
+// Initializer
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeFirebase(); // Ensures auth & migration
   await loadStats();
 });
 
 // On storage change: reload from estatisticas.js logic, then stats (mirrors estatisticas.js storage listener)
-onFirebaseDataChange(FB_PATHS.fieldPlayers, loadStats);
-onFirebaseDataChange(FB_PATHS.goalKeepers, loadStats);
-onFirebaseDataChange(FB_PATHS.estatisticasValores, loadStats);
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, loadStats);
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, loadStats);
+onFirebaseDataChange(FB_PATHS_GAME.estatisticasValores, loadStats);
 onFirebaseDataChange(STORAGE_KEY_ET, loadStats);
-
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>

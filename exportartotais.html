@@ -13,11 +13,30 @@
 </head>
 <body>
 <script>
-  const STORAGE_KEY_EXTRA = FB_PATHS.estatisticasExtraTime;
+  import {
+    FB_PATHS_GLOBAL,
+    FB_PATHS_GAME,
+    initializeFirebase,
+    getFirebaseData,
+    getActiveGameId
+  } from './firebase-data.js';
+
+  const STORAGE_KEY_EXTRA = FB_PATHS_GAME.estatisticasExtraTime;
 
   async function exportToPDF() {
+    await initializeFirebase(); // Ensure Firebase is initialized
+
+    const activeGame = getActiveGameId();
+    if (!activeGame) {
+      alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+      window.location.href = 'configjogoequipa.html';
+      return;
+    }
+
     try {
-      if (typeof init === 'function') await init(); // Await init
+      // 'init()' from estatisticas.js populates playersCampo and playersGR
+      // with data for the active game.
+      if (typeof init === 'function') await init();
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'pt', 'a4');
@@ -34,7 +53,7 @@
       const totalColWidth = colWidths.reduce((a, b) => a + b, 0);
       const tableLeft = (pageWidth - totalColWidth) / 2;
 
-      const teamLogoData = await getFirebaseData(FB_PATHS.teamLogo); // Get logo from Firebase
+      const teamLogoData = await getFirebaseData(FB_PATHS_GLOBAL.teamLogo);
       const teamLogoBase64 = teamLogoData ? teamLogoData.logo : '';
 
       async function loadLogoDimensions() {
@@ -52,13 +71,13 @@
       let logoW = 0, logoH = 0;
       if (logoDims.w && logoDims.h) {
         logoW = Math.min(maxLogoWidth, logoDims.w);
-        logoH = logoW * (logoDims.h / logoW);
+        logoH = logoW * (logoDims.h / logoDims.w);
       }
 
       // ====== TOP MARGIN & SPACING SETTINGS ======
-      const topMargin = 60;             // top margin from page
-      const spacingLogoTitle = 20;      // spacing between logo and title
-      const spacingTitleTable = 30;     // spacing between title and first table
+      const topMargin = 60;
+      const spacingLogoTitle = 20;
+      const spacingTitleTable = 30;
 
       const logoTopY = topMargin;
       const titleTopY = logoTopY + logoH + spacingLogoTitle;
@@ -74,19 +93,19 @@
       pdf.setFont(undefined, 'bold');
       pdf.text('Totais Estatísticas da Equipa', pageWidth / 2, titleTopY, { align: 'center' });
 
-      // load players
-      const campoPlayers = playersCampo || [];
-      const grPlayers = playersGR || [];
-      let extraData = await getFirebaseData(STORAGE_KEY_EXTRA) || {}; // Get from Firebase
+      // load players from global window variables set by estatisticas.js
+      const campoPlayers = window.playersCampo || [];
+      const grPlayers = window.playersGR || [];
+      let extraData = await getFirebaseData(STORAGE_KEY_EXTRA) || {};
       const extraCampo = extraData.campo || [];
       const extraGR = extraData.gr || [];
 
-      const STAT_KEYS_CAMPO = window.STAT_KEYS_CAMPO || ['rem','stopped','fora','goals','wrongPasses','fouls'];
-      const STAT_KEYS_GR = window.STAT_KEYS_GR || ['grOnNet','grStopped','grGoals','fouls'];
+      const STAT_KEYS_CAMPO = window.STAT_KEYS_CAMPO || ['rem','interceptados','fora','golos','passesErrados','faltas'];
+      const STAT_KEYS_GR = window.STAT_KEYS_GR || ['defesas','interceptados','golosSofridos','faltas'];
       const LABELS = window.LABELS || {
-        rem:"Remates", stopped:"Interceptados", fora:"Fora", goals:"Golos",
-        wrongPasses:"Passes Errados", fouls:"Faltas",
-        grOnNet:"Defesas", grStopped:"Interceptados", grGoals:"Golos Sofridos"
+        rem:"Remates", interceptados:"Interceptados", fora:"Fora", golos:"Golos",
+        passesErrados:"Passes Errados", faltas:"Faltas",
+        defesas:"Defesas", golosSofridos:"Golos Sofridos"
       };
 
       function calculateTotals(players, extraPlayers, statKeys) {

@@ -82,9 +82,24 @@
 
   <script type="module" src="firebase-data.js"></script>
   <script>
-    const PSE_PATH = FB_PATHS.pseData; // Firebase path for PSE data
+    import {
+      FB_PATHS_GAME,
+      deleteFirebaseData,
+      getActiveGameId,
+      initializeFirebase
+    } from './firebase-data.js';
 
-    window.onload = function() {
+    const PSE_PATH = FB_PATHS_GAME.pseData;
+
+    window.onload = async function() {
+      await initializeFirebase(); // Ensure Firebase is initialized
+
+      const activeGame = getActiveGameId();
+      if (!activeGame) {
+        alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+        window.location.href = 'configjogoequipa.html';
+        return;
+      }
       showConfirmPopup();
     };
 
@@ -93,7 +108,7 @@
       popup.className = 'popup';
       popup.innerHTML = `
         <h2>🧹 Limpar Dados PSE</h2>
-        <p>Tem a certeza que pretende eliminar <strong>todos os dados PSE</strong>?<br>Esta ação não pode ser desfeita.</p>
+        <p>Tem a certeza que pretende eliminar <strong>todos os dados PSE do jogo atual</strong>?<br>Esta ação não pode ser desfeita.</p>
         <div class="buttons">
           <button class="cancel">Cancelar</button>
           <button class="confirm">Eliminar</button>
@@ -118,24 +133,24 @@
 
     async function clearPSEData() {
       try {
-        await deleteFirebaseData(PSE_PATH); // Clear PSE data from Firebase
+        await deleteFirebaseData(PSE_PATH);
 
         const popup = document.createElement('div');
         popup.className = 'popup success';
         popup.innerHTML = `
           <h2>✅ Sucesso!</h2>
-          <p>Todos os dados PSE foram eliminados.<br>Será redirecionado em breve...</p>
+          <p>Todos os dados PSE do jogo atual foram eliminados.<br>Será redirecionado em breve...</p>
         `;
         document.body.appendChild(popup);
         popup.style.display = 'block';
 
         setTimeout(() => {
-          window.location.href = "https://ricardopereira.com"; // destino após limpar
+          window.location.href = "index.html"; // Redirect to main page
         }, 2500);
       } catch (error) {
         console.error('Error clearing PSE data:', error);
         alert('Erro ao limpar dados PSE: ' + error.message);
-        window.location.href = "https://ricardopereira.com"; // Redirect on error
+        window.location.href = "index.html"; // Redirect on error
       }
     }
 
@@ -150,7 +165,7 @@
       popup.style.display = 'block';
 
       setTimeout(() => {
-        window.location.href = "https://ricardopereira.com/pseverdados.html"; // destino se cancelar
+        window.location.href = "pseverdados.html"; // Redirect to PSE view if cancelled
       }, 2000);
     }
   </script>

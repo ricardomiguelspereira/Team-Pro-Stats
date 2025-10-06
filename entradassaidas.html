@@ -6,7 +6,7 @@
 <title>Entradas / Saídas</title>
 <link rel="stylesheet" href="estatisticas.css" />
 <style>
-  /* ... (your existing styles) ... */
+  /* Add any specific styles for entradassaidas.html here if needed */
 </style>
 </head>
 <body>
@@ -47,7 +47,18 @@
 
 <script type="module" src="firebase-data.js"></script>
 <script>
-const STORAGE_KEY = FB_PATHS.estatisticasValores; // Use Firebase path
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  setFirebaseData,
+  getFirebaseData,
+  onFirebaseDataChange,
+  getActiveGameId,
+  setActiveGameId
+} from './firebase-data.js';
+
+const STORAGE_KEY = FB_PATHS_GAME.estatisticasValores; // Use game-specific path
 let inOutData = {};
 let playersCampo = [], playersGR = [];
 
@@ -63,24 +74,27 @@ function getIntervalsForLevel(level){return levelIntervalsMap[level]||defaultInt
 function normalizeText(text) {
   return text
     .toLowerCase()
-    .normalize('NFD') // Decompõe acentos em caracteres base + diacríticos
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacríticos
-    .replace(/[^a-z0-9]/g, ''); // Remove tudo que não for alfanumérico
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
 }
 
 async function getLevelFromConfig() {
-  const jogoDataRaw = await getFirebaseData(FB_PATHS.jogoFormData); // Get from Firebase
+  const activeGame = getActiveGameId();
+  if (!activeGame) return 'sub13'; // Default if no game active
+
+  const jogoDataRaw = await getFirebaseData(FB_PATHS_GAME.jogoFormData);
   if (!jogoDataRaw) return 'sub13';
   try {
     let esc = normalizeText(jogoDataRaw.escalao || '');
-    const map = { 
-      sub13: 'sub13', 
-      sub15: 'sub15', 
-      sub17: 'sub17', 
-      sub19: 'sub19', 
-      sub23: 'sub23', 
-      seniores: 'seniores', 
-      seniors: 'seniores' // Fallback para "seniors" sem acento
+    const map = {
+      sub13: 'sub13',
+      sub15: 'sub15',
+      sub17: 'sub17',
+      sub19: 'sub19',
+      sub23: 'sub23',
+      seniores: 'seniores',
+      seniors: 'seniores'
     };
     return map[esc] || 'sub13';
   } catch { return 'sub13'; }
@@ -88,8 +102,8 @@ async function getLevelFromConfig() {
 
 // Carregar jogadores com estatísticas ativas
 async function loadPlayersFromConfig(){
-  const fieldPlayersData = await getFirebaseData(FB_PATHS.fieldPlayers);
-  const goalKeepersData = await getFirebaseData(FB_PATHS.goalKeepers);
+  const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
+  const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
 
   const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
   const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
@@ -100,11 +114,17 @@ async function loadPlayersFromConfig(){
 
 // Render In/Out
 async function renderInOut(){
-  const saved = await getFirebaseData(STORAGE_KEY) || {}; // Get from Firebase
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    console.warn("No active game to render in/out for.");
+    return;
+  }
+
+  const saved = await getFirebaseData(STORAGE_KEY) || {};
   inOutData = saved.inOut || {};
-  await loadPlayersFromConfig(); // Await loading players
+  await loadPlayersFromConfig();
   const allPlayers = [...playersCampo, ...playersGR];
-  const intervals = await getIntervalsForLevel(await getLevelFromConfig()); // Await getting level
+  const intervals = await getIntervalsForLevel(await getLevelFromConfig());
 
   function buildHeader(table){
     const tr = table.querySelector('thead tr');
@@ -125,15 +145,21 @@ async function renderInOut(){
         td.dataset.key=key; td.dataset.state=val; td.textContent=val;
         if(val==='E'){td.style.background='green';td.style.color='white';}
         else if(val==='S'){td.style.background='orange';td.style.color='white';}
-        td.addEventListener('click',async ()=>{ // Make event listener async
+        td.addEventListener('click',async ()=>{
+          const currentActiveGame = getActiveGameId();
+          if (!currentActiveGame) {
+            alert('❌ Nenhum jogo ativo. Selecione ou crie um jogo.');
+            return;
+          }
+
           let state=td.dataset.state||'';
           if(state==='') state='E'; else if(state==='E') state='S'; else state='';
           td.dataset.state=state; td.textContent=state;
-          td.style.background= state==='E'?'green': state==='S'?'orange':''; 
+          td.style.background= state==='E'?'green': state==='S'?'orange':'';
           td.style.color= state? 'white':'';
           inOutData[key]=state;
           saved.inOut=inOutData;
-          await setFirebaseData(STORAGE_KEY, saved); // Save to Firebase
+          await setFirebaseData(STORAGE_KEY, saved);
         });
         tr.appendChild(td);
       });
@@ -153,15 +179,24 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    localStorage.setItem('activeInOutTab',btn.dataset.tab); // Still using localStorage for UI state
+    localStorage.setItem('activeInOutTab',btn.dataset.tab);
   });
 });
 
 // Back button
 document.getElementById('backStats').addEventListener('click',()=>{ window.location.href='estatisticas.html'; });
 
-// Inicialização
-window.addEventListener('load',async ()=>{
+// Initializer
+document.addEventListener('DOMContentLoaded',async ()=>{
+  await initializeFirebase(); // Ensures auth & migration
+
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
+    window.location.href = 'configjogoequipa.html';
+    return;
+  }
+
   const savedTab = localStorage.getItem('activeInOutTab');
   if(savedTab){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -173,11 +208,10 @@ window.addEventListener('load',async ()=>{
 });
 
 // Sincronização em tempo real
-onFirebaseDataChange(FB_PATHS.fieldPlayers, renderInOut);
-onFirebaseDataChange(FB_PATHS.goalKeepers, renderInOut);
-onFirebaseDataChange(FB_PATHS.jogoFormData, renderInOut);
+onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, renderInOut);
+onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, renderInOut);
+onFirebaseDataChange(FB_PATHS_GAME.jogoFormData, renderInOut);
 onFirebaseDataChange(STORAGE_KEY, renderInOut);
-
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
