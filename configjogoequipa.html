@@ -8,13 +8,14 @@
   body { font-family: "Segoe UI", Tahoma, sans-serif; background:#f4f4f4; margin:0; padding:20px; color:#333;}
   .container { max-width: 900px; margin:0 auto; background:#fff; padding:25px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.1);}
   h2 { color:#2980b9; text-align:center; margin-top:0; }
+  .button-group { display:flex; gap:10px; margin-top:10px; }
   form { display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; }
   label { display:flex; flex-direction:column; font-weight:600; }
   input, select { padding:10px; font-size:16px; border-radius:5px; border:1px solid #ccc; width:100%; }
   button { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:bold; margin-top:10px; transition: background 0.3s; }
   .btn-new { background:#2980b9; color:#fff; } .btn-new:hover { background:#3498db; }
   .btn-save { background:#27ae60; color:#fff; } .btn-save:hover { background:#219150; }
-  .games-list { margin-top:30px; }
+  .games-list { margin-top:20px; }
   .game-item { display:flex; justify-content:space-between; align-items:center; padding:10px 15px; margin-bottom:8px; background:#f9f9f9; border-radius:5px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
   .game-item button { padding:5px 10px; font-size:14px; border-radius:3px; border:none; cursor:pointer; }
   .btn-load { background:#2980b9; color:#fff; margin-right:5px; } .btn-load:hover { background:#3498db; }
@@ -156,6 +157,7 @@ async function listGames(){
       div.className="game-item";
       div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data}</div>`;
 
+      // Load button
       const loadBtn = document.createElement("button");
       loadBtn.textContent="Carregar";
       loadBtn.className="btn-load";
@@ -167,6 +169,7 @@ async function listGames(){
         }
       };
 
+      // Delete button
       const delBtn = document.createElement("button");
       delBtn.textContent="Eliminar";
       delBtn.className="btn-delete";
@@ -175,8 +178,8 @@ async function listGames(){
           await deleteDoc(doc(db,"users",currentUserId,"games",gameId));
           if(activeGameId===gameId){
             activeGameId=null;
-            await setDoc(doc(db,"users",currentUserId), { activeGame:null }, { merge:true });
             gameForm.reset();
+            await setDoc(doc(db,"users",currentUserId), { activeGame:null }, { merge:true });
           }
         }
       };
