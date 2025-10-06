@@ -20,9 +20,7 @@ import {
   onSnapshot,
   deleteDoc,
   collection,
-  getDocs,
-  query,
-  orderBy
+  getDocs
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
   getAuth,
@@ -127,6 +125,7 @@ function getUser DocRef(path) {
 export async function setFirebaseData(path, data) {
   await ensureAuth();
   const ref = getUser DocRef(path);
+  console.log("Setting data for path:", path);
   return setDoc(ref, data, { merge: true });
 }
 
@@ -152,6 +151,7 @@ export async function onFirebaseDataChange(path, callback) {
 export async function deleteFirebaseData(path) {
   await ensureAuth();
   const ref = getUser DocRef(path);
+  console.log("Deleting data for path:", path);
   return deleteDoc(ref);
 }
 
@@ -161,10 +161,12 @@ export function generateGameId() {
     throw new Error("User  not authenticated - cannot generate game ID");
   }
   const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
-  return doc(gamesCollectionRef).id;
+  const newId = doc(gamesCollectionRef).id;
+  console.log("Generated new game ID:", newId);
+  return newId;
 }
 
-// Updated: Get all game IDs with their jogoFormData for display
+// Get all game IDs with their jogoFormData for display
 export async function getAllGameIds() {
   await ensureAuth();
   const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
