@@ -13,10 +13,6 @@ h2 { text-align:center; color:#2980b9; }
 button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; cursor:pointer; color:#fff; }
 .btn-stat { background:#2980b9; } .btn-stat:hover { background:#3498db; }
 #gameInfo { background:#f0f8ff; padding:15px; border-radius:5px; }
-.responsive { overflow-x:auto; margin-top:10px; }
-.part-table { border-collapse:collapse; width:100%; }
-.part-table th, .part-table td { border:1px solid #ccc; padding:8px; text-align:center; }
-.fixed-col { position:sticky; left:0; background:#f9f9f9; z-index:1; }
 #gameList { margin-top:15px; }
 .game-item { display:flex; justify-content:space-between; align-items:center; background:#f9f9f9; padding:8px 12px; border-radius:5px; margin-bottom:5px; }
 .game-item button { margin-left:5px; padding:5px 10px; font-size:14px; border-radius:3px; }
@@ -38,60 +34,9 @@ button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; curs
   <div class="button-group section">
     <button style="background:#27ae60" id="newGameBtn">Novo Jogo</button>
     <button style="background:#2980b9" id="listGamesBtn">Listar Jogos</button>
-    <button style="background:#f39c12" id="saveBtn">Guardar Jogo</button>
-    <button style="background:#e74c3c" id="deleteBtn">Eliminar Jogo</button>
   </div>
 
-  <!-- Game Form -->
-  <form id="jogoForm" class="section">
-    Escalão: <input name="escalao"><br>
-    Competição: <input name="competicao"><br>
-    Fase: <input name="fase"><br>
-    Grupo: <input name="grupo"><br>
-    Jornada: <input name="jornada"><br>
-    Data: <input type="date" name="data"><br>
-    Hora: <input type="time" name="hora"><br>
-    Local: <input name="local"><br>
-    Adversário: <input name="adversario"><br>
-  </form>
-
-  <!-- Stats Tables -->
-  <div class="section" id="tablesContainer">
-    <div class="responsive">
-      <table id="tableCampo" class="part-table">
-        <thead>
-          <tr>
-            <th class="fixed-col">#</th>
-            <th class="fixed-col">Nome</th>
-            <th>GR / Postes</th>
-            <th>Interceptados</th>
-            <th>Fora</th>
-            <th>Golos</th>
-            <th>Passes Errados</th>
-            <th>Faltas</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div class="responsive" style="margin-top:15px;">
-      <table id="tableGR" class="part-table">
-        <thead>
-          <tr>
-            <th class="fixed-col">#</th>
-            <th class="fixed-col">Nome</th>
-            <th>Defesas</th>
-            <th>Interceptados</th>
-            <th>Golos Sofridos</th>
-            <th>Faltas</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Saved Games -->
+  <!-- Saved games -->
   <div class="section" id="gameListContainer" style="display:none;">
     <h3>Jogos Salvos</h3>
     <div id="gameList">Carregando...</div>
@@ -101,110 +46,80 @@ button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; curs
 <div id="notification" class="notification"></div>
 
 <script type="module">
-import {
-  ensureAuth, createGame, saveGame, loadGame, deleteGame, getAllGameIds,
-  setActiveGameId, getActiveGameId, showNotification
+import { 
+  ensureAuth, getActiveGameId, setActiveGameId, 
+  getAllGames, deleteGame, createNewGame, loadGameData, saveGameData, onGamesSnapshot 
 } from './firebase-data.js';
 
-const jogoForm = document.getElementById("jogoForm");
-const newBtn = document.getElementById("newGameBtn");
-const saveBtn = document.getElementById("saveBtn");
-const deleteBtn = document.getElementById("deleteBtn");
-const listBtn = document.getElementById("listGamesBtn");
-const gameListContainer = document.getElementById("gameListContainer");
-const gameList = document.getElementById("gameList");
 const activeGameDetails = document.getElementById("activeGameDetails");
+const gameListEl = document.getElementById("gameList");
+const gameListContainer = document.getElementById("gameListContainer");
+const notificationEl = document.getElementById("notification");
 
-let eligibleFieldPlayers = [];
-let eligibleGoalKeepers = [];
-let statsMap = { "1": { campo:{}, gr:{} }, "2": { campo:{}, gr:{} }, "extra1": { campo:{}, gr:{} }, "extra2": { campo:{}, gr:{} } };
-let activePart = '1';
-
-const campoStats=['rem','interceptados','fora','golos','passesErrados','faltas'];
-const grStats=['defesas','interceptados','golosSofridos','faltas'];
-
-function renderTables() {
-  const campoTbody = document.querySelector('#tableCampo tbody');
-  const grTbody = document.querySelector('#tableGR tbody');
-  campoTbody.innerHTML = ''; grTbody.innerHTML = '';
-  const stats = statsMap[activePart];
-
-  eligibleFieldPlayers.forEach(p=>{
-    const row = campoTbody.insertRow();
-    row.innerHTML = `<td class="fixed-col">${p.numero}</td><td class="fixed-col">${p.nome}</td>`+
-      campoStats.map(k=>`<td><input type="number" value="${stats.campo?.[p.numero]?.[k]||0}" 
-      data-player="${p.numero}" data-part="${activePart}" data-category="campo" data-stat="${k}" onchange="updateStat(this)"></td>`).join('');
-  });
-
-  eligibleGoalKeepers.forEach(p=>{
-    const row = grTbody.insertRow();
-    row.innerHTML = `<td class="fixed-col">${p.numero}</td><td class="fixed-col">${p.nome}</td>`+
-      grStats.map(k=>`<td><input type="number" value="${stats.gr?.[p.numero]?.[k]||0}" 
-      data-player="${p.numero}" data-part="${activePart}" data-category="gr" data-stat="${k}" onchange="updateStat(this)"></td>`).join('');
-  });
+// Notification helper
+function notify(msg, error=false){
+  notificationEl.textContent = msg;
+  notificationEl.className = error ? "notification error" : "notification";
+  notificationEl.style.display="block";
+  setTimeout(()=>notificationEl.style.display="none",2000);
 }
 
-window.updateStat = async function(input) {
-  const playerNum = input.dataset.player;
-  const part = input.dataset.part;
-  const category = input.dataset.category;
-  const statKey = input.dataset.stat;
-  const value = parseInt(input.value)||0;
-  const stats = statsMap[part];
-  if(!stats[category]) stats[category]={};
-  if(!stats[category][playerNum]) stats[category][playerNum]={};
-  stats[category][playerNum][statKey]=value;
-  showNotification(`Guardado: ${statKey} #${playerNum}`);
-  // TODO: Save to Firebase per stat if needed
-};
+// Render list of games
+async function renderGames(){
+  gameListEl.innerHTML="Carregando...";
+  try{
+    const games = await getAllGames();
+    gameListEl.innerHTML="";
+    if(games.length===0){ gameListEl.innerHTML="Nenhum jogo encontrado."; return; }
 
-// Button actions
-newBtn.onclick = async () => { 
-  const id = await createGame(); 
-  loadGame(id, jogoForm);
-  renderGames(); 
-};
-saveBtn.onclick = async () => {
-  const data = {};
-  for (const el of jogoForm.elements) if(el.name) data[el.name] = el.value;
-  await saveGame(data);
-  renderGames();
-};
-deleteBtn.onclick = async () => {
-  const id = getActiveGameId();
-  if(id) await deleteGame(id);
-  jogoForm.reset();
-  renderGames();
-};
-listBtn.onclick = () => { 
-  gameListContainer.style.display = gameListContainer.style.display==="none"?"block":"none"; 
-};
-
-async function renderGames() {
-  const games = await getAllGameIds();
-  gameList.innerHTML="";
-  if(!games.length) { gameList.innerHTML="<div>Nenhum jogo encontrado</div>"; return; }
-  for(const {id,data} of games){
-    const div = document.createElement("div");
-    div.className="game-item"+(id===getActiveGameId()?" active":"");
-    div.innerHTML = `<div><strong>${data.adversario||"Sem Adversário"}</strong> (${data.competicao||"N/A"}) - ${data.data||"N/A"}</div>
-      <div>
-        <button data-id="${id}" class="load-btn">Carregar</button>
-        <button data-id="${id}" class="delete-btn">Eliminar</button>
-      </div>`;
-    gameList.appendChild(div);
-  }
-  document.querySelectorAll(".load-btn").forEach(b=>b.onclick=e=>{ loadGame(e.target.dataset.id,jogoForm); renderGames(); });
-  document.querySelectorAll(".delete-btn").forEach(b=>b.onclick=e=>{ deleteGame(e.target.dataset.id); renderGames(); });
+    games.forEach(g=>{
+      const div = document.createElement("div");
+      div.className = "game-item";
+      div.innerHTML = `<div><strong>${g.data.adversario||'Sem Adversário'}</strong> (${g.data.competicao||'N/A'}) - ${g.data.data||'N/A'}</div>`;
+      const btnLoad = document.createElement("button"); btnLoad.textContent="Carregar"; btnLoad.style.background="#27ae60";
+      btnLoad.onclick = ()=>loadGame(g.id);
+      const btnDel = document.createElement("button"); btnDel.textContent="Eliminar"; btnDel.style.background="#e74c3c";
+      btnDel.onclick = async ()=>{
+        if(confirm("Eliminar este jogo?")){ await deleteGame(g.id); notify("Jogo eliminado"); renderGames(); }
+      };
+      div.appendChild(btnLoad);
+      div.appendChild(btnDel);
+      gameListEl.appendChild(div);
+    });
+  }catch(e){ console.error(e); notify("Erro ao listar jogos", true); }
 }
 
-// Initialize
-ensureAuth().then(() => {
+// Load a game and display info
+async function loadGame(id){
+  setActiveGameId(id);
+  const data = await loadGameData(id);
+  activeGameDetails.innerHTML=`<div><strong>Adversário:</strong> ${data.adversario||'-'}</div>
+    <div><strong>Competição:</strong> ${data.competicao||'-'}</div>
+    <div><strong>Data:</strong> ${data.data||'-'}</div>`;
+  notify("Jogo carregado");
   renderGames();
-  const activeId = getActiveGameId();
-  if(activeId) loadGame(activeId,jogoForm);
-});
+}
 
+// Buttons
+document.getElementById("newGameBtn").onclick = async ()=>{
+  const newId = await createNewGame();
+  await loadGame(newId);
+  gameListContainer.style.display="block";
+};
+
+document.getElementById("listGamesBtn").onclick = ()=>{ gameListContainer.style.display="block"; renderGames(); };
+
+// Init
+async function init(){
+  await ensureAuth();
+  const activeGameId = getActiveGameId();
+  if(activeGameId) loadGame(activeGameId);
+
+  // Real-time updates
+  onGamesSnapshot(renderGames);
+}
+
+init();
 </script>
 </body>
 </html>

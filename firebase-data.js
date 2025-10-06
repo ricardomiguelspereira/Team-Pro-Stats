@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebas
 import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
   authDomain: "team-pro-stats.firebaseapp.com",
@@ -13,9 +14,9 @@ const firebaseConfig = {
   measurementId: "G-D1GDDBPD55"
 };
 
-export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
 let currentUserId = null;
 let activeGameId = localStorage.getItem("activeGameId");
@@ -35,89 +36,72 @@ export async function ensureAuth() {
   });
 }
 
-// Paths
-export function userPath(...parts) { return ["users", currentUserId, ...parts]; }
-export function gamePath(...parts) { return ["users", currentUserId, "games", activeGameId, ...parts]; }
+// Helpers for paths
+function userPath(...parts){ return ["users", currentUserId, ...parts]; }
+function gamePath(gameId, ...parts){ return ["users", currentUserId, "games", gameId, ...parts]; }
 
-// Active game ID
-export function getActiveGameId() { return activeGameId; }
-export function setActiveGameId(id) { activeGameId = id; localStorage.setItem("activeGameId", id); }
+// Active game
+export function getActiveGameId(){ return activeGameId; }
+export function setActiveGameId(id){ activeGameId = id; localStorage.setItem("activeGameId", id); }
 
-// Show notification
-export function showNotification(msg, isError = false) {
-  const el = document.getElementById("notification");
-  el.textContent = msg;
-  el.className = isError ? "notification error" : "notification";
-  el.style.display = "block";
-  setTimeout(() => { el.style.display = "none"; }, 2000);
+// Fetch all saved games
+export async function getAllGames() {
+  await ensureAuth();
+  const col = collection(db, ...userPath("games"));
+  const snap = await getDocs(col);
+  const games = [];
+
+  for (const docSnap of snap.docs) {
+    const configSnap = await getDoc(doc(db, ...gamePath(docSnap.id, "config", "jogoFormData")));
+    const data = configSnap.exists() ? configSnap.data() : { adversario: "Sem Adversário", competicao: "N/A", data: "" };
+    games.push({ id: docSnap.id, data });
+  }
+
+  // Sort by date descending
+  games.sort((a,b) => (b.data.data||"").localeCompare(a.data.data||""));
+  return games;
+}
+
+// Delete a game
+export async function deleteGame(id){
+  await ensureAuth();
+  await deleteDoc(doc(db, ...gamePath(id)));
+  if(activeGameId === id){ activeGameId=null; localStorage.removeItem("activeGameId"); }
+}
+
+// Save jogoFormData for active game
+export async function saveGameData(data){
+  if(!activeGameId) return;
+  await ensureAuth();
+  await setDoc(doc(db, ...gamePath(activeGameId, "config", "jogoFormData")), data, {merge:true});
+}
+
+// Load jogoFormData
+export async function loadGameData(gameId){
+  await ensureAuth();
+  const snap = await getDoc(doc(db, ...gamePath(gameId, "config", "jogoFormData")));
+  return snap.exists() ? snap.data() : {};
 }
 
 // Create new game
-export async function createGame() {
+export async function createNewGame() {
   await ensureAuth();
   const newId = doc(collection(db, ...userPath("games"))).id;
   activeGameId = newId;
   localStorage.setItem("activeGameId", newId);
-  await setDoc(doc(db, ...gamePath("config", "jogoFormData")), {
-    adversario: "Novo Jogo",
-    data: new Date().toISOString().slice(0, 10)
+  await setDoc(doc(db, ...gamePath(newId, "config", "jogoFormData")), {
+    adversario:"Novo Jogo",
+    data:new Date().toISOString().slice(0,10)
   });
-  showNotification("Novo jogo criado");
   return newId;
 }
 
-// Save game data
-export async function saveGame(formData) {
-  if (!activeGameId) return showNotification("Nenhum jogo ativo", true);
-  await ensureAuth();
-  await setDoc(doc(db, ...gamePath("config", "jogoFormData")), formData, { merge: true });
-  showNotification("Jogo guardado");
-}
-
-// Load game data
-export async function loadGame(id, form) {
-  await ensureAuth();
-  activeGameId = id;
-  localStorage.setItem("activeGameId", id);
-  const snap = await getDoc(doc(db, ...gamePath("config", "jogoFormData")));
-  if (snap.exists()) {
-    const data = snap.data();
-    for (const [k, v] of Object.entries(data)) if (form[k]) form[k].value = v;
-    showNotification("Jogo carregado");
-  } else {
-    form.reset();
-    showNotification("Jogo sem dados");
-  }
-}
-
-// Delete game
-export async function deleteGame(id) {
-  await ensureAuth();
-  activeGameId = id;
-  await deleteDoc(doc(db, ...gamePath()));
-  if (activeGameId === id) { activeGameId = null; localStorage.removeItem("activeGameId"); }
-  showNotification("Jogo eliminado");
-}
-
-// List all games
-export async function getAllGameIds() {
+// Real-time listener for games collection
+export async function onGamesSnapshot(callback){
   await ensureAuth();
   const col = collection(db, ...userPath("games"));
-  const snaps = await getDocs(col);
-  const gamesWithData = [];
-  for (const docSnap of snaps.docs) {
-    const id = docSnap.id;
-    const dataSnap = await getDoc(doc(db, ...userPath("games", id, "config", "jogoFormData")));
-    const data = dataSnap.data() || { adversario: "Sem Adversário", competicao: "N/A", data: "" };
-    gamesWithData.push({ id, data });
-  }
-  // Sort by date descending
-  gamesWithData.sort((a, b) => (b.data.data || "").localeCompare(a.data.data || ""));
-  return gamesWithData;
-}
-
-// Real-time updates listener
-export async function subscribeToGames(renderCallback) {
-  await ensureAuth();
-  return onSnapshot(collection(db, ...userPath("games")), renderCallback);
+  return onSnapshot(col, async ()=>{ 
+    const games = await getAllGames(); 
+    callback(games); 
+  });
 }
