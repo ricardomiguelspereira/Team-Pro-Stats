@@ -61,7 +61,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
 // Firebase config
@@ -81,7 +81,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 let currentUserId = null;
-let activeGameId = localStorage.getItem("activeGameId") || null;
+let activeGameId = null;
 
 const newGameBtn = document.getElementById("newGameBtn");
 const listGamesBtn = document.getElementById("listGamesBtn");
@@ -89,7 +89,7 @@ const saveGameBtn = document.getElementById("saveGameBtn");
 const gamesListContainer = document.getElementById("gamesListContainer");
 const gameForm = document.getElementById("gameForm");
 
-// Ensure Auth
+// Auth
 async function ensureAuth() {
   if(currentUserId) return currentUserId;
   return new Promise((resolve,reject)=>{
@@ -112,7 +112,8 @@ function generateGameId() {
 newGameBtn.onclick = async () => {
   await ensureAuth();
   activeGameId = generateGameId();
-  localStorage.setItem("activeGameId", activeGameId);
+  // Save activeGame field in Firebase
+  await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
   gameForm.reset();
   alert("Novo jogo criado. Preencha os dados e clique Guardar Jogo.");
 }
@@ -129,7 +130,8 @@ saveGameBtn.onclick = async () => {
     if(el.name) data[el.name]=el.value;
   }
   await setDoc(doc(db, "users", currentUserId, "games", activeGameId, "config","jogoFormData"), data, {merge:true});
-  localStorage.setItem("activeGameId", activeGameId);
+  // Also set activeGame in Firebase
+  await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
   alert("Jogo guardado!");
   listGames();
 }
@@ -162,7 +164,9 @@ async function listGames() {
     loadBtn.className="btn-load";
     loadBtn.onclick = async () => {
       activeGameId = id;
-      localStorage.setItem("activeGameId", activeGameId);
+      // Save active game in Firebase
+      await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
+      // Load the game data into form
       for(const el of gameForm.elements){
         if(el.name) el.value = data[el.name] || "";
       }
@@ -174,7 +178,12 @@ async function listGames() {
     delBtn.onclick = async () => {
       if(confirm("Deseja realmente eliminar este jogo?")){
         await deleteDoc(doc(db,"users",currentUserId,"games",id));
-        if(activeGameId===id) { activeGameId=null; localStorage.removeItem("activeGameId"); gameForm.reset(); }
+        // If deleted active game, remove activeGame field
+        if(activeGameId===id) {
+          activeGameId=null;
+          await setDoc(doc(db,"users",currentUserId), { activeGame: null }, { merge:true });
+          gameForm.reset();
+        }
         listGames();
       }
     };
@@ -185,10 +194,15 @@ async function listGames() {
   }
 }
 
-// Auto-authenticate and auto-load last game
-ensureAuth().then(() => {
-  if(activeGameId){
-    getDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData")).then(snap=>{
+// Auto-load last active game from Firebase
+async function loadLastActiveGame() {
+  await ensureAuth();
+  const userDocSnap = await getDoc(doc(db,"users",currentUserId));
+  if(userDocSnap.exists()){
+    const userData = userDocSnap.data();
+    if(userData.activeGame){
+      activeGameId = userData.activeGame;
+      const snap = await getDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"));
       if(snap.exists()){
         const data = snap.data();
         for(const el of gameForm.elements){
@@ -196,10 +210,14 @@ ensureAuth().then(() => {
         }
       } else {
         activeGameId = null;
-        localStorage.removeItem("activeGameId");
       }
-    });
+    }
   }
+}
+
+// Initialize
+ensureAuth().then(() => {
+  loadLastActiveGame();
   listGames();
 });
 </script>
