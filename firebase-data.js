@@ -22,7 +22,7 @@ import {
   collection,
   getDocs,
   query,
-  orderBy // For ordering games by date
+  orderBy
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
   getAuth,
@@ -152,6 +152,12 @@ export async function deleteFirebaseData(path) {
   return deleteDoc(ref);
 }
 
+// Generate unique game ID using Firebase auto-ID
+export function generateGameId() {
+  const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
+  return doc(gamesCollectionRef).id;
+}
+
 // Updated: Get all game IDs with their jogoFormData for display
 export async function getAllGameIds() {
   await ensureAuth();
@@ -188,19 +194,23 @@ export async function getAllGameIds() {
   return gamesWithData;
 }
 
-// New: Collection listener for games (for real-time updates in configjogoequipa.html)
+// Collection listener for games (for real-time updates)
 export function onGamesCollectionChange(callback) {
-  ensureAuth().then(() => {
+  return ensureAuth().then(() => {
     const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
-    // Listen for changes to the games collection (add/remove/update)
     const unsubscribe = onSnapshot(gamesCollectionRef, (snapshot) => {
-      // Re-fetch full data since collection snapshot doesn't include sub-docs
-      getAllGameIds().then(callback).catch(console.error);
+      getAllGameIds().then(callback).catch(err => {
+        console.error('Error fetching games in listener:', err);
+        callback([]);
+      });
     }, (err) => {
       console.error("Games collection listener error:", err);
     });
     return unsubscribe;
-  }).catch(console.error);
+  }).catch(err => {
+    console.error('Auth error in games listener:', err);
+    return () => {}; // Return no-op unsubscribe
+  });
 }
 
 // Normalize stats object and write full object
