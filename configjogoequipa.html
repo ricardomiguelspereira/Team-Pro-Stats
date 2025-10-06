@@ -112,7 +112,6 @@ function generateGameId() {
 newGameBtn.onclick = async () => {
   await ensureAuth();
   activeGameId = generateGameId();
-  await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
   gameForm.reset();
   alert("Novo jogo criado. Preencha os dados e clique Guardar Jogo.");
 }
@@ -128,8 +127,8 @@ saveGameBtn.onclick = async () => {
   for(const el of gameForm.elements){
     if(el.name) data[el.name]=el.value;
   }
+  // Create the game document with jogoFormData subcollection
   await setDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"), data, {merge:true});
-  await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, {merge:true});
   alert("Jogo guardado!");
   listGames();
 }
@@ -148,22 +147,21 @@ async function listGames(){
       return;
     }
 
-    snapshot.forEach(async docSnap=>{
+    for (const docSnap of snapshot.docs) {
       const gameId = docSnap.id;
-      const dataSnap = await getDoc(doc(db,"users",currentUserId,"games",gameId,"config","jogoFormData"));
-      const data = dataSnap.exists() ? dataSnap.data() : { adversario:"Sem Adversário", competicao:"N/A", data:"N/A" };
+      const formSnap = await getDoc(doc(db,"users",currentUserId,"games",gameId,"config","jogoFormData"));
+      const data = formSnap.exists() ? formSnap.data() : { adversario:"Sem Adversário", competicao:"N/A", data:"N/A" };
 
       const div = document.createElement("div");
-      div.className="game-item";
+      div.className = "game-item";
       div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data}</div>`;
 
       // Load button
       const loadBtn = document.createElement("button");
       loadBtn.textContent="Carregar";
       loadBtn.className="btn-load";
-      loadBtn.onclick = async () => {
+      loadBtn.onclick = () => {
         activeGameId = gameId;
-        await setDoc(doc(db,"users",currentUserId), { activeGame: activeGameId }, { merge:true });
         for(const el of gameForm.elements){
           if(el.name) el.value = data[el.name] || "";
         }
@@ -174,12 +172,11 @@ async function listGames(){
       delBtn.textContent="Eliminar";
       delBtn.className="btn-delete";
       delBtn.onclick = async () => {
-        if(confirm("Deseja realmente eliminar este jogo?")){
+        if(confirm("Deseja eliminar este jogo?")){
           await deleteDoc(doc(db,"users",currentUserId,"games",gameId));
           if(activeGameId===gameId){
             activeGameId=null;
             gameForm.reset();
-            await setDoc(doc(db,"users",currentUserId), { activeGame:null }, { merge:true });
           }
         }
       };
@@ -187,29 +184,12 @@ async function listGames(){
       div.appendChild(loadBtn);
       div.appendChild(delBtn);
       gamesListContainer.appendChild(div);
-    });
+    }
   });
 }
 
-// Load last active game
-async function loadLastActiveGame(){
-  await ensureAuth();
-  const userSnap = await getDoc(doc(db,"users",currentUserId));
-  if(userSnap.exists() && userSnap.data().activeGame){
-    activeGameId = userSnap.data().activeGame;
-    const snap = await getDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"));
-    if(snap.exists()){
-      const data = snap.data();
-      for(const el of gameForm.elements){
-        if(el.name) el.value = data[el.name] || "";
-      }
-    } else activeGameId=null;
-  }
-}
-
 // Initialize
-ensureAuth().then(()=>{
-  loadLastActiveGame();
+ensureAuth().then(() => {
   listGames();
 });
 </script>
