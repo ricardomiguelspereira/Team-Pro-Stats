@@ -19,8 +19,10 @@ import {
   getDoc,
   onSnapshot,
   deleteDoc,
-  collection, // Added for listing games
-  getDocs // Added for listing games
+  collection,
+  getDocs,
+  query,
+  orderBy // For ordering games by date
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
   getAuth,
@@ -32,8 +34,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-let currentUserId = null;
-let activeGameId = null; // New: to store the currently selected game ID
+let currentUser Id = null;
+let activeGameId = null;
 
 // Base paths that are GLOBAL (not game-specific)
 export const FB_PATHS_GLOBAL = {
@@ -47,46 +49,49 @@ export const FB_PATHS_GAME = {
   jogoFormData: 'config/jogoFormData',
   estatisticasParte1: 'stats/estatisticasParte1',
   estatisticasParte2: 'stats/estatisticasParte2',
-  estatisticasValores: 'stats/estatisticasValores', // This is the old 'estatisticas.js' storage
-  estatisticasExtraTime: 'stats/estatisticasExtraTime', // This is the old 'extra-time.html' storage
-  estatisticasSeparadasExtra: 'stats/estatisticasSeparadasExtra', // This is the old 'entradassaidasextratime.html' storage
+  estatisticasValores: 'stats/estatisticasValores',
+  estatisticasExtraTime: 'stats/estatisticasExtraTime',
+  estatisticasSeparadasExtra: 'stats/estatisticasSeparadasExtra',
   pseData: 'pse/pseData'
 };
 
-// Combined FB_PATHS for external use, but internally we distinguish
+// Combined FB_PATHS for external use
 export const FB_PATHS = { ...FB_PATHS_GLOBAL, ...FB_PATHS_GAME };
-
 
 // Function to set the active game ID
 export function setActiveGameId(gameId) {
   activeGameId = gameId;
-  localStorage.setItem('activeGameId', gameId); // Persist active game ID
+  if (gameId) {
+    localStorage.setItem('activeGameId', gameId);
+  } else {
+    localStorage.removeItem('activeGameId');
+  }
   console.log("Active Game ID set to:", activeGameId);
 }
 
 // Function to get the active game ID
 export function getActiveGameId() {
   if (!activeGameId) {
-    activeGameId = localStorage.getItem('activeGameId'); // Try to load from persistence
+    activeGameId = localStorage.getItem('activeGameId');
   }
   return activeGameId;
 }
 
-// Ensure auth (anonymous) and set currentUserId
+// Ensure auth (anonymous)
 export async function ensureAuth() {
-  if (currentUserId) return currentUserId;
+  if (currentUser Id) return currentUser Id;
   return new Promise((resolve, reject) => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
-        currentUserId = user.uid;
+        currentUser Id = user.uid;
         unsub();
-        resolve(currentUserId);
+        resolve(currentUser Id);
       } else {
         signInAnonymously(auth)
           .then((cred) => {
-            currentUserId = cred.user.uid;
+            currentUser Id = cred.user.uid;
             unsub();
-            resolve(currentUserId);
+            resolve(currentUser Id);
           })
           .catch((err) => {
             unsub();
@@ -98,20 +103,17 @@ export async function ensureAuth() {
 }
 
 // Build a doc ref under users/{uid}/<path parts...>
-function getUserDocRef(path) {
-  if (!currentUserId) throw new Error("User not authenticated");
+function getUser DocRef(path) {
+  if (!currentUser Id) throw new Error("User  not authenticated");
 
-  let fullPathParts = ['users', currentUserId];
+  let fullPathParts = ['users', currentUser Id];
 
   if (Object.values(FB_PATHS_GLOBAL).includes(path)) {
-    // Global path
     fullPathParts.push(...path.split('/').filter(p => p.length));
   } else if (Object.values(FB_PATHS_GAME).includes(path)) {
-    // Game-specific path
     if (!activeGameId) throw new Error("No active game ID set for game-specific path: " + path);
     fullPathParts.push('games', activeGameId, ...path.split('/').filter(p => p.length));
   } else {
-    // Fallback for any other path (e.g., 'games/{gameId}')
     fullPathParts.push(...path.split('/').filter(p => p.length));
   }
 
@@ -121,21 +123,20 @@ function getUserDocRef(path) {
 // Basic helpers
 export async function setFirebaseData(path, data) {
   await ensureAuth();
-  const ref = getUserDocRef(path);
+  const ref = getUser DocRef(path);
   return setDoc(ref, data, { merge: true });
 }
 
 export async function getFirebaseData(path) {
   await ensureAuth();
-  const ref = getUserDocRef(path);
+  const ref = getUser DocRef(path);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
-// Subscribes to document changes and returns unsubscribe function
 export async function onFirebaseDataChange(path, callback) {
   await ensureAuth();
-  const ref = getUserDocRef(path);
+  const ref = getUser DocRef(path);
   const unsubscribe = onSnapshot(ref, (snap) => {
     callback(snap.exists() ? snap.data() : null);
   }, (err) => {
@@ -147,36 +148,71 @@ export async function onFirebaseDataChange(path, callback) {
 
 export async function deleteFirebaseData(path) {
   await ensureAuth();
-  const ref = getUserDocRef(path);
+  const ref = getUser DocRef(path);
   return deleteDoc(ref);
 }
 
-// New function to get all game IDs for the current user
+// Updated: Get all game IDs with their jogoFormData for display
 export async function getAllGameIds() {
   await ensureAuth();
-  const gamesCollectionRef = collection(db, 'users', currentUserId, 'games');
+  const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
   const gamesSnapshot = await getDocs(gamesCollectionRef);
-  return gamesSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+  const gameIds = gamesSnapshot.docs.map(doc => doc.id);
+
+  const gamesWithData = [];
+  const originalActiveGame = getActiveGameId();
+  try {
+    for (const gameId of gameIds) {
+      setActiveGameId(gameId);
+      const formData = await getFirebaseData(FB_PATHS_GAME.jogoFormData);
+      gamesWithData.push({ 
+        id: gameId, 
+        data: { 
+          config: { 
+            jogoFormData: formData || { data: 'N/A', adversario: 'Sem Dados', competicao: 'N/A' } 
+          } 
+        } 
+      });
+    }
+  } finally {
+    setActiveGameId(originalActiveGame); // Restore original active game
+  }
+
+  // Sort by date descending (if available)
+  gamesWithData.sort((a, b) => {
+    const dateA = a.data?.config?.jogoFormData?.data || '';
+    const dateB = b.data?.config?.jogoFormData?.data || '';
+    return dateB.localeCompare(dateA);
+  });
+
+  return gamesWithData;
 }
 
-// Normalize stats object and write full object (keeps exact structure expected)
+// New: Collection listener for games (for real-time updates in configjogoequipa.html)
+export function onGamesCollectionChange(callback) {
+  ensureAuth().then(() => {
+    const gamesCollectionRef = collection(db, 'users', currentUser Id, 'games');
+    // Listen for changes to the games collection (add/remove/update)
+    const unsubscribe = onSnapshot(gamesCollectionRef, (snapshot) => {
+      // Re-fetch full data since collection snapshot doesn't include sub-docs
+      getAllGameIds().then(callback).catch(console.error);
+    }, (err) => {
+      console.error("Games collection listener error:", err);
+    });
+    return unsubscribe;
+  }).catch(console.error);
+}
+
+// Normalize stats object and write full object
 export async function saveFullStats(part, statsObj) {
   const path = (part === '1') ? FB_PATHS_GAME.estatisticasParte1 : FB_PATHS_GAME.estatisticasParte2;
   return setFirebaseData(path, statsObj);
 }
 
-/**
- * Save a single stat for a player while preserving other data.
- * part: '1' or '2'
- * category: 'campo' or 'gr'
- * playerNumber: number or string
- * statKey: e.g. 'golos' or 'defesas'
- * value: numeric
- */
 export async function saveSingleStat(part, category, playerNumber, statKey, value) {
   await ensureAuth();
   const path = (part === '1') ? FB_PATHS_GAME.estatisticasParte1 : FB_PATHS_GAME.estatisticasParte2;
-  const ref = getUserDocRef(path);
+  const ref = getUser DocRef(path);
 
   const snap = await getDoc(ref);
   const current = snap.exists() ? snap.data() : { campo: {}, gr: {} };
@@ -191,7 +227,7 @@ export async function saveSingleStat(part, category, playerNumber, statKey, valu
   return current;
 }
 
-// Migration from localStorage (keeps original functionality)
+// Migration from localStorage
 export async function migrateLocalStorageToFirebase() {
   await ensureAuth();
 
@@ -201,7 +237,6 @@ export async function migrateLocalStorageToFirebase() {
     { lsKey: 'teamLogoBase64', fbPath: FB_PATHS_GLOBAL.teamLogo }
   ];
 
-  // Game-specific data will be migrated to a 'default_game'
   const gameSpecificLsKeys = [
     { lsKey: 'jogo_form_data', fbPath: FB_PATHS_GAME.jogoFormData },
     { lsKey: 'estatisticas_parte1', fbPath: FB_PATHS_GAME.estatisticasParte1 },
@@ -221,8 +256,8 @@ export async function migrateLocalStorageToFirebase() {
   }
 
   if (hasGameSpecificDataToMigrate) {
-    const defaultGameId = 'default_game_migrated'; // Use a distinct ID for migrated data
-    setActiveGameId(defaultGameId); // Set active game for migration
+    const defaultGameId = 'default_game_migrated';
+    setActiveGameId(defaultGameId);
     console.log(`Migrating game-specific data to default game: ${defaultGameId}`);
 
     for (const { lsKey, fbPath } of gameSpecificLsKeys) {
@@ -237,7 +272,6 @@ export async function migrateLocalStorageToFirebase() {
         console.warn(`Failed migrating game-specific ${lsKey}:`, err);
       }
     }
-    // Store a placeholder for the default game config
     await setFirebaseData(FB_PATHS_GAME.jogoFormData, {
       escalao: "MIGRATED",
       competicao: "Default Game",
@@ -245,7 +279,6 @@ export async function migrateLocalStorageToFirebase() {
       adversario: "Migrated Data"
     });
   }
-
 
   for (const { lsKey, fbPath } of migrationKeys) {
     const raw = localStorage.getItem(lsKey);
@@ -272,7 +305,7 @@ export async function initializeFirebase() {
   return uid;
 }
 
-// Auto-run auth+migration (non-blocking)
+// Auto-run auth+migration
 ensureAuth().then(() => migrateLocalStorageToFirebase()).catch(e => {
   console.debug("Initial auth/migration attempt failed:", e?.message || e);
 });
