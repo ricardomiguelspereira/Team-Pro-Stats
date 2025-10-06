@@ -28,13 +28,13 @@ button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; curs
 <div class="container">
   <h2>Estatísticas do Jogo</h2>
 
-  <!-- 1st section: Active Game Info -->
+  <!-- Active Game Info -->
   <div id="gameInfo" class="section">
     <strong>Jogo Ativo:</strong>
     <div id="activeGameDetails">Carregando informações do jogo...</div>
   </div>
 
-  <!-- 2nd section: Buttons -->
+  <!-- Buttons -->
   <div class="button-group section">
     <button class="btn-stat" data-part="1" id="estat1Btn">Estatísticas 1ª Parte</button>
     <button class="btn-stat" data-part="2" id="estat2Btn">Estatísticas 2ª Parte</button>
@@ -44,45 +44,43 @@ button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; curs
     <button style="background:#2980b9" id="listGamesBtn">Listar Jogos</button>
   </div>
 
-  <!-- 3rd section: Tables -->
-  <div class="section">
-    <div id="tablesContainer">
-      <div class="responsive">
-        <table id="tableCampo" class="part-table">
-          <thead>
-            <tr>
-              <th class="fixed-col">#</th>
-              <th class="fixed-col">Nome</th>
-              <th>GR / Postes</th>
-              <th>Interceptados</th>
-              <th>Fora</th>
-              <th>Golos</th>
-              <th>Passes Errados</th>
-              <th>Faltas</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="responsive" style="margin-top:15px;">
-        <table id="tableGR" class="part-table">
-          <thead>
-            <tr>
-              <th class="fixed-col">#</th>
-              <th class="fixed-col">Nome</th>
-              <th>Defesas</th>
-              <th>Interceptados</th>
-              <th>Golos Sofridos</th>
-              <th>Faltas</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+  <!-- Tables -->
+  <div class="section" id="tablesContainer">
+    <div class="responsive">
+      <table id="tableCampo" class="part-table">
+        <thead>
+          <tr>
+            <th class="fixed-col">#</th>
+            <th class="fixed-col">Nome</th>
+            <th>GR / Postes</th>
+            <th>Interceptados</th>
+            <th>Fora</th>
+            <th>Golos</th>
+            <th>Passes Errados</th>
+            <th>Faltas</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="responsive" style="margin-top:15px;">
+      <table id="tableGR" class="part-table">
+        <thead>
+          <tr>
+            <th class="fixed-col">#</th>
+            <th class="fixed-col">Nome</th>
+            <th>Defesas</th>
+            <th>Interceptados</th>
+            <th>Golos Sofridos</th>
+            <th>Faltas</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Saved games list -->
+  <!-- Saved games -->
   <div class="section" id="gameListContainer" style="display:none;">
     <h3>Jogos Salvos</h3>
     <div id="gameList">Carregando...</div>
@@ -157,18 +155,16 @@ window.updateStat=async function(input){
   if(!stats[category][playerNum]) stats[category][playerNum]={};
   stats[category][playerNum][statKey]=value;
   try{
-    await saveSingleStat(part==='1'||part==='2'?part:part,category,playerNum,statKey,value);
+    await saveSingleStat(part,category,playerNum,statKey,value);
     showNotification(`Guardado: ${statKey} #${playerNum}`);
-  }catch(e){console.error(e); showNotification('Erro ao guardar',true);}
+  }catch(e){ console.error(e); showNotification('Erro ao guardar',true);}
 }
 
-// Switch parts
+// Buttons
 document.getElementById('estat1Btn').onclick=()=>{activePart='1'; renderTables();}
 document.getElementById('estat2Btn').onclick=()=>{activePart='2'; renderTables();}
 document.getElementById('extra1Btn').onclick=()=>{activePart='extra1'; renderTables();}
 document.getElementById('extra2Btn').onclick=()=>{activePart='extra2'; renderTables();}
-
-// Back button
 document.getElementById('backConfigBtn').onclick=()=>{ window.location.href='configjogoequipa.html'; }
 
 // List saved games
@@ -176,17 +172,21 @@ document.getElementById('listGamesBtn').onclick=async ()=>{
   gameListContainer.style.display='block';
   gameListEl.innerHTML='Carregando...';
   try{
-    const games = await getAllGameIds();
-    if(games.length===0){ gameListEl.innerHTML='Nenhum jogo encontrado.'; return; }
+    const games = await getAllGameIds(); // returns [{id, data}, ...]
+    if(!games || games.length===0){ gameListEl.innerHTML='Nenhum jogo encontrado.'; return; }
     gameListEl.innerHTML='';
     games.forEach(g=>{
-      const div=document.createElement('div'); div.className='game-item';
-      div.innerHTML=`<div><strong>${g.data.config.jogoFormData.adversario||'Sem Adversário'}</strong> (${g.data.config.jogoFormData.competicao||'N/A'})</div>`;
-      const btnLoad=document.createElement('button'); btnLoad.textContent='Carregar';
-      btnLoad.style.background='#27ae60'; btnLoad.onclick=()=>{ setActiveGameId(g.id); location.reload(); };
-      const btnDel=document.createElement('button'); btnDel.textContent='Eliminar'; 
-      btnDel.style.background='#e74c3c'; btnDel.onclick=async ()=>{
-        if(confirm('Eliminar este jogo?')){ await deleteFirebaseData(`games/${g.id}`); showNotification('Jogo eliminado'); location.reload(); }
+      const data=g.data;
+      const div=document.createElement('div');
+      div.className='game-item';
+      div.innerHTML=`<div><strong>${data.adversario||'Sem Adversário'}</strong> (${data.competicao||'N/A'})</div>`;
+      const btnLoad=document.createElement('button');
+      btnLoad.textContent='Carregar'; btnLoad.style.background='#27ae60';
+      btnLoad.onclick=()=>{ setActiveGameId(g.id); location.reload(); };
+      const btnDel=document.createElement('button');
+      btnDel.textContent='Eliminar'; btnDel.style.background='#e74c3c';
+      btnDel.onclick=async ()=>{
+        if(confirm('Eliminar este jogo?')){ await deleteFirebaseData(`games/${g.id}`); showNotification('Jogo eliminado'); location.reload();}
       };
       div.appendChild(btnLoad); div.appendChild(btnDel);
       gameListEl.appendChild(div);
@@ -209,8 +209,8 @@ async function init(){
     <div><strong>Local:</strong>${gameData.local||'-'}</div>
     <div><strong>Adversário:</strong>${gameData.adversario||'-'}</div>`;
 
-  // Players listener
-  await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, async (fieldData)=>{
+  // Players
+  await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, async fieldData=>{
     const fields=(fieldData?.players||[]).filter(p=>p.estatisticas && !p.gr).sort((a,b)=>a.numero-b.numero);
     const gkData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
     const gks=(gkData?.players||[]).filter(p=>p.estatisticas).sort((a,b)=>a.numero-b.numero);
@@ -220,13 +220,13 @@ async function init(){
     renderTables();
   });
 
-  // Load all stats
-  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data)=>{ statsMap['1']=data||{campo:{},gr:{}}; renderTables(); });
-  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, (data)=>{ statsMap['2']=data||{campo:{},gr:{}}; renderTables(); });
-  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasExtraTime, (data)=>{ 
-    statsMap['extra1']=data?.parte1 || {campo:{},gr:{}}; 
-    statsMap['extra2']=data?.parte2 || {campo:{},gr:{}}; 
-    renderTables(); 
+  // Stats
+  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, data=>{ statsMap['1']=data||{campo:{},gr:{}}; renderTables(); });
+  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, data=>{ statsMap['2']=data||{campo:{},gr:{}}; renderTables(); });
+  await onFirebaseDataChange(FB_PATHS_GAME.estatisticasExtraTime, data=>{
+    statsMap['extra1']=data?.parte1||{campo:{},gr:{}};
+    statsMap['extra2']=data?.parte2||{campo:{},gr:{}};
+    renderTables();
   });
 }
 
