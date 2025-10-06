@@ -13,9 +13,13 @@ h2 { text-align:center; color:#2980b9; }
 button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; cursor:pointer; color:#fff; }
 .btn-stat { background:#2980b9; } .btn-stat:hover { background:#3498db; }
 #gameInfo { background:#f0f8ff; padding:15px; border-radius:5px; }
+.responsive { overflow-x:auto; margin-top:10px; }
+.part-table { border-collapse:collapse; width:100%; }
+.part-table th, .part-table td { border:1px solid #ccc; padding:8px; text-align:center; }
+.fixed-col { position:sticky; left:0; background:#f9f9f9; z-index:1; }
 #gameList { margin-top:15px; }
 .game-item { display:flex; justify-content:space-between; align-items:center; background:#f9f9f9; padding:8px 12px; border-radius:5px; margin-bottom:5px; }
-.game-item button { margin-left:5px; padding:5px 10px; font-size:14px; border-radius:3px; }
+.game-item button { margin-left:5px; padding:5px 10px; font-size:14px; border-radius:3px; cursor:pointer; }
 .notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
 .notification.error { background:#ffdede; }
 </style>
@@ -24,17 +28,20 @@ button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; curs
 <div class="container">
   <h2>Estatísticas do Jogo</h2>
 
+  <!-- Active Game Info -->
   <div id="gameInfo" class="section">
     <strong>Jogo Ativo:</strong>
     <div id="activeGameDetails">Carregando informações do jogo...</div>
   </div>
 
+  <!-- Buttons -->
   <div class="button-group section">
-    <button style="background:#27ae60" id="backConfigBtn">Configurar Jogo</button>
-    <button style="background:#2980b9" id="listGamesBtn">Listar Jogos</button>
-    <button style="background:#27ae60" id="newGameBtn">Novo Jogo</button>
+    <button class="btn-stat" id="backConfigBtn">Configurar Jogo</button>
+    <button class="btn-stat" id="newGameBtn" style="background:#27ae60">Novo Jogo</button>
+    <button class="btn-stat" id="listGamesBtn" style="background:#2980b9">Listar Jogos</button>
   </div>
 
+  <!-- Saved games -->
   <div class="section" id="gameListContainer" style="display:none;">
     <h3>Jogos Salvos</h3>
     <div id="gameList">Carregando...</div>
@@ -44,60 +51,105 @@ button { padding:10px 20px; font-size:16px; border:none; border-radius:5px; curs
 <div id="notification" class="notification"></div>
 
 <script type="module">
-import { ensureAuth, getAllGameIds, deleteFirebaseData, setActiveGame, activeGameId, getActiveGameData } from './firebase-data.js';
+import { 
+  initializeFirebase, 
+  getAllGameIds, 
+  setActiveGameId, 
+  deleteGameById, 
+  getGameData, 
+  createNewGame 
+} from './firebase-data.js';
 
-const gameListContainer = document.getElementById('gameListContainer');
-const gameListEl = document.getElementById('gameList');
-const activeGameDetails = document.getElementById('activeGameDetails');
-const notificationEl = document.getElementById('notification');
+const activeGameDetails = document.getElementById("activeGameDetails");
+const gameListContainer = document.getElementById("gameListContainer");
+const gameListEl = document.getElementById("gameList");
+const notificationEl = document.getElementById("notification");
 
-function showNotification(msg, isError=false) {
+function showNotification(msg, isError=false){
   notificationEl.textContent = msg;
-  notificationEl.className = isError ? 'notification error' : 'notification';
-  notificationEl.style.display='block';
-  setTimeout(()=>notificationEl.style.display='none',2000);
+  notificationEl.className = isError ? "notification error" : "notification";
+  notificationEl.style.display = "block";
+  setTimeout(()=> notificationEl.style.display="none", 2000);
 }
 
-async function renderGames() {
-  try {
+// Display saved games
+async function listSavedGames(){
+  gameListContainer.style.display = "block";
+  gameListEl.innerHTML = "Carregando...";
+  try{
     const games = await getAllGameIds();
-    gameListEl.innerHTML='';
-    if (!games || games.length === 0) { gameListEl.innerHTML='Nenhum jogo encontrado.'; return; }
-    for (const g of games) {
-      const div = document.createElement('div'); div.className='game-item';
-      div.innerHTML=`<div><strong>${g.data.adversario||'Sem Adversário'}</strong> (${g.data.competicao||'N/A'}) - ${g.data.data||'N/A'}</div>`;
-      const btnLoad = document.createElement('button'); btnLoad.textContent='Carregar'; btnLoad.style.background='#27ae60';
-      btnLoad.onclick=async()=>{ await setActiveGame(g.id); loadActiveGame(); };
-      const btnDel = document.createElement('button'); btnDel.textContent='Eliminar'; btnDel.style.background='#e74c3c';
-      btnDel.onclick=async()=>{ 
-        if(confirm('Eliminar este jogo?')) { await deleteFirebaseData(["users", (await ensureAuth()), "games", g.id]); showNotification("Jogo eliminado"); renderGames(); } 
-      };
-      div.appendChild(btnLoad); div.appendChild(btnDel);
+    if(!games.length) { gameListEl.innerHTML = "Nenhum jogo encontrado."; return; }
+
+    gameListEl.innerHTML = "";
+    games.forEach(g => {
+      const div = document.createElement("div");
+      div.className = "game-item";
+      div.innerHTML = `
+        <div><strong>${g.data.adversario || "Sem Adversário"}</strong> (${g.data.competicao || "N/A"}) - ${g.data.data || "N/A"}</div>
+        <div>
+          <button class="load-btn" data-id="${g.id}" style="background:#27ae60">Carregar</button>
+          <button class="delete-btn" data-id="${g.id}" style="background:#e74c3c">Eliminar</button>
+        </div>
+      `;
       gameListEl.appendChild(div);
-    }
-  } catch(e) { console.error(e); showNotification("Erro ao listar jogos", true); }
+    });
+
+    document.querySelectorAll(".load-btn").forEach(b => b.onclick = async e => {
+      const id = e.target.dataset.id;
+      await setActiveGameId(id);
+      loadActiveGame();
+      showNotification("Jogo carregado");
+    });
+
+    document.querySelectorAll(".delete-btn").forEach(b => b.onclick = async e => {
+      const id = e.target.dataset.id;
+      if(confirm("Eliminar este jogo?")) {
+        await deleteGameById(id);
+        showNotification("Jogo eliminado");
+        listSavedGames();
+      }
+    });
+
+  } catch(e) {
+    console.error(e);
+    showNotification("Erro ao listar jogos", true);
+  }
 }
 
-async function loadActiveGame() {
-  const data = await getActiveGameData();
-  if (!data) { activeGameDetails.innerHTML='Sem jogo ativo'; return; }
-  activeGameDetails.innerHTML=`
-    <div><strong>Escalão:</strong> ${data.escalao||'-'}</div>
-    <div><strong>Competição:</strong> ${data.competicao||'-'}</div>
-    <div><strong>Fase:</strong> ${data.fase||'-'}</div>
-    <div><strong>Grupo:</strong> ${data.grupo||'-'}</div>
-    <div><strong>Jornada:</strong> ${data.jornada||'-'}</div>
-    <div><strong>Data / Hora:</strong> ${data.data||'-'} ${data.hora||'-'}</div>
-    <div><strong>Local:</strong> ${data.local||'-'}</div>
-    <div><strong>Adversário:</strong> ${data.adversario||'-'}</div>
+// Load active game details
+async function loadActiveGame(){
+  const gameData = await getGameData();
+  if(!gameData) {
+    activeGameDetails.innerHTML = "Nenhum jogo ativo.";
+    return;
+  }
+  activeGameDetails.innerHTML = `
+    <div><strong>Escalão:</strong> ${gameData.escalao || "-"}</div>
+    <div><strong>Competição:</strong> ${gameData.competicao || "-"}</div>
+    <div><strong>Fase:</strong> ${gameData.fase || "-"}</div>
+    <div><strong>Grupo:</strong> ${gameData.grupo || "-"}</div>
+    <div><strong>Jornada:</strong> ${gameData.jornada || "-"}</div>
+    <div><strong>Data / Hora:</strong> ${gameData.data || "-"} ${gameData.hora || "-"}</div>
+    <div><strong>Local:</strong> ${gameData.local || "-"}</div>
+    <div><strong>Adversário:</strong> ${gameData.adversario || "-"}</div>
   `;
 }
 
-document.getElementById('listGamesBtn').onclick=()=>{ gameListContainer.style.display='block'; renderGames(); }
-document.getElementById('backConfigBtn').onclick=()=>{ window.location.href='configjogoequipa.html'; }
-document.getElementById('newGameBtn').onclick=()=>{ window.location.href='configjogoequipa.html'; }
+// Button events
+document.getElementById("listGamesBtn").onclick = listSavedGames;
+document.getElementById("newGameBtn").onclick = async () => {
+  await createNewGame();
+  await loadActiveGame();
+  listSavedGames();
+};
+document.getElementById("backConfigBtn").onclick = () => {
+  window.location.href = "configjogoequipa.html";
+};
 
-ensureAuth().then(loadActiveGame).catch(e=>console.error(e));
+// Init
+await initializeFirebase();
+await loadActiveGame();
+await listSavedGames();
 </script>
 </body>
 </html>
