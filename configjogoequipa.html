@@ -346,4 +346,5 @@
                 gameListDiv.appendChild(gameItem);
             });
 
-            // Enable buttons if
+            // Enable buttons if active game exists
+            if (activeGame && currentGames.some(g => g.id === activeGame
