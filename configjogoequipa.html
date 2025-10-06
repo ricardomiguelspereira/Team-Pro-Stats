@@ -1,197 +1,360 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestão de Jogos</title>
-<style>
-  body { font-family: "Segoe UI", Tahoma, sans-serif; background:#f4f4f4; margin:0; padding:20px; color:#333;}
-  .container { max-width: 900px; margin:0 auto; background:#fff; padding:25px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.1);}
-  h2 { color:#2980b9; text-align:center; margin-top:0; }
-  .button-group { display:flex; gap:10px; margin-top:10px; }
-  form { display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; }
-  label { display:flex; flex-direction:column; font-weight:600; }
-  input, select { padding:10px; font-size:16px; border-radius:5px; border:1px solid #ccc; width:100%; }
-  button { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:bold; margin-top:10px; transition: background 0.3s; }
-  .btn-new { background:#2980b9; color:#fff; } .btn-new:hover { background:#3498db; }
-  .btn-save { background:#27ae60; color:#fff; } .btn-save:hover { background:#219150; }
-  .games-list { margin-top:20px; }
-  .game-item { display:flex; justify-content:space-between; align-items:center; padding:10px 15px; margin-bottom:8px; background:#f9f9f9; border-radius:5px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
-  .game-item button { padding:5px 10px; font-size:14px; border-radius:3px; border:none; cursor:pointer; }
-  .btn-load { background:#2980b9; color:#fff; margin-right:5px; } .btn-load:hover { background:#3498db; }
-  .btn-delete { background:#e74c3c; color:#fff; } .btn-delete:hover { background:#c0392b; }
-  .no-games { text-align:center; color:#666; font-style:italic; padding:10px; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Jogos - Team Pro Stats</title>
+  <style>
+    :root {
+      --primary-color: #0077ff;
+      --bg-color: #f4f7fa;
+      --card-bg: #fff;
+      --text-color: #333;
+      --border-color: #ddd;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    input, select {
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    button {
+      padding: 0.7rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #005fcc;
+    }
+
+    .actions {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .notification {
+      margin-top: 1rem;
+      font-weight: bold;
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 1rem;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f0f0f0;
+    }
+
+    #gamesList {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-  <h2>Gestão de Jogos</h2>
-  
-  <div class="button-group">
-    <button id="newGameBtn" class="btn-new">Novo Jogo</button>
-    <button id="listGamesBtn" class="btn-new">Listar Jogos</button>
-  </div>
+  <header>⚽ Gestão de Jogos - Team Pro Stats</header>
 
-  <form id="gameForm" autocomplete="off" style="margin-top:20px;">
-    <label>Escalão
-      <select name="escalao" required>
-        <option value="">---</option>
-        <option>SUB-13</option>
-        <option>SUB-15</option>
-        <option>SUB-17</option>
-        <option>SUB-19</option>
-        <option>SUB-23</option>
-        <option>SÉNIORES</option>
-      </select>
-    </label>
-    <label>Competição<input name="competicao" type="text" /></label>
-    <label>Fase<input name="fase" type="text" /></label>
-    <label>Grupo<input name="grupo" type="text" /></label>
-    <label>Jornada<input name="jornada" type="text" /></label>
-    <label>Data<input name="data" type="date" /></label>
-    <label>Hora<input name="hora" type="time" /></label>
-    <label>Local<input name="local" type="text" /></label>
-    <label>Adversário<input name="adversario" type="text" /></label>
-    <button id="saveGameBtn" class="btn-save" type="button">Guardar Jogo</button>
-  </form>
+  <main>
+    <form id="jogoForm">
+      <label>Escalão</label>
+      <input type="text" id="escalao" name="escalao" />
 
-  <div class="games-list" id="gamesListContainer">
-    <div class="no-games">Nenhum jogo carregado</div>
-  </div>
-</div>
+      <label>Competição</label>
+      <input type="text" id="competicao" name="competicao" />
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+      <label>Fase</label>
+      <input type="text" id="fase" name="fase" />
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-  authDomain: "team-pro-stats.firebaseapp.com",
-  projectId: "team-pro-stats",
-  storageBucket: "team-pro-stats.firebasestorage.app",
-  messagingSenderId: "758444286089",
-  appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
-  measurementId: "G-D1GDDBPD55"
-};
+      <label>Grupo</label>
+      <input type="text" id="grupo" name="grupo" />
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+      <label>Jornada</label>
+      <input type="text" id="jornada" name="jornada" />
 
-let currentUserId = null;
-let activeGameId = null;
+      <label>Data</label>
+      <input type="date" id="data" name="data" />
 
-const newGameBtn = document.getElementById("newGameBtn");
-const listGamesBtn = document.getElementById("listGamesBtn");
-const saveGameBtn = document.getElementById("saveGameBtn");
-const gamesListContainer = document.getElementById("gamesListContainer");
-const gameForm = document.getElementById("gameForm");
+      <label>Hora</label>
+      <input type="time" id="hora" name="hora" />
 
-// Ensure Firebase auth
-async function ensureAuth() {
-  if(currentUserId) return currentUserId;
-  return new Promise((resolve,reject)=>{
-    const unsub = onAuthStateChanged(auth, user=>{
-      if(user){ currentUserId=user.uid; unsub(); resolve(currentUserId);}
-      else {
-        signInAnonymously(auth).then(cred=>{ currentUserId=cred.user.uid; unsub(); resolve(currentUserId); })
-        .catch(err=>reject(err));
+      <label>Local</label>
+      <input type="text" id="local" name="local" />
+
+      <label>Adversário</label>
+      <input type="text" id="adversario" name="adversario" />
+    </form>
+
+    <div class="actions">
+      <button onclick="newGame()">Novo Jogo</button>
+      <button id="saveButton" onclick="saveCurrentGame()" disabled>Salvar</button>
+      <button onclick="showGamesList()">Mostrar Jogos</button>
+      <button onclick="deleteAllGames()">Apagar Todos</button>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <div id="gamesList">
+      <h3>📋 Jogos Guardados</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Escalão</th>
+            <th>Competição</th>
+            <th>Fase</th>
+            <th>Grupo</th>
+            <th>Jornada</th>
+            <th>Data/Hora</th>
+            <th>Local</th>
+            <th>Adversário</th>
+            <th>Ativo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="gamesTableBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Firebase + App Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // ✅ Your Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+      authDomain: "team-pro-stats.firebaseapp.com",
+      projectId: "team-pro-stats",
+      storageBucket: "team-pro-stats.firebasestorage.app",
+      messagingSenderId: "758444286089",
+      appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
+      measurementId: "G-D1GDDBPD55"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // --------------- APP LOGIC ----------------
+    let games = [];
+    let currentGameId = null;
+    const STORAGE_KEY_CURRENT_FORM = "current_game_form";
+    let jogoForm, notification, saveButton;
+
+    function showNotification(msg, error = false) {
+      notification.textContent = msg;
+      notification.style.color = error ? "#e74c3c" : "var(--primary-color)";
+      notification.style.display = "block";
+      setTimeout(() => (notification.style.display = "none"), 3000);
+    }
+
+    function getFormData() {
+      const data = {};
+      for (const el of jogoForm.elements) {
+        if (el.name) data[el.name] = el.value || "";
       }
-    });
-  });
-}
-
-// Generate new game ID
-function generateGameId() {
-  return doc(collection(db, "users", currentUserId, "games")).id;
-}
-
-// Create new game
-newGameBtn.onclick = async () => {
-  await ensureAuth();
-  activeGameId = generateGameId();
-  gameForm.reset();
-  alert("Novo jogo criado. Preencha os dados e clique Guardar Jogo.");
-}
-
-// Save game
-saveGameBtn.onclick = async () => {
-  if(!activeGameId){
-    alert("Crie ou carregue um jogo antes de guardar.");
-    return;
-  }
-  await ensureAuth();
-  const data = {};
-  for(const el of gameForm.elements){
-    if(el.name) data[el.name]=el.value;
-  }
-  // Create the game document with jogoFormData subcollection
-  await setDoc(doc(db,"users",currentUserId,"games",activeGameId,"config","jogoFormData"), data, {merge:true});
-  alert("Jogo guardado!");
-  listGames();
-}
-
-// List games
-listGamesBtn.onclick = listGames;
-
-async function listGames(){
-  await ensureAuth();
-  const colRef = collection(db,"users",currentUserId,"games");
-
-  onSnapshot(colRef, async snapshot => {
-    gamesListContainer.innerHTML="";
-    if(snapshot.empty){
-      gamesListContainer.innerHTML='<div class="no-games">Nenhum jogo encontrado</div>';
-      return;
+      return data;
     }
 
-    for (const docSnap of snapshot.docs) {
-      const gameId = docSnap.id;
-      const formSnap = await getDoc(doc(db,"users",currentUserId,"games",gameId,"config","jogoFormData"));
-      const data = formSnap.exists() ? formSnap.data() : { adversario:"Sem Adversário", competicao:"N/A", data:"N/A" };
-
-      const div = document.createElement("div");
-      div.className = "game-item";
-      div.innerHTML = `<div><strong>${data.adversario}</strong> (${data.competicao}) - ${data.data}</div>`;
-
-      // Load button
-      const loadBtn = document.createElement("button");
-      loadBtn.textContent="Carregar";
-      loadBtn.className="btn-load";
-      loadBtn.onclick = () => {
-        activeGameId = gameId;
-        for(const el of gameForm.elements){
-          if(el.name) el.value = data[el.name] || "";
-        }
+    async function newGame() {
+      jogoForm.reset();
+      const newGame = {
+        escalao: "",
+        competicao: "",
+        fase: "",
+        grupo: "",
+        jornada: "",
+        data: "",
+        hora: "",
+        local: "",
+        adversario: "",
+        active: true,
+        createdAt: new Date().toISOString()
       };
-
-      // Delete button
-      const delBtn = document.createElement("button");
-      delBtn.textContent="Eliminar";
-      delBtn.className="btn-delete";
-      delBtn.onclick = async () => {
-        if(confirm("Deseja eliminar este jogo?")){
-          await deleteDoc(doc(db,"users",currentUserId,"games",gameId));
-          if(activeGameId===gameId){
-            activeGameId=null;
-            gameForm.reset();
-          }
-        }
-      };
-
-      div.appendChild(loadBtn);
-      div.appendChild(delBtn);
-      gamesListContainer.appendChild(div);
+      const docRef = await addDoc(collection(db, "games"), newGame);
+      currentGameId = docRef.id;
+      saveButton.disabled = false;
+      showNotification("🆕 Novo jogo criado!");
+      await loadGames();
     }
-  });
-}
 
-// Initialize
-ensureAuth().then(() => {
-  listGames();
-});
-</script>
+    async function saveCurrentGame() {
+      if (!currentGameId) return;
+      const data = getFormData();
+      data.active = true;
+      const gameRef = doc(db, "games", currentGameId);
+      await updateDoc(gameRef, data);
+      showNotification("💾 Jogo salvo no Firebase!");
+      await loadGames();
+    }
+
+    async function loadGames() {
+      games = [];
+      const querySnapshot = await getDocs(collection(db, "games"));
+      querySnapshot.forEach((docSnap) => {
+        games.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      renderGamesList();
+    }
+
+    async function loadGameToForm(gameId) {
+      const game = games.find(g => g.id === gameId);
+      if (!game) return;
+      Object.entries(game).forEach(([key, val]) => {
+        const input = document.getElementById(key);
+        if (input) input.value = val;
+      });
+      currentGameId = gameId;
+      saveButton.disabled = false;
+
+      for (const g of games) {
+        g.active = (g.id === gameId);
+        await updateDoc(doc(db, "games", g.id), { active: g.active });
+      }
+
+      showNotification("✅ Jogo carregado!");
+      renderGamesList();
+    }
+
+    async function deleteGame(gameId) {
+      await deleteDoc(doc(db, "games", gameId));
+      showNotification("🗑️ Jogo apagado!");
+      await loadGames();
+    }
+
+    async function deleteAllGames() {
+      if (!confirm("Tem certeza que deseja excluir todos os jogos?")) return;
+      const querySnapshot = await getDocs(collection(db, "games"));
+      for (const docSnap of querySnapshot.docs) {
+        await deleteDoc(docSnap.ref);
+      }
+      showNotification("🧹 Todos os jogos apagados!");
+      await loadGames();
+    }
+
+    function renderGamesList() {
+      const tbody = document.getElementById("gamesTableBody");
+      tbody.innerHTML = "";
+      if (games.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Nenhum jogo salvo.</td></tr>`;
+        return;
+      }
+      for (const g of games) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${g.escalao || ""}</td>
+          <td>${g.competicao || ""}</td>
+          <td>${g.fase || ""}</td>
+          <td>${g.grupo || ""}</td>
+          <td>${g.jornada || ""}</td>
+          <td>${g.data || ""} ${g.hora || ""}</td>
+          <td>${g.local || ""}</td>
+          <td>${g.adversario || ""}</td>
+          <td>${g.active ? "✅" : ""}</td>
+          <td>
+            <button class="load-btn" onclick="loadGameToForm('${g.id}')">Load</button>
+            <button onclick="deleteGame('${g.id}')">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    window.newGame = newGame;
+    window.saveCurrentGame = saveCurrentGame;
+    window.loadGameToForm = loadGameToForm;
+    window.deleteGame = deleteGame;
+    window.deleteAllGames = deleteAllGames;
+    window.showGamesList = async () => {
+      const div = document.getElementById("gamesList");
+      if (div.style.display === "block") {
+        div.style.opacity = 0;
+        setTimeout(() => (div.style.display = "none"), 300);
+      } else {
+        await loadGames();
+        div.style.display = "block";
+        div.style.opacity = 1;
+      }
+    };
+
+    window.onload = async function () {
+      jogoForm = document.getElementById("jogoForm");
+      notification = document.getElementById("notification");
+      saveButton = document.getElementById("saveButton");
+
+      jogoForm.addEventListener("input", () => {
+        const data = getFormData();
+        localStorage.setItem(STORAGE_KEY_CURRENT_FORM, JSON.stringify(data));
+      });
+
+      const savedForm = localStorage.getItem(STORAGE_KEY_CURRENT_FORM);
+      if (savedForm) {
+        const formData = JSON.parse(savedForm);
+        Object.entries(formData).forEach(([k, v]) => {
+          const input = document.getElementById(k);
+          if (input) input.value = v;
+        });
+        showNotification("✅ Dados restaurados do cache local!");
+      }
+
+      await loadGames();
+    };
+  </script>
 </body>
 </html>
