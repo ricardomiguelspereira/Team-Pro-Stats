@@ -4,26 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Estatísticas</title>
-<link rel="stylesheet" href="estatisticas.css">
 <style>
-  body { font-family: sans-serif; margin: 0; padding: 16px; }
-  h2 { margin-bottom: 10px; }
-  .tabs { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
-  .tab-btn, .nav-btn {
-    padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;
-    background: #ddd;
-  }
-  .tab-btn.active { background: #0077ff; color: #fff; }
-  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-  th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
-  th.fixed-col, td.fixed-col { position: sticky; left: 0; background: #fafafa; }
-  .notification {
-    display:none; position:fixed; right:12px; top:12px;
-    background:#e0ffe0; padding:8px 12px; border-radius:6px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.15);
-  }
-  .notification.error { background:#ffdede; }
+  body { font-family:sans-serif; margin:20px; background:#f4f4f4; }
+  h2 { text-align:center; }
+  .tabs { margin-bottom:12px; text-align:center; }
+  .tab-btn { padding:6px 12px; margin:0 4px; cursor:pointer; border:1px solid #2980b9; border-radius:4px; background:#2980b9; color:white; }
+  .tab-btn.active { background:#3498db; }
+  .tab-content { display:none; margin-top:10px; }
+  .tab-content.active { display:block; }
+  .responsive { overflow-x:auto; margin-bottom:16px; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { border:1px solid #ddd; padding:6px 8px; text-align:left; font-size:13px; }
+  th { background:#2980b9; color:white; }
+  input[type=number] { width:60px; }
   footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#666; }
+  .notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+  .notification.error { background:#ffdede; }
+  #lastSaved { font-size:10px; margin-top:10px; }
+  .nav-btn { margin-left:4px; padding:6px 10px; cursor:pointer; border-radius:4px; border:none; background:#4caf50; color:white; }
 </style>
 </head>
 <body>
@@ -39,81 +37,64 @@
 
 <!-- Parte 1 -->
 <div id="part1" class="tab-content active">
-  <table id="tableCampo1" class="part-table">
-    <thead>
-      <tr>
-        <th class="fixed-col">#</th>
-        <th class="fixed-col">Nome</th>
-        <th>GR / Postes</th>
-        <th>Interceptados</th>
-        <th>Fora</th>
-        <th>Golos</th>
-        <th>Passes Errados</th>
-        <th>Faltas</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <table id="tableGR1" class="part-table">
-    <thead>
-      <tr>
-        <th class="fixed-col">#</th>
-        <th class="fixed-col">Nome</th>
-        <th>Defesas</th>
-        <th>Interceptados</th>
-        <th>Golos Sofridos</th>
-        <th>Faltas</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="responsive">
+    <table id="tableCampo1">
+      <thead>
+        <tr>
+          <th>#</th><th>Nome</th><th>GR / Postes</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="responsive">
+    <table id="tableGR1">
+      <thead>
+        <tr>
+          <th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- Parte 2 -->
-<div id="part2" class="tab-content" style="display:none">
-  <table id="tableCampo2" class="part-table">
-    <thead>
-      <tr>
-        <th class="fixed-col">#</th>
-        <th class="fixed-col">Nome</th>
-        <th>GR / Postes</th>
-        <th>Interceptados</th>
-        <th>Fora</th>
-        <th>Golos</th>
-        <th>Passes Errados</th>
-        <th>Faltas</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <table id="tableGR2" class="part-table">
-    <thead>
-      <tr>
-        <th class="fixed-col">#</th>
-        <th class="fixed-col">Nome</th>
-        <th>Defesas</th>
-        <th>Interceptados</th>
-        <th>Golos Sofridos</th>
-        <th>Faltas</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<div id="part2" class="tab-content">
+  <div class="responsive">
+    <table id="tableCampo2">
+      <thead>
+        <tr>
+          <th>#</th><th>Nome</th><th>GR / Postes</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="responsive">
+    <table id="tableGR2">
+      <thead>
+        <tr>
+          <th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
-<div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
+<div id="lastSaved"></div>
 <div id="notification" class="notification"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, collection, getDocs, onSnapshot
+  getFirestore, doc, getDoc, collection, onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
-/* ---------- Firebase Config ---------- */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
+  apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
   projectId: "YOUR_PROJECT_ID",
   storageBucket: "YOUR_BUCKET",
@@ -125,130 +106,98 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* ---------- Global State ---------- */
-let userId = null;
-let activeGameId = null;
-let fieldPlayers = [];
-let goalKeepers = [];
-let statsParte1 = { campo: {}, gr: {} };
-let statsParte2 = { campo: {}, gr: {} };
+let userId=null, activeGameId=null;
+let fieldPlayers=[], goalKeepers=[];
+let statsParte1={campo:{},gr:{}}, statsParte2={campo:{},gr:{}};
+const campoStats=['grPostes','interceptados','fora','golos','passesErrados','faltas'];
+const grStats=['defesas','interceptados','golosSofridos','faltas'];
 
-const campoStats = ['grPostes', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas'];
-const grStats = ['defesas', 'interceptados', 'golosSofridos', 'faltas'];
-
-/* ---------- UI Helpers ---------- */
-function showNotification(msg, error = false) {
-  const el = document.getElementById("notification");
-  el.textContent = msg;
-  el.className = error ? "notification error" : "notification";
-  el.style.display = "block";
-  setTimeout(() => (el.style.display = "none"), 2000);
+function showNotification(msg,error=false){
+  const el=document.getElementById("notification");
+  el.textContent=msg;
+  el.className=error?"notification error":"notification";
+  el.style.display="block";
+  setTimeout(()=>el.style.display="none",2000);
 }
-
-function updateLastSaved() {
-  document.getElementById("lastSaved").textContent =
-    "Última atualização: " + new Date().toLocaleTimeString("pt-PT");
+function updateLastSaved(){
+  document.getElementById("lastSaved").textContent="Última atualização: "+new Date().toLocaleTimeString("pt-PT");
 }
-
-function renderTable(tableId, players, statsMap, statKeys) {
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  tbody.innerHTML = "";
-  players.forEach(p => {
-    const row = tbody.insertRow();
-    row.innerHTML = `
-      <td class="fixed-col">${p.numero}</td>
-      <td class="fixed-col">${p.nome}</td>
-      ${statKeys
-        .map(
-          k => `<td><input type="number" min="0" value="${
-            statsMap?.[p.numero]?.[k] ?? 0
-          }" onchange="updateStat('${p.numero}','${tableId}','${k}',this.value)"></td>`
-        )
-        .join("")}
-    `;
+function renderTable(tableId,players,statsMap,statKeys){
+  const tbody=document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML="";
+  players.forEach(p=>{
+    const row=tbody.insertRow();
+    row.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td>`+
+      statKeys.map(k=>`<td><input type="number" min="0" value="${statsMap?.[p.numero]?.[k]||0}" onchange="updateStat('${p.numero}','${tableId}','${k}',this.value)"></td>`).join("");
   });
 }
-
-window.updateStat = function (num, tableId, stat, value) {
-  const part = tableId.includes("1") ? "1" : "2";
-  const cat = tableId.includes("Campo") ? "campo" : "gr";
-  const stats = part === "1" ? statsParte1 : statsParte2;
-  if (!stats[cat][num]) stats[cat][num] = {};
-  stats[cat][num][stat] = parseInt(value) || 0;
+window.updateStat=function(num,tableId,stat,value){
+  const part=tableId.includes("1")?"1":"2";
+  const cat=tableId.includes("Campo")?"campo":"gr";
+  const stats=part==="1"?statsParte1:statsParte2;
+  if(!stats[cat][num]) stats[cat][num]={};
+  stats[cat][num][stat]=parseInt(value)||0;
   updateLastSaved();
   showNotification(`Guardado: #${num} ${stat}`);
-};
-
-function render() {
-  renderTable("tableCampo1", fieldPlayers, statsParte1.campo, campoStats);
-  renderTable("tableGR1", goalKeepers, statsParte1.gr, grStats);
-  renderTable("tableCampo2", fieldPlayers, statsParte2.campo, campoStats);
-  renderTable("tableGR2", goalKeepers, statsParte2.gr, grStats);
+}
+function render(){
+  renderTable("tableCampo1",fieldPlayers,statsParte1.campo,campoStats);
+  renderTable("tableGR1",goalKeepers,statsParte1.gr,grStats);
+  renderTable("tableCampo2",fieldPlayers,statsParte2.campo,campoStats);
+  renderTable("tableGR2",goalKeepers,statsParte2.gr,grStats);
 }
 
-/* ---------- Load Players ---------- */
-async function loadPlayers() {
-  if (!userId || !activeGameId) return;
-  const colRef = collection(db, "users", userId, "games", activeGameId, "players");
-  const snapshot = await getDocs(colRef);
+async function subscribePlayersAndStats(){
+  if(!userId||!activeGameId) return;
+  const playersCol=collection(db,"users",userId,"games",activeGameId,"players");
+  onSnapshot(playersCol,snapshot=>{
+    let allPlayers=[];
+    snapshot.forEach(d=>allPlayers.push(d.data()));
+    if(allPlayers.length===0){
+      getDoc(doc(db,"users",userId,"games",activeGameId)).then(docSnap=>{
+        if(docSnap.exists()&&docSnap.data().players){
+          allPlayers=Object.values(docSnap.data().players);
+          updatePlayers(allPlayers);
+        }
+      });
+    } else updatePlayers(allPlayers);
+  });
 
-  let players = [];
-  if (!snapshot.empty) {
-    snapshot.forEach(d => players.push(d.data()));
-  } else {
-    // fallback to old format
-    const gameRef = doc(db, "users", userId, "games", activeGameId);
-    const snap = await getDoc(gameRef);
-    if (snap.exists() && snap.data().players) {
-      players = Object.values(snap.data().players);
-    }
-  }
-
-  fieldPlayers = players
-    .filter(p => p.estatisticas && !p.gr)
-    .sort((a, b) => a.numero - b.numero);
-  goalKeepers = players
-    .filter(p => p.estatisticas && p.gr)
-    .sort((a, b) => a.numero - b.numero);
-
+  onSnapshot(doc(db,"users",userId,"games",activeGameId,"stats","parte1"),snap=>{
+    statsParte1 = snap.exists()?snap.data():{campo:{},gr:{}};
+    render();
+  });
+  onSnapshot(doc(db,"users",userId,"games",activeGameId,"stats","parte2"),snap=>{
+    statsParte2 = snap.exists()?snap.data():{campo:{},gr:{}};
+    render();
+  });
+}
+function updatePlayers(allPlayers){
+  fieldPlayers = allPlayers.filter(p=>p.estatisticas&&!p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers = allPlayers.filter(p=>p.estatisticas&&p.gr).sort((a,b)=>a.numero-b.numero);
   render();
 }
 
 /* ---------- Tabs ---------- */
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".tab-content").forEach(c => (c.style.display = "none"));
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
     btn.classList.add("active");
-    document.getElementById(btn.dataset.tab).style.display = "block";
+    document.getElementById(btn.dataset.tab).classList.add("active");
     render();
   });
 });
-
-document.getElementById("openInOut").addEventListener("click", () => {
-  window.location.href = "entradassaidas.html";
-});
-document.getElementById("openExtraTime").addEventListener("click", () => {
-  window.location.href = "extra-time.html";
-});
+document.getElementById("openInOut").addEventListener("click",()=>window.location.href="entradassaidas.html");
+document.getElementById("openExtraTime").addEventListener("click",()=>window.location.href="extra-time.html");
 
 /* ---------- Auth + Init ---------- */
-onAuthStateChanged(auth, async user => {
-  if (user) {
-    userId = user.uid;
-  } else {
-    const res = await signInAnonymously(auth);
-    userId = res.user.uid;
-  }
-
-  activeGameId = localStorage.getItem("activeGameId");
-  if (!activeGameId) {
-    alert("Nenhum jogo ativo. Selecione ou crie um jogo em 'Configurar Jogo'.");
-    window.location.href = "configjogoequipa.html";
-    return;
-  }
-
-  await loadPlayers();
+onAuthStateChanged(auth,async user=>{
+  if(user) userId=user.uid;
+  else { const res=await signInAnonymously(auth); userId=res.user.uid; }
+  activeGameId=localStorage.getItem("activeGameId");
+  if(!activeGameId){ alert("Nenhum jogo ativo."); window.location.href="configjogoequipa.html"; return; }
+  await subscribePlayersAndStats();
   render();
 });
 </script>
