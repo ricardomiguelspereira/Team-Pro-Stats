@@ -9,6 +9,7 @@
   footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#666; }
   .notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
   .notification.error { background:#ffdede; }
+  table input { width:60px; text-align:center; }
 </style>
 </head>
 <body>
@@ -28,29 +29,21 @@
     <table id="tableCampo1" class="part-table">
       <thead>
         <tr>
-          <th class="fixed-col">#</th>
-          <th class="fixed-col">Nome</th>
-          <th>GR / Postes</th>
-          <th>Interceptados</th>
-          <th>Fora</th>
-          <th>Golos</th>
-          <th>Passes Errados</th>
-          <th>Faltas</th>
+          <th>#</th><th>Nome</th>
+          <th>Remates</th><th>Interceptados</th><th>Fora</th>
+          <th>Golos</th><th>Passes Errados</th><th>Faltas</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
+
   <div class="responsive">
     <table id="tableGR1" class="part-table">
       <thead>
         <tr>
-          <th class="fixed-col">#</th>
-          <th class="fixed-col">Nome</th>
-          <th>Defesas</th>
-          <th>Interceptados</th>
-          <th>Golos Sofridos</th>
-          <th>Faltas</th>
+          <th>#</th><th>Nome</th>
+          <th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -64,29 +57,21 @@
     <table id="tableCampo2" class="part-table">
       <thead>
         <tr>
-          <th class="fixed-col">#</th>
-          <th class="fixed-col">Nome</th>
-          <th>GR / Postes</th>
-          <th>Interceptados</th>
-          <th>Fora</th>
-          <th>Golos</th>
-          <th>Passes Errados</th>
-          <th>Faltas</th>
+          <th>#</th><th>Nome</th>
+          <th>Remates</th><th>Interceptados</th><th>Fora</th>
+          <th>Golos</th><th>Passes Errados</th><th>Faltas</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
+
   <div class="responsive">
     <table id="tableGR2" class="part-table">
       <thead>
         <tr>
-          <th class="fixed-col">#</th>
-          <th class="fixed-col">Nome</th>
-          <th>Defesas</th>
-          <th>Interceptados</th>
-          <th>Golos Sofridos</th>
-          <th>Faltas</th>
+          <th>#</th><th>Nome</th>
+          <th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -98,203 +83,123 @@
 <div id="notification" class="notification"></div>
 
 <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
   import {
-    FB_PATHS_GLOBAL,
-    FB_PATHS_GAME,
-    initializeFirebase,
-    saveSingleStat,
-    onFirebaseDataChange,
-    getFirebaseData,
-    getActiveGameId,
-    setActiveGameId
-  } from './firebase-data.js';
+    getFirestore, collection, onSnapshot, doc, getDocs, setDoc
+  } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+  import {
+    getAuth, onAuthStateChanged, signInAnonymously
+  } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-  // Local state mirrors Firestore structure exactly
-  let eligibleFieldPlayers = []; // players de campo (estatisticas: true && !gr)
-  let eligibleGoalKeepers = [];  // GRs (from goalKeepers doc + any player.gr flagged)
+  /* ---------------- Firebase Init ---------------- */
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_BUCKET",
+    messagingSenderId: "YOUR_MSG_ID",
+    appId: "YOUR_APP_ID"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  /* ---------------- State ---------------- */
+  let userId = null;
+  let activeGameId = localStorage.getItem("activeGameId") || null;
+  let fieldPlayers = [];
+  let goalKeepers = [];
   let statsParte1 = { campo: {}, gr: {} };
   let statsParte2 = { campo: {}, gr: {} };
 
-  let firebaseReady = false;
-  let unsubPlayers = null;
-  let unsubStats1 = null;
-  let unsubStats2 = null;
-
-  const campoStats = ['rem', 'interceptados', 'fora', 'golos', 'passesErrados', 'faltas']; // Changed 'grPostes' to 'rem' for consistency
-  const grStats = ['defesas', 'interceptados', 'golosSofridos', 'faltas'];
-
+  const campoStats = ['remates','interceptados','fora','golos','passesErrados','faltas'];
+  const grStats = ['defesas','interceptados','golosSofridos','faltas'];
   const notificationEl = document.getElementById('notification');
   const lastSavedEl = document.getElementById('lastSaved');
 
-  function showNotification(msg, isError = false) {
+  function showNotification(msg, isError=false){
     notificationEl.textContent = msg;
     notificationEl.className = isError ? 'notification error' : 'notification';
-    notificationEl.style.display = 'block';
-    setTimeout(() => { notificationEl.style.display = 'none'; }, 2000);
+    notificationEl.style.display='block';
+    setTimeout(()=>notificationEl.style.display='none',2000);
   }
-
-  function updateLastSaved() {
+  function updateLastSaved(){
     lastSavedEl.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
   }
 
-  // Render helpers
-  function renderTable(tableId, players, statsMap, statKeys) {
-    const tbody = document.querySelector(`#${tableId} tbody`);
-    tbody.innerHTML = '';
-    players.forEach(player => {
-      const row = tbody.insertRow();
-      const num = player.numero;
-      const name = player.nome || '';
+  function renderTable(tableId, players, statsMap, keys){
+    const tbody=document.querySelector(`#${tableId} tbody`);
+    tbody.innerHTML='';
+    players.forEach(p=>{
+      const row=tbody.insertRow();
       row.innerHTML = `
-        <td class="fixed-col">${num}</td>
-        <td class="fixed-col">${name}</td>
-        ${statKeys.map(k => {
-          const value = statsMap?.[String(num)]?.[k] ?? 0;
-          return `<td><input type="number" min="0" value="${value}"
-                   data-player="${num}"
-                   data-part="${tableId.includes('1') ? '1' : '2'}"
-                   data-category="${tableId.includes('Campo') ? 'campo' : 'gr'}"
-                   data-stat="${k}"
-                   onchange="updateStat(this)"></td>`;
+        <td>${p.numero}</td><td>${p.nome}</td>
+        ${keys.map(k=>{
+          const val = statsMap?.[p.numero]?.[k] ?? 0;
+          return `<td><input type="number" value="${val}" min="0"
+              data-player="${p.numero}"
+              data-part="${tableId.includes('1')?'1':'2'}"
+              data-cat="${tableId.includes('Campo')?'campo':'gr'}"
+              data-stat="${k}"
+              onchange="window.updateStat(this)">
+            </td>`;
         }).join('')}
       `;
     });
   }
 
-  // Expose updateStat globally so inline onchange works
-  window.updateStat = async function(input) {
-    const playerNum = input.dataset.player;
+  function render(){
+    renderTable('tableCampo1', fieldPlayers, statsParte1.campo, campoStats);
+    renderTable('tableGR1', goalKeepers, statsParte1.gr, grStats);
+    renderTable('tableCampo2', fieldPlayers, statsParte2.campo, campoStats);
+    renderTable('tableGR2', goalKeepers, statsParte2.gr, grStats);
+  }
+
+  window.updateStat = async function(input){
+    const num = input.dataset.player;
     const part = input.dataset.part;
-    const category = input.dataset.category;
-    const statKey = input.dataset.stat;
-    const newValue = parseInt(input.value) || 0;
-
-    // Update local copy
-    const stats = (part === '1') ? statsParte1 : statsParte2;
-    if (!stats[category]) stats[category] = {};
-    if (!stats[category][playerNum]) stats[category][playerNum] = {};
-    stats[category][playerNum][statKey] = newValue;
-
-    // Persist single stat to Firestore (keeps the exact schema)
-    try {
-      await saveSingleStat(part, category, playerNum, statKey, newValue);
-      updateLastSaved();
-      showNotification(`Guardado: ${statKey} (${newValue}) — #${playerNum}`);
-    } catch (err) {
-      console.error('Save single stat failed:', err);
-      showNotification('Erro ao guardar (ver console)', true);
-    }
-  };
-
-  // Render all four tables
-  function render() {
-    renderTable('tableCampo1', eligibleFieldPlayers, statsParte1.campo || {}, campoStats);
-    renderTable('tableGR1', eligibleGoalKeepers, statsParte1.gr || {}, grStats);
-    renderTable('tableCampo2', eligibleFieldPlayers, statsParte2.campo || {}, campoStats);
-    renderTable('tableGR2', eligibleGoalKeepers, statsParte2.gr || {}, grStats);
+    const cat = input.dataset.cat;
+    const stat = input.dataset.stat;
+    const val = parseInt(input.value)||0;
+    const stats = (part==='1')?statsParte1:statsParte2;
+    if(!stats[cat])stats[cat]={};
+    if(!stats[cat][num])stats[cat][num]={};
+    stats[cat][num][stat]=val;
+    const statsRef = doc(db, 'users', userId, 'games', activeGameId, `statsParte${part}`);
+    await setDoc(statsRef, stats, { merge: true });
+    updateLastSaved();
+    showNotification(`Guardado #${num}: ${stat} ${val}`);
   }
 
-  // Setup listeners to keep local UI in sync with Firestore
-  async function setupFirebaseListeners() {
-    // Players listener: combine players/fieldPlayers and players/goalKeepers
-    if (unsubPlayers) unsubPlayers();
-    unsubPlayers = await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, async (fieldData) => {
-      const fields = (fieldData && Array.isArray(fieldData.players)) ? fieldData.players : [];
-      const goalData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
-      const gks = (goalData && Array.isArray(goalData.players)) ? goalData.players : [];
-
-      eligibleFieldPlayers = fields.filter(p => p.estatisticas === true && !p.gr).sort((a,b) => a.numero - b.numero);
-      eligibleGoalKeepers = [
-        ...gks.filter(p => p.estatisticas === true), // Explicit goalKeepers
-        ...fields.filter(p => p.gr === true && p.estatisticas === true) // Field players flagged as GR
-      ].sort((a,b) => a.numero - b.numero);
-
-      render();
-    });
-
-    // Stats Parte 1
-    if (unsubStats1) unsubStats1();
-    unsubStats1 = await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data) => {
-      statsParte1 = data || { campo: {}, gr: {} };
-      render();
-    });
-
-    // Stats Parte 2
-    if (unsubStats2) unsubStats2();
-    unsubStats2 = await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, (data) => {
-      statsParte2 = data || { campo: {}, gr: {} };
+  async function loadPlayers(){
+    if(!userId||!activeGameId)return;
+    const colRef = collection(db, 'users', userId, 'games', activeGameId, 'players');
+    onSnapshot(colRef, snap=>{
+      const all = snap.docs.map(d=>d.data());
+      fieldPlayers = all.filter(p=>p.estatisticas && !p.gr).sort((a,b)=>a.numero-b.numero);
+      goalKeepers = all.filter(p=>p.estatisticas && p.gr).sort((a,b)=>a.numero-b.numero);
       render();
     });
   }
 
-  // Initializer: ensure auth, migrate, load initial stats then subscribe
-  document.addEventListener('DOMContentLoaded', async () => {
-    await initializeFirebase(); // ensures auth & migration
-    firebaseReady = true;
-
-    const activeGame = getActiveGameId();
-    if (!activeGame) {
-      alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
-      window.location.href = 'configjogoequipa.html';
-      return;
-    }
-
-    // Load any existing stats immediately so UI shows values fast
-    const s1 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte1);
-    const s2 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte2);
-    statsParte1 = s1 || { campo: {}, gr: {} };
-    statsParte2 = s2 || { campo: {}, gr: {} };
-
-    await setupFirebaseListeners();
-    render();
-  });
-
-  // Cleanup listeners on unload
-  window.addEventListener('beforeunload', () => {
-    if (typeof unsubPlayers === 'function') unsubPlayers();
-    if (typeof unsubStats1 === 'function') unsubStats1();
-    if (typeof unsubStats2 === 'function') unsubStats2();
+  onAuthStateChanged(auth, async (u)=>{
+    if(u){userId=u.uid; loadPlayers();}
+    else { await signInAnonymously(auth); }
   });
 </script>
 
-<!-- Tabs & UI (unchanged behavior) -->
 <script>
-  window.addEventListener('load', async () => {
-    const savedTab = localStorage.getItem('activeStatsTab');
-    if (savedTab) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const btn = document.querySelector(`[data-tab="${savedTab}"]`);
-      if (btn) {
-        btn.classList.add('active');
-        document.getElementById(savedTab).classList.add('active');
-      }
-    }
-    if (typeof render === 'function') await render();
-  });
-
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(btn.dataset.tab).classList.add('active');
-      localStorage.setItem('activeStatsTab', btn.dataset.tab);
-      if (typeof render === 'function') render();
     });
   });
-
-  document.getElementById('openInOut').addEventListener('click', () => {
-    const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
-    localStorage.setItem('activeStatsTab', currentTab);
-    window.location.href = 'entradassaidas.html';
-  });
-
-  document.getElementById('openExtraTime').addEventListener('click', () => {
-    const currentTab = document.querySelector('.tab-btn.active').dataset.tab;
-    localStorage.setItem('activeStatsTab', currentTab);
-    window.location.href = 'extra-time.html';
-  });
+  document.getElementById('openInOut').onclick=()=>location.href='entradassaidas.html';
+  document.getElementById('openExtraTime').onclick=()=>location.href='extra-time.html';
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
