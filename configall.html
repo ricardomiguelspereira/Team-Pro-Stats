@@ -1,182 +1,381 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestão de Jogadores</title>
-<style>
-/* Minimal CSS for clarity, same as before */
-body{font-family:sans-serif;background:#f4f4f4;padding:20px;}
-.container{background:white;padding:20px;border-radius:6px;max-width:900px;margin:0 auto;}
-table{width:100%;border-collapse:collapse;margin-top:10px;}
-th,td{padding:10px;border:1px solid #ddd;text-align:left;}
-th{background:#2980b9;color:white;}
-button{padding:6px 12px;margin-right:5px;border:none;border-radius:4px;cursor:pointer;}
-.add-btn{background:#2980b9;color:white;}
-.add-btn:hover{background:#3498db;}
-.delete-btn{background:#dc3545;color:white;}
-.delete-btn:hover{background:#c82333;}
-.edit-btn{background:#28a745;color:white;}
-.edit-btn:hover{background:#218838;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Jogadores - Team Pro Stats (Firebase)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      max-width: 900px;
+      margin: 0 auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      color: #2980b9;
+    }
+    .game-info {
+      background: #e8f4fd;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .form-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+    }
+    input[type="number"], input[type="text"] {
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    input[type="checkbox"] {
+      margin: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #2980b9;
+      color: white;
+    }
+    button {
+      padding: 6px 12px;
+      margin-right: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .add-btn {
+      background: #2980b9;
+      color: white;
+    }
+    .add-btn:hover { background: #3498db; }
+    .delete-btn {
+      background: #dc3545;
+      color: white;
+    }
+    .delete-btn:hover { background: #c82333; }
+    .edit-btn {
+      background: #28a745;
+      color: white;
+    }
+    .edit-btn:hover { background: #218838; }
+    .notification {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+      font-weight: 600;
+    }
+    .notification.success {
+      background: rgba(40, 167, 69, 0.1);
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .notification.error {
+      background: rgba(220, 53, 69, 0.1);
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    @media (max-width: 600px) {
+      .form-row { flex-direction: column; }
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-<h1>Gestão de Jogadores</h1>
-<label>Nº: <input type="number" id="numero" min="1" max="99"></label>
-<label>Nome: <input type="text" id="nome"></label>
-<label>PSE: <input type="checkbox" id="pse"></label>
-<label>Estatísticas: <input type="checkbox" id="estatisticas"></label>
-<label>GR: <input type="checkbox" id="gr"></label>
-<button class="add-btn" id="addPlayerBtn">Adicionar</button>
+  <div class="container">
+    <h1>⚽ Gestão de Jogadores - Team Pro Stats</h1>
+    <div id="gameInfo" class="game-info" style="display: none;"></div>
+    
+    <div class="form-row">
+      <label>Nº: <input type="number" id="numero" min="1" max="99" value=""></label>
+      <label>Nome: <input type="text" id="nome" value=""></label>
+      <label>PSE: <input type="checkbox" id="pse"></label>
+      <label>Estatísticas: <input type="checkbox" id="estatisticas"></label>
+      <label>GR: <input type="checkbox" id="gr"></label>
+      <button class="add-btn" id="addPlayerBtn">Adicionar Jogador</button>
+    </div>
 
-<h2>Jogadores de Campo</h2>
-<table id="fieldPlayersTable">
-<thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
-<tbody></tbody>
-</table>
+    <div id="notification" class="notification"></div>
 
-<h2>Guarda-Redes</h2>
-<table id="goalKeepersTable">
-<thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
-<tbody></tbody>
-</table>
+    <h2>Jogadores de Campo</h2>
+    <table id="fieldPlayersTable">
+      <thead>
+        <tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-<button class="delete-btn" id="deleteAllBtn">Eliminar Tudo</button>
-</div>
+    <h2>Guarda-Redes</h2>
+    <table id="goalKeepersTable">
+      <thead>
+        <tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+    <button class="delete-btn" id="deleteAllBtn">Eliminar Todos os Jogadores</button>
+  </div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-  authDomain: "team-pro-stats.firebaseapp.com",
-  projectId: "team-pro-stats",
-  storageBucket: "team-pro-stats.firebasestorage.app",
-  messagingSenderId: "758444286089",
-  appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
-  measurementId: "G-D1GDDBPD55"
-};
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+    const firebaseConfig = {
+      apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+      authDomain: "team-pro-stats.firebaseapp.com",
+      projectId: "team-pro-stats",
+      storageBucket: "team-pro-stats.firebasestorage.app",
+      messagingSenderId: "758444286089",
+      appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
+      measurementId: "G-D1GDDBPD55"
+    };
 
-let currentUserId = null;
-let activeGameId = localStorage.getItem("activeGameId") || null;
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-// Initialize Firebase Auth
-await new Promise(resolve=>{
-  const unsub = auth.onAuthStateChanged(async user=>{
-    if(user) currentUserId = user.uid;
-    else {
-      const res = await signInAnonymously(auth);
-      currentUserId = res.user.uid;
+    let currentUser Id = null;
+    let activeGameId = localStorage.getItem("activeGameId") || null;
+    let fieldPlayers = [];
+    let goalKeepers = [];
+    let unsubscribeSnapshot = null;
+
+    const numeroInput = document.getElementById('numero');
+    const nomeInput = document.getElementById('nome');
+    const pseInput = document.getElementById('pse');
+    const estatisticasInput = document.getElementById('estatisticas');
+    const grInput = document.getElementById('gr');
+    const addBtn = document.getElementById('addPlayerBtn');
+    const fieldTableBody = document.querySelector('#fieldPlayersTable tbody');
+    const goalTableBody = document.querySelector('#goalKeepersTable tbody');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+    const gameInfo = document.getElementById('gameInfo');
+    const notification = document.getElementById('notification');
+
+    // Initialize Auth
+    async function initializeAuth() {
+      if (currentUser Id) return currentUser Id;
+      return new Promise((resolve, reject) => {
+        const unsub = auth.onAuthStateChanged(async (user) => {
+          if (user) {
+            currentUser Id = user.uid;
+          } else {
+            try {
+              const result = await signInAnonymously(auth);
+              currentUser Id = result.user.uid;
+            } catch (err) {
+              showNotification('Erro na autenticação: ' + err.message, true);
+              reject(err);
+              return;
+            }
+          }
+          unsub();
+          resolve(currentUser Id);
+        });
+      });
     }
-    resolve();
-    unsub();
-  });
-});
 
-// Create a new game if none
-if(!activeGameId){
-  const newDoc = doc(db,'users',currentUserId,'games');
-  activeGameId = doc(newDoc).id;
-  localStorage.setItem("activeGameId",activeGameId);
-  await setDoc(doc(db,'users',currentUserId,'games',activeGameId,'players'),{fieldPlayers:[],goalKeepers:[]});
-}
+    function userPath(...parts) { return ["users", currentUser Id, ...parts]; }
+    function gamePath(gameId, ...parts) { return ["users", currentUser Id, "games", gameId, ...parts]; }
 
-// DOM Elements
-const numeroInput = document.getElementById('numero');
-const nomeInput = document.getElementById('nome');
-const pseInput = document.getElementById('pse');
-const estatisticasInput = document.getElementById('estatisticas');
-const grInput = document.getElementById('gr');
-const addBtn = document.getElementById('addPlayerBtn');
-const fieldTableBody = document.querySelector('#fieldPlayersTable tbody');
-const goalTableBody = document.querySelector('#goalKeepersTable tbody');
-const deleteAllBtn = document.getElementById('deleteAllBtn');
+    // Show notification
+    function showNotification(msg, isError = false) {
+      notification.textContent = msg;
+      notification.className = `notification ${isError ? 'error' : 'success'}`;
+      notification.style.display = 'block';
+      setTimeout(() => { notification.style.display = 'none'; }, 4000);
+      console.log(msg);
+    }
 
-let fieldPlayers=[], goalKeepers=[];
+    // Ensure active game exists (create if not)
+    async function ensureActiveGame() {
+      await initializeAuth();
+      if (activeGameId) {
+        // Verify it exists
+        const rootSnap = await getDoc(doc(db, ...userPath("games", activeGameId)));
+        if (rootSnap.exists()) return activeGameId;
+      }
 
-function renderTables(){
-  fieldTableBody.innerHTML='';
-  fieldPlayers.forEach((p,i)=>{
-    const row = fieldTableBody.insertRow();
-    row.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td>
-    <td>
-      <button class="edit-btn" data-index="${i}" data-table="field">Editar</button>
-      <button class="delete-btn" data-index="${i}" data-table="field">Apagar</button>
-    </td>`;
-  });
-  goalTableBody.innerHTML='';
-  goalKeepers.forEach((p,i)=>{
-    const row = goalTableBody.insertRow();
-    row.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td>
-    <td>
-      <button class="edit-btn" data-index="${i}" data-table="goal">Editar</button>
-      <button class="delete-btn" data-index="${i}" data-table="goal">Apagar</button>
-    </td>`;
-  });
-}
+      // Create new game if none or invalid
+      try {
+        const colRef = collection(db, ...userPath("games"));
+        const newDocRef = doc(colRef);
+        activeGameId = newDocRef.id;
+        localStorage.setItem("activeGameId", activeGameId);
 
-// Real-time listener
-const playersDoc = doc(db,'users',currentUserId,'games',activeGameId,'players');
-onSnapshot(playersDoc,(snap)=>{
-  if(snap.exists()){
-    const data = snap.data();
-    fieldPlayers = data.fieldPlayers||[];
-    goalKeepers = data.goalKeepers||[];
-    renderTables();
-  }
-});
+        // Create root game doc
+        await setDoc(newDocRef, { createdAt: serverTimestamp() });
 
-// Add Player
-addBtn.onclick = async ()=>{
-  const numero=parseInt(numeroInput.value);
-  const nome=nomeInput.value.trim();
-  const pse=pseInput.checked;
-  const estatisticas=estatisticasInput.checked;
-  const gr=grInput.checked;
-  if(!numero||!nome){alert('Número e Nome são obrigatórios'); return;}
-  const target = gr?goalKeepers:fieldPlayers;
-  if(target.some(p=>p.numero===numero)){alert('Número duplicado'); return;}
-  target.push({numero,nome,pse,estatisticas});
-  await setDoc(playersDoc,{fieldPlayers,goalKeepers});
-  numeroInput.value=''; nomeInput.value=''; pseInput.checked=false; estatisticasInput.checked=false; grInput.checked=false;
-};
+        // Create default jogoFormData
+        const defaultGame = {
+          escalao: '', competicao: '', fase: '', grupo: '', jornada: '',
+          data: new Date().toISOString().slice(0, 10), hora: '', local: '', adversario: 'Novo Jogo',
+          active: true
+        };
+        await setDoc(doc(db, ...gamePath(activeGameId, "config", "jogoFormData")), defaultGame);
 
-// Delete or Edit
-document.addEventListener('click', async e=>{
-  if(e.target.matches('.delete-btn')){
-    const index=parseInt(e.target.dataset.index);
-    const table=e.target.dataset.table;
-    if(table==='field'){ fieldPlayers.splice(index,1); }
-    else{ goalKeepers.splice(index,1); }
-    await setDoc(playersDoc,{fieldPlayers,goalKeepers});
-  }
-  if(e.target.matches('.edit-btn')){
-    const index=parseInt(e.target.dataset.index);
-    const table=e.target.dataset.table;
-    const player = table==='field'? fieldPlayers[index]: goalKeepers[index];
-    const newNumero=prompt('Novo Nº',player.numero);
-    const newNome=prompt('Novo Nome',player.nome);
-    if(!newNumero||!newNome) return;
-    player.numero=parseInt(newNumero);
-    player.nome=newNome;
-    await setDoc(playersDoc,{fieldPlayers,goalKeepers});
-  }
-});
+        // Initialize empty players doc
+        await setDoc(doc(db, ...gamePath(activeGameId, "players")), { fieldPlayers: [], goalKeepers: [] });
 
-// Delete All
-deleteAllBtn.onclick = async ()=>{
-  if(confirm('Eliminar todos os jogadores?')){
-    fieldPlayers=[]; goalKeepers=[];
-    await setDoc(playersDoc,{fieldPlayers,goalKeepers});
-  }
-};
-</script>
-</body>
-</html>
+        showNotification('🆕 Novo jogo criado automaticamente para gestão de jogadores!');
+        updateGameInfo(defaultGame);
+        return activeGameId;
+      } catch (err) {
+        console.error(err);
+        showNotification('Erro ao criar jogo: ' + err.message, true);
+        throw err;
+      }
+    }
+
+    // Update game info display
+    function updateGameInfo(gameData) {
+      if (gameData && gameData.adversario && gameData.data) {
+        gameInfo.innerHTML = `Gerenciando jogadores para: ${gameData.adversario} em ${gameData.data} (${gameData.local || 'Local não definido'})`;
+        gameInfo.style.display = 'block';
+      } else {
+        gameInfo.style.display = 'none';
+      }
+    }
+
+    // Render tables
+    function renderTables() {
+      fieldTableBody.innerHTML = '';
+      fieldPlayers.forEach((p, i) => {
+        const row = fieldTableBody.insertRow();
+        row.innerHTML = `
+          <td>${p.numero}</td>
+          <td>${p.nome}</td>
+          <td>${p.pse ? '✔️' : ''}</td>
+          <td>${p.estatisticas ? '✔️' : ''}</td>
+          <td>
+            <button class="edit-btn" data-index="${i}" data-table="field">Editar</button>
+            <button class="delete-btn" data-index="${i}" data-table="field">Apagar</button>
+          </td>
+        `;
+      });
+
+      goalTableBody.innerHTML = '';
+      goalKeepers.forEach((p, i) => {
+        const row = goalTableBody.insertRow();
+        row.innerHTML = `
+          <td>${p.numero}</td>
+          <td>${p.nome}</td>
+          <td>${p.pse ? '✔️' : ''}</td>
+          <td>${p.estatisticas ? '✔️' : ''}</td>
+          <td>
+            <button class="edit-btn" data-index="${i}" data-table="goal">Editar</button>
+            <button class="delete-btn" data-index="${i}" data-table="goal">Apagar</button>
+          </td>
+        `;
+      });
+    }
+
+    // Setup real-time listener
+    function setupListener() {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      const playersRef = doc(db, ...gamePath(activeGameId, "players"));
+      unsubscribeSnapshot = onSnapshot(playersRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          fieldPlayers = data.fieldPlayers || [];
+          goalKeepers = data.goalKeepers || [];
+          renderTables();
+        } else {
+          // Initialize if not exists
+          setDoc(playersRef, { fieldPlayers: [], goalKeepers: [] });
+        }
+      }, (err) => {
+        console.error('Snapshot error:', err);
+        showNotification('Erro na sincronização: ' + err.message, true);
+      });
+
+      // Also load game info
+      const gameSnap = getDoc(doc(db, ...gamePath(activeGameId, "config", "jogoFormData")));
+      gameSnap.then((snap) => {
+        if (snap.exists()) {
+          updateGameInfo(snap.data());
+        }
+      });
+    }
+
+    // Add player
+    addBtn.onclick = async () => {
+      const numero = parseInt(numeroInput.value);
+      const nome = nomeInput.value.trim();
+      const pse = pseInput.checked;
+      const estatisticas = estatisticasInput.checked;
+      const isGr = grInput.checked;
+
+      if (!numero || !nome) {
+        showNotification('Número e Nome são obrigatórios!', true);
+        return;
+      }
+
+      // Check duplicates across both lists
+      const allPlayers = [...fieldPlayers, ...goalKeepers];
+      if (allPlayers.some(p => p.numero === numero)) {
+        showNotification('Número já em uso!', true);
+        return;
+      }
+
+      const player = { numero, nome, pse, estatisticas };
+      const targetArray = isGr ? 'goalKeepers' : 'fieldPlayers';
+      const targetList = isGr ? goalKeepers : fieldPlayers;
+      targetList.push(player);
+
+      try {
+        const playersRef = doc(db, ...gamePath(activeGameId, "players"));
+        await setDoc(playersRef, { [targetArray]: targetList, fieldPlayers, goalKeepers }, { merge: true });
+        // Clear form
+        numeroInput.value = ''; nomeInput.value = ''; pseInput.checked = false; estatisticasInput.checked = false; grInput.checked = false;
+        showNotification('Jogador adicionado com sucesso!');
+      } catch (err) {
+        console.error(err);
+        showNotification('Erro ao adicionar: ' + err.message, true);
+        // Revert local
+        targetList.pop();
+      }
+    };
+
+    // Handle edit/delete clicks
+    document.addEventListener('click', async (e) => {
+      if (e.target.matches('.delete-btn')) {
+        const index = parseInt(e.target.dataset.index);
+        const table = e.target.dataset.table;
+        if (confirm('Confirmar exclusão deste jogador?')) {
+          const targetList = table === 'field' ? fieldPlayers : goalKeepers;
+          targetList.splice(index, 1);
+          try {
+            const playersRef = doc(db, ...gamePath(activeGameId, "players"));
+            await setDoc(playersRef, { fieldPlayers, goalKeepers }, { merge: true });
+            showNotification('Jogador removido!');
+          } catch (err) {
+            console.error(err);
