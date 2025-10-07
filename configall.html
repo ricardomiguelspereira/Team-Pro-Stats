@@ -71,11 +71,15 @@
       cursor: pointer;
       font-size: 14px;
     }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
     .add-btn {
       background: #2980b9;
       color: white;
     }
-    .add-btn:hover { background: #3498db; }
+    .add-btn:hover:not(:disabled) { background: #3498db; }
     .delete-btn {
       background: #dc3545;
       color: white;
@@ -103,6 +107,14 @@
       color: #721c24;
       border: 1px solid #f5c6cb;
     }
+    .status {
+      margin: 10px 0;
+      padding: 8px;
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 4px;
+      font-size: 14px;
+    }
     @media (max-width: 600px) {
       .form-row { flex-direction: column; }
     }
@@ -111,6 +123,7 @@
 <body>
   <div class="container">
     <h1>⚽ Gestão de Jogadores - Team Pro Stats</h1>
+    <div id="status" class="status" style="display: none;">Inicializando...</div>
     <div id="gameInfo" class="game-info" style="display: none;"></div>
     
     <div class="form-row">
@@ -119,7 +132,7 @@
       <label>PSE: <input type="checkbox" id="pse"></label>
       <label>Estatísticas: <input type="checkbox" id="estatisticas"></label>
       <label>GR: <input type="checkbox" id="gr"></label>
-      <button class="add-btn" id="addPlayerBtn">Adicionar Jogador</button>
+      <button class="add-btn" id="addPlayerBtn" disabled>Adicionar Jogador</button>
     </div>
 
     <div id="notification" class="notification"></div>
@@ -140,12 +153,12 @@
       <tbody></tbody>
     </table>
 
-    <button class="delete-btn" id="deleteAllBtn">Eliminar Todos os Jogadores</button>
+    <button class="delete-btn" id="deleteAllBtn" disabled>Eliminar Todos os Jogadores</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -167,7 +180,9 @@
     let fieldPlayers = [];
     let goalKeepers = [];
     let unsubscribeSnapshot = null;
+    let isInitialized = false;
 
+    const statusEl = document.getElementById('status');
     const numeroInput = document.getElementById('numero');
     const nomeInput = document.getElementById('nome');
     const pseInput = document.getElementById('pse');
@@ -180,18 +195,38 @@
     const gameInfo = document.getElementById('gameInfo');
     const notification = document.getElementById('notification');
 
+    // Show status
+    function showStatus(msg) {
+      statusEl.textContent = msg;
+      statusEl.style.display = 'block';
+      console.log('Status:', msg);
+    }
+
+    // Show notification
+    function showNotification(msg, isError = false) {
+      notification.textContent = msg;
+      notification.className = `notification ${isError ? 'error' : 'success'}`;
+      notification.style.display = 'block';
+      setTimeout(() => { notification.style.display = 'none'; }, 4000);
+      console.log(isError ? 'Error:' : 'Success:', msg);
+    }
+
     // Initialize Auth
     async function initializeAuth() {
-      if (currentUser Id) return currentUser Id;
+      showStatus('Inicializando autenticação...');
       return new Promise((resolve, reject) => {
         const unsub = auth.onAuthStateChanged(async (user) => {
           if (user) {
             currentUser Id = user.uid;
+            console.log('Auth success, userId:', currentUser Id);
           } else {
             try {
+              showStatus('Fazendo login anônimo...');
               const result = await signInAnonymously(auth);
               currentUser Id = result.user.uid;
+              console.log('Anonymous auth success, userId:', currentUser Id);
             } catch (err) {
+              console.error('Auth error:', err);
               showNotification('Erro na autenticação: ' + err.message, true);
               reject(err);
               return;
@@ -203,29 +238,37 @@
       });
     }
 
-    function userPath(...parts) { return ["users", currentUser Id, ...parts]; }
-    function gamePath(gameId, ...parts) { return ["users", currentUser Id, "games", gameId, ...parts]; }
-
-    // Show notification
-    function showNotification(msg, isError = false) {
-      notification.textContent = msg;
-      notification.className = `notification ${isError ? 'error' : 'success'}`;
-      notification.style.display = 'block';
-      setTimeout(() => { notification.style.display = 'none'; }, 4000);
-      console.log(msg);
+    function userPath(...parts) { 
+      if (!currentUser Id) throw new Error('User  ID not set');
+      return ["users", currentUser Id, ...parts]; 
+    }
+    function gamePath(gameId, ...parts) { 
+      if (!gameId) throw new Error('Game ID not set');
+      return ["users", currentUser Id, "games", gameId, ...parts]; 
     }
 
     // Ensure active game exists (create if not)
     async function ensureActiveGame() {
-      await initializeAuth();
+      showStatus('Verificando jogo ativo...');
       if (activeGameId) {
-        // Verify it exists
-        const rootSnap = await getDoc(doc(db, ...userPath("games", activeGameId)));
-        if (rootSnap.exists()) return activeGameId;
+        try {
+          const rootSnap = await getDoc(doc(db, ...userPath("games", activeGameId)));
+          if (rootSnap.exists()) {
+            console.log('Existing active game found:', activeGameId);
+            return activeGameId;
+          } else {
+            console.log('Active game ID invalid, creating new');
+            activeGameId = null;
+          }
+        } catch (err) {
+          console.error('Error checking active game:', err);
+          activeGameId = null;
+        }
       }
 
-      // Create new game if none or invalid
+      // Create new game
       try {
+        showStatus('Criando novo jogo...');
         const colRef = collection(db, ...userPath("games"));
         const newDocRef = doc(colRef);
         activeGameId = newDocRef.id;
@@ -233,6 +276,7 @@
 
         // Create root game doc
         await setDoc(newDocRef, { createdAt: serverTimestamp() });
+        console.log('Root game doc created:', activeGameId);
 
         // Create default jogoFormData
         const defaultGame = {
@@ -241,15 +285,17 @@
           active: true
         };
         await setDoc(doc(db, ...gamePath(activeGameId, "config", "jogoFormData")), defaultGame);
+        console.log('Game config created');
 
         // Initialize empty players doc
         await setDoc(doc(db, ...gamePath(activeGameId, "players")), { fieldPlayers: [], goalKeepers: [] });
+        console.log('Players doc initialized');
 
-        showNotification('🆕 Novo jogo criado automaticamente para gestão de jogadores!');
+        showNotification('🆕 Novo jogo criado automaticamente!');
         updateGameInfo(defaultGame);
         return activeGameId;
       } catch (err) {
-        console.error(err);
+        console.error('Error creating game:', err);
         showNotification('Erro ao criar jogo: ' + err.message, true);
         throw err;
       }
@@ -302,14 +348,16 @@
     function setupListener() {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
       const playersRef = doc(db, ...gamePath(activeGameId, "players"));
+      console.log('Setting up listener on:', playersRef.path);
       unsubscribeSnapshot = onSnapshot(playersRef, (snap) => {
+        console.log('Snapshot received:', snap.exists() ? 'Data' : 'No data');
         if (snap.exists()) {
           const data = snap.data();
           fieldPlayers = data.fieldPlayers || [];
           goalKeepers = data.goalKeepers || [];
           renderTables();
         } else {
-          // Initialize if not exists
+          console.log('Players doc not found, initializing...');
           setDoc(playersRef, { fieldPlayers: [], goalKeepers: [] });
         }
       }, (err) => {
@@ -317,17 +365,21 @@
         showNotification('Erro na sincronização: ' + err.message, true);
       });
 
-      // Also load game info
-      const gameSnap = getDoc(doc(db, ...gamePath(activeGameId, "config", "jogoFormData")));
-      gameSnap.then((snap) => {
+      // Load game info
+      getDoc(doc(db, ...gamePath(activeGameId, "config", "jogoFormData"))).then((snap) => {
         if (snap.exists()) {
           updateGameInfo(snap.data());
         }
-      });
+      }).catch(err => console.error('Error loading game info:', err));
     }
 
-    // Add player
+    // Add player (guarded)
     addBtn.onclick = async () => {
+      if (!isInitialized || !activeGameId || !currentUser Id) {
+        showNotification('Sistema ainda inicializando ou sem jogo ativo. Aguarde...', true);
+        return;
+      }
+
       const numero = parseInt(numeroInput.value);
       const nome = nomeInput.value.trim();
       const pse = pseInput.checked;
@@ -339,43 +391,7 @@
         return;
       }
 
-      // Check duplicates across both lists
+      // Check duplicates
       const allPlayers = [...fieldPlayers, ...goalKeepers];
       if (allPlayers.some(p => p.numero === numero)) {
-        showNotification('Número já em uso!', true);
-        return;
-      }
-
-      const player = { numero, nome, pse, estatisticas };
-      const targetArray = isGr ? 'goalKeepers' : 'fieldPlayers';
-      const targetList = isGr ? goalKeepers : fieldPlayers;
-      targetList.push(player);
-
-      try {
-        const playersRef = doc(db, ...gamePath(activeGameId, "players"));
-        await setDoc(playersRef, { [targetArray]: targetList, fieldPlayers, goalKeepers }, { merge: true });
-        // Clear form
-        numeroInput.value = ''; nomeInput.value = ''; pseInput.checked = false; estatisticasInput.checked = false; grInput.checked = false;
-        showNotification('Jogador adicionado com sucesso!');
-      } catch (err) {
-        console.error(err);
-        showNotification('Erro ao adicionar: ' + err.message, true);
-        // Revert local
-        targetList.pop();
-      }
-    };
-
-    // Handle edit/delete clicks
-    document.addEventListener('click', async (e) => {
-      if (e.target.matches('.delete-btn')) {
-        const index = parseInt(e.target.dataset.index);
-        const table = e.target.dataset.table;
-        if (confirm('Confirmar exclusão deste jogador?')) {
-          const targetList = table === 'field' ? fieldPlayers : goalKeepers;
-          targetList.splice(index, 1);
-          try {
-            const playersRef = doc(db, ...gamePath(activeGameId, "players"));
-            await setDoc(playersRef, { fieldPlayers, goalKeepers }, { merge: true });
-            showNotification('Jogador removido!');
-          } catch (err) {
-            console.error(err);
+        showNotification('Número já
