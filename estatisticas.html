@@ -1,45 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Estatísticas — Team Pro Stats</title>
+<title>Estatísticas</title>
 <style>
-body{font-family:sans-serif;margin:0;padding:20px;background:#f4f4f4}
-h2{margin-bottom:12px}
-.responsive{overflow-x:auto;margin-bottom:20px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
-th{background:#2980b9;color:white}
-.fixed-col{position:sticky;left:0;background:#f0f0f0}
-input[type=number]{width:50px;text-align:center}
-.stat-controls{display:flex;justify-content:center;align-items:center;gap:2px}
-button.inc, button.dec{padding:0 6px;cursor:pointer}
-.tabs{margin-bottom:12px}
-.tab-btn{padding:6px 12px;margin-right:4px;cursor:pointer}
-.tab-btn.active{background:#2980b9;color:white}
-.tab-content{display:none}
-.tab-content.active{display:block}
-.notification{display:none;position:fixed;top:12px;right:12px;padding:8px 12px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.15);background:#e0ffe0}
-.notification.error{background:#ffdede;color:#900}
-footer{margin-top:12px;text-align:center;font-size:0.8em;color:#666}
+body{font-family:sans-serif; padding:20px; background:#f4f4f4;}
+h2{text-align:center;}
+footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#666; margin-top:20px; }
+.notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+.notification.error { background:#ffdede; }
+.tabs { display:flex; justify-content:center; gap:6px; margin-bottom:12px; }
+.tab-btn { padding:6px 12px; cursor:pointer; border:none; border-radius:4px; background:#2980b9; color:white; }
+.tab-btn.active{ background:#1c5980; }
+.tab-content{ display:none; }
+.tab-content.active{ display:block; }
+.responsive{ overflow-x:auto; margin-bottom:16px; }
+table{border-collapse:collapse; width:100%; background:white;}
+th,td{border:1px solid #ccc; padding:6px; text-align:center;}
+.fixed-col{text-align:left;}
+.stat-controls{display:flex; justify-content:center; align-items:center;}
+.stat-controls button{width:24px; height:24px; padding:0; font-weight:bold; border:none; background:#2980b9; color:white; border-radius:4px; cursor:pointer; line-height:1;}
+.stat-controls button:hover{background:#1c5980;}
+.stat-controls input[type=number]{width:40px; text-align:center; margin:0 2px; border:1px solid #ccc; border-radius:4px; height:24px;}
 </style>
 </head>
 <body>
 
-<h2>Estatísticas do Jogo Ativo</h2>
+<h2>Estatísticas</h2>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
   <button class="tab-btn" data-tab="part2">2ª Parte</button>
 </div>
 
-<!-- Parte 1 -->
 <div id="part1" class="tab-content active">
   <div class="responsive">
     <table id="tableCampo1">
       <thead>
-        <tr><th>#</th><th>Nome</th><th>GR/Postes</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
+        <tr><th>#</th><th>Nome</th><th>GR / Postes</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -54,12 +53,11 @@ footer{margin-top:12px;text-align:center;font-size:0.8em;color:#666}
   </div>
 </div>
 
-<!-- Parte 2 -->
 <div id="part2" class="tab-content">
   <div class="responsive">
     <table id="tableCampo2">
       <thead>
-        <tr><th>#</th><th>Nome</th><th>GR/Postes</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
+        <tr><th>#</th><th>Nome</th><th>GR / Postes</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -74,38 +72,31 @@ footer{margin-top:12px;text-align:center;font-size:0.8em;color:#666}
   </div>
 </div>
 
+<div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
 <div id="notification" class="notification"></div>
-<div id="lastSaved" style="margin-top:6px;font-size:0.8em"></div>
-
-<footer>© 2025 Team Pro Stats</footer>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import {
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  initializeFirebase,
+  saveSingleStat,
+  onFirebaseDataChange,
+  getFirebaseData,
+  getActiveGameId
+} from './firebase-data.js';
 
-// --- Firebase config ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-  authDomain: "team-pro-stats.firebaseapp.com",
-  projectId: "team-pro-stats",
-  storageBucket: "team-pro-stats.firebasestorage.app",
-  messagingSenderId: "758444286089",
-  appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
-  measurementId: "G-D1GDDBPD55"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-let userId = null;
-let activeGameId = localStorage.getItem("activeGameId");
-
-let fieldPlayers = [];
-let goalKeepers = [];
+let eligibleFieldPlayers = [];
+let eligibleGoalKeepers = [];
 let statsParte1 = { campo:{}, gr:{} };
 let statsParte2 = { campo:{}, gr:{} };
+
+let unsubPlayers = null;
+let unsubStats1 = null;
+let unsubStats2 = null;
+
+const campoStats = ['rem','interceptados','fora','golos','passesErrados','faltas'];
+const grStats = ['defesas','interceptados','golosSofridos','faltas'];
 
 const notificationEl = document.getElementById('notification');
 const lastSavedEl = document.getElementById('lastSaved');
@@ -114,121 +105,110 @@ function showNotification(msg,isError=false){
   notificationEl.textContent=msg;
   notificationEl.className=isError?'notification error':'notification';
   notificationEl.style.display='block';
-  setTimeout(()=>notificationEl.style.display='none',2000);
+  setTimeout(()=>{notificationEl.style.display='none';},2000);
 }
 
-function updateLastSaved(){ lastSavedEl.textContent=`Última gravação: ${new Date().toLocaleTimeString()}`; }
-
-function createStatCell(value, playerNum, part, category, statKey){
-  return `
-    <div class="stat-controls">
-      <button class="dec" data-player="${playerNum}" data-part="${part}" data-category="${category}" data-stat="${statKey}">-</button>
-      <input type="number" min="0" value="${value}" data-player="${playerNum}" data-part="${part}" data-category="${category}" data-stat="${statKey}">
-      <button class="inc" data-player="${playerNum}" data-part="${part}" data-category="${category}" data-stat="${statKey}">+</button>
-    </div>
-  `;
+function updateLastSaved(){
+  lastSavedEl.textContent=`Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
 }
 
 function renderTable(tableId, players, statsMap, statKeys){
   const tbody = document.querySelector(`#${tableId} tbody`);
   tbody.innerHTML='';
-  players.forEach(p=>{
-    const num = p.numero;
-    const name = p.nome||'';
-    const tr = tbody.insertRow();
-    tr.innerHTML = `
-      <td>${num}</td>
-      <td>${name}</td>
-      ${statKeys.map(k=>{
-        const val = statsMap[num]?.[k]??0;
-        return `<td>${createStatCell(val,num,tableId.includes('1')?'1':'2',tableId.includes('Campo')?'campo':'gr',k)}</td>`;
-      }).join('')}
-    `;
+  players.forEach(player=>{
+    const row = tbody.insertRow();
+    row.innerHTML=`<td class="fixed-col">${player.numero}</td>
+                   <td class="fixed-col">${player.nome}</td>
+                   ${statKeys.map(k=>`<td>
+                     <div class="stat-controls">
+                       <button onclick="changeStat(this,-1)">&minus;</button>
+                       <input type="number" min="0" value="${statsMap[player.numero]?.[k]||0}" 
+                        data-player="${player.numero}" data-category="${tableId.includes('Campo')?'campo':'gr'}"
+                        data-part="${tableId.includes('1')?'1':'2'}" data-stat="${k}">
+                       <button onclick="changeStat(this,1)">+</button>
+                     </div>
+                   </td>`).join('')}`;
   });
 }
 
-// --- Update stat value and save to Firestore ---
-async function updateStatValue(playerNum, part, category, key, newValue){
-  const stats = part==='1'?statsParte1:statsParte2;
+window.changeStat=async function(btn,delta){
+  const input=btn.parentElement.querySelector('input');
+  let val=parseInt(input.value)||0;
+  val+=delta;
+  if(val<0) val=0;
+  input.value=val;
+  const playerNum=input.dataset.player;
+  const category=input.dataset.category;
+  const part=input.dataset.part;
+  const statKey=input.dataset.stat;
+  const stats=part==='1'?statsParte1:statsParte2;
   if(!stats[category]) stats[category]={};
   if(!stats[category][playerNum]) stats[category][playerNum]={};
-  stats[category][playerNum][key]=newValue;
-
+  stats[category][playerNum][statKey]=val;
   try{
-    const statDocRef = doc(db,"users",userId,"games",activeGameId,"stats",`parte${part}`);
-    const data = stats[category][playerNum];
-    await setDoc(statDocRef,{[category]:{[playerNum]:data}},{merge:true});
+    await saveSingleStat(part,category,playerNum,statKey,val);
     updateLastSaved();
-    showNotification(`Guardado ${key} (#${playerNum})`);
-  }catch(err){ console.error(err); showNotification('Erro ao guardar',true);}
+    showNotification(`Guardado: ${statKey} (${val}) — #${playerNum}`);
+  }catch(err){
+    console.error(err);
+    showNotification('Erro ao guardar (ver console)',true);
+  }
+};
+
+function render(){
+  renderTable('tableCampo1',eligibleFieldPlayers,statsParte1.campo||{},campoStats);
+  renderTable('tableGR1',eligibleGoalKeepers,statsParte1.gr||{},grStats);
+  renderTable('tableCampo2',eligibleFieldPlayers,statsParte2.campo||{},campoStats);
+  renderTable('tableGR2',eligibleGoalKeepers,statsParte2.gr||{},grStats);
 }
 
-// --- Handle input change or +/- click ---
-document.addEventListener('input', e=>{
-  const t = e.target;
-  if(t.tagName==='INPUT' && t.dataset.player){
-    const val = parseInt(t.value)||0;
-    updateStatValue(t.dataset.player,t.dataset.part,t.dataset.category,t.dataset.stat,val);
-  }
-});
-
-document.addEventListener('click', e=>{
-  const btn = e.target;
-  if(btn.classList.contains('inc') || btn.classList.contains('dec')){
-    const input = btn.parentElement.querySelector('input');
-    let val = parseInt(input.value)||0;
-    val = btn.classList.contains('inc')?val+1:Math.max(0,val-1);
-    input.value = val;
-    updateStatValue(input.dataset.player,input.dataset.part,input.dataset.category,input.dataset.stat,val);
-  }
-});
-
-// --- Render all tables ---
-function render(){ 
-  renderTable('tableCampo1',fieldPlayers,statsParte1.campo,['rem','interceptados','fora','golos','passesErrados','faltas']);
-  renderTable('tableGR1',goalKeepers,statsParte1.gr,['defesas','interceptados','golosSofridos','faltas']);
-  renderTable('tableCampo2',fieldPlayers,statsParte2.campo,['rem','interceptados','fora','golos','passesErrados','faltas']);
-  renderTable('tableGR2',goalKeepers,statsParte2.gr,['defesas','interceptados','golosSofridos','faltas']);
-}
-
-// --- Initialize ---
-document.addEventListener('DOMContentLoaded', async ()=>{
-  await new Promise(resolve=>{
-    const unsub = auth.onAuthStateChanged(async user=>{
-      if(user) userId=user.uid;
-      else { const res = await signInAnonymously(auth); userId=res.user.uid; }
-      unsub(); resolve();
-    });
+async function setupFirebaseListeners(){
+  if(unsubPlayers) unsubPlayers();
+  unsubPlayers=await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers,async (fieldData)=>{
+    const fields=(fieldData?.players)||[];
+    const goalData=await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
+    const gks=(goalData?.players)||[];
+    eligibleFieldPlayers=fields.filter(p=>p.estatisticas===true && !p.gr).sort((a,b)=>a.numero-b.numero);
+    eligibleGoalKeepers=[
+      ...gks.filter(p=>p.estatisticas===true),
+      ...fields.filter(p=>p.gr===true && p.estatisticas===true)
+    ].sort((a,b)=>a.numero-b.numero);
+    render();
   });
 
-  if(!activeGameId){
-    alert("Nenhum jogo ativo! Crie/Selecione um jogo primeiro.");
-    return;
-  }
-
-  const playersCol = collection(db,"users",userId,"games",activeGameId,"players");
-  onSnapshot(playersCol,{next:snap=>{
-    fieldPlayers=[]; goalKeepers=[];
-    snap.docs.forEach(d=>{
-      const p = d.data();
-      if(p.estatisticas){
-        if(p.gr) goalKeepers.push(p);
-        else fieldPlayers.push(p);
-      }
-    });
-    fieldPlayers.sort((a,b)=>a.numero-b.numero);
-    goalKeepers.sort((a,b)=>a.numero-b.numero);
+  if(unsubStats1) unsubStats1();
+  unsubStats1=await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1,(data)=>{
+    statsParte1=data||{campo:{},gr:{}};
     render();
-  }, error: err=>console.error(err)});
+  });
 
-  const stats1Ref = doc(db,"users",userId,"games",activeGameId,"stats","parte1");
-  onSnapshot(stats1Ref,{next:snap=>{ statsParte1=snap.exists()?snap.data():{campo:{},gr:{}}; render(); }, error:err=>console.error(err)});
+  if(unsubStats2) unsubStats2();
+  unsubStats2=await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2,(data)=>{
+    statsParte2=data||{campo:{},gr:{}};
+    render();
+  });
+}
 
-  const stats2Ref = doc(db,"users",userId,"games",activeGameId,"stats","parte2");
-  onSnapshot(stats2Ref,{next:snap=>{ statsParte2=snap.exists()?snap.data():{campo:{},gr:{}}; render(); }, error:err=>console.error(err)});
+document.addEventListener('DOMContentLoaded',async ()=>{
+  await initializeFirebase();
+  const activeGame=getActiveGameId();
+  if(!activeGame){ alert("Nenhum jogo ativo."); window.location.href='configjogoequipa.html'; return;}
+  const s1=await getFirebaseData(FB_PATHS_GAME.estatisticasParte1);
+  const s2=await getFirebaseData(FB_PATHS_GAME.estatisticasParte2);
+  statsParte1=s1||{campo:{},gr:{}};
+  statsParte2=s2||{campo:{},gr:{}};
+  await setupFirebaseListeners();
+  render();
 });
 
-// --- Tabs ---
+window.addEventListener('beforeunload',()=>{
+  if(typeof unsubPlayers==='function') unsubPlayers();
+  if(typeof unsubStats1==='function') unsubStats1();
+  if(typeof unsubStats2==='function') unsubStats2();
+});
+</script>
+
+<script>
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -238,5 +218,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 </script>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </body>
 </html>
