@@ -13,7 +13,7 @@
   .tab-content { display:none; margin-top:10px; }
   .tab-content.active { display:block; }
   .responsive { overflow-x:auto; margin-bottom:16px; }
-  table { width:100%; border-collapse:collapse; }
+  table { width:100%; border-collapse:collapse; background:white; }
   th,td { border:1px solid #ddd; padding:6px 8px; text-align:left; font-size:13px; }
   th { background:#2980b9; color:white; }
   input[type=number] { width:60px; }
@@ -87,10 +87,9 @@
 <div id="notification" class="notification"></div>
 
 <script type="module">
+/* -------------------- FIREBASE INITIALIZATION -------------------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, collection, onSnapshot
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -101,11 +100,48 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+/* -------------------- FIREBASE-DATA.JS INLINE -------------------- */
+export const FB_PATHS_GLOBAL = {
+  fieldPlayers: "players",
+  goalKeepers: "goalKeepers",
+};
+export const FB_PATHS_GAME = {
+  estatisticasParte1: "stats/parte1",
+  estatisticasParte2: "stats/parte2",
+};
+export async function saveSingleStat(part, category, playerNum, statKey, value) {
+  const userId = localStorage.getItem("userId");
+  const gameId = localStorage.getItem("activeGameId");
+  const statDocRef = doc(db, "users", userId, "games", gameId, "stats", `parte${part}`);
+  const statDocSnap = await getDoc(statDocRef);
+  const currentData = statDocSnap.exists() ? statDocSnap.data() : { campo: {}, gr: {} };
+  if (!currentData[category]) currentData[category] = {};
+  if (!currentData[category][playerNum]) currentData[category][playerNum] = {};
+  currentData[category][playerNum][statKey] = value;
+  await setDoc(statDocRef, currentData);
+}
+export function onFirebaseDataChange(path, callback) {
+  const userId = localStorage.getItem("userId");
+  const gameId = localStorage.getItem("activeGameId");
+  const ref = doc(db, "users", userId, "games", gameId, path);
+  return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
+}
+export async function getFirebaseData(path) {
+  const userId = localStorage.getItem("userId");
+  const gameId = localStorage.getItem("activeGameId");
+  const ref = doc(db, "users", userId, "games", gameId, path);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
+}
+export function getActiveGameId() { return localStorage.getItem("activeGameId"); }
+export function setActiveGameId(id) { localStorage.setItem("activeGameId", id); }
+export async function initializeFirebase() { return Promise.resolve(); }
+
+/* -------------------- MAIN APP LOGIC -------------------- */
 let userId=null, activeGameId=null;
 let fieldPlayers=[], goalKeepers=[];
 let statsParte1={campo:{},gr:{}}, statsParte2={campo:{},gr:{}};
@@ -137,6 +173,7 @@ window.updateStat=function(num,tableId,stat,value){
   const stats=part==="1"?statsParte1:statsParte2;
   if(!stats[cat][num]) stats[cat][num]={};
   stats[cat][num][stat]=parseInt(value)||0;
+  saveSingleStat(part,cat,num,stat,parseInt(value)||0);
   updateLastSaved();
   showNotification(`Guardado: #${num} ${stat}`);
 }
@@ -146,39 +183,29 @@ function render(){
   renderTable("tableCampo2",fieldPlayers,statsParte2.campo,campoStats);
   renderTable("tableGR2",goalKeepers,statsParte2.gr,grStats);
 }
-
+function updatePlayers(allPlayers){
+  fieldPlayers=allPlayers.filter(p=>p.estatisticas&&!p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers=allPlayers.filter(p=>p.estatisticas&&p.gr).sort((a,b)=>a.numero-b.numero);
+  render();
+}
 async function subscribePlayersAndStats(){
   if(!userId||!activeGameId) return;
   const playersCol=collection(db,"users",userId,"games",activeGameId,"players");
-  onSnapshot(playersCol,snapshot=>{
-    let allPlayers=[];
-    snapshot.forEach(d=>allPlayers.push(d.data()));
-    if(allPlayers.length===0){
-      getDoc(doc(db,"users",userId,"games",activeGameId)).then(docSnap=>{
-        if(docSnap.exists()&&docSnap.data().players){
-          allPlayers=Object.values(docSnap.data().players);
-          updatePlayers(allPlayers);
-        }
-      });
-    } else updatePlayers(allPlayers);
+  onSnapshot(playersCol,snap=>{
+    const allPlayers=snap.docs.map(d=>d.data());
+    updatePlayers(allPlayers);
   });
-
   onSnapshot(doc(db,"users",userId,"games",activeGameId,"stats","parte1"),snap=>{
-    statsParte1 = snap.exists()?snap.data():{campo:{},gr:{}};
+    statsParte1=snap.exists()?snap.data():{campo:{},gr:{}};
     render();
   });
   onSnapshot(doc(db,"users",userId,"games",activeGameId,"stats","parte2"),snap=>{
-    statsParte2 = snap.exists()?snap.data():{campo:{},gr:{}};
+    statsParte2=snap.exists()?snap.data():{campo:{},gr:{}};
     render();
   });
 }
-function updatePlayers(allPlayers){
-  fieldPlayers = allPlayers.filter(p=>p.estatisticas&&!p.gr).sort((a,b)=>a.numero-b.numero);
-  goalKeepers = allPlayers.filter(p=>p.estatisticas&&p.gr).sort((a,b)=>a.numero-b.numero);
-  render();
-}
 
-/* ---------- Tabs ---------- */
+/* Tabs */
 document.querySelectorAll(".tab-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
@@ -191,11 +218,12 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
 document.getElementById("openInOut").addEventListener("click",()=>window.location.href="entradassaidas.html");
 document.getElementById("openExtraTime").addEventListener("click",()=>window.location.href="extra-time.html");
 
-/* ---------- Auth + Init ---------- */
+/* Auth */
 onAuthStateChanged(auth,async user=>{
   if(user) userId=user.uid;
   else { const res=await signInAnonymously(auth); userId=res.user.uid; }
-  activeGameId=localStorage.getItem("activeGameId");
+  localStorage.setItem("userId",userId);
+  activeGameId=getActiveGameId();
   if(!activeGameId){ alert("Nenhum jogo ativo."); window.location.href="configjogoequipa.html"; return; }
   await subscribePlayersAndStats();
   render();
