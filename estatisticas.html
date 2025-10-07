@@ -22,9 +22,26 @@
   .notification.error { background:#ffdede; }
   #lastSaved { font-size:10px; margin-top:10px; }
   .nav-btn { margin-left:4px; padding:6px 10px; cursor:pointer; border-radius:4px; border:none; background:#4caf50; color:white; }
+  /* Loading overlay */
+  #loadingOverlay {
+    position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8);
+    display:flex; align-items:center; justify-content:center; z-index:9999; font-size:18px; color:#2980b9;
+  }
+  .spinner {
+    border:6px solid #f3f3f3;
+    border-top:6px solid #2980b9;
+    border-radius:50%;
+    width:40px;
+    height:40px;
+    animation:spin 1s linear infinite;
+    margin-right:10px;
+  }
+  @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
 </style>
 </head>
 <body>
+
+<div id="loadingOverlay"><div class="spinner"></div>Carregando jogadores e estatísticas...</div>
 
 <h2>Estatísticas</h2>
 
@@ -87,7 +104,6 @@
 <div id="notification" class="notification"></div>
 
 <script type="module">
-/* -------------------- FIREBASE INITIALIZATION -------------------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
@@ -104,49 +120,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* -------------------- FIREBASE-DATA.JS INLINE -------------------- */
-export const FB_PATHS_GLOBAL = {
-  fieldPlayers: "players",
-  goalKeepers: "goalKeepers",
-};
-export const FB_PATHS_GAME = {
-  estatisticasParte1: "stats/parte1",
-  estatisticasParte2: "stats/parte2",
-};
-export async function saveSingleStat(part, category, playerNum, statKey, value) {
-  const userId = localStorage.getItem("userId");
-  const gameId = localStorage.getItem("activeGameId");
-  const statDocRef = doc(db, "users", userId, "games", gameId, "stats", `parte${part}`);
-  const statDocSnap = await getDoc(statDocRef);
-  const currentData = statDocSnap.exists() ? statDocSnap.data() : { campo: {}, gr: {} };
-  if (!currentData[category]) currentData[category] = {};
-  if (!currentData[category][playerNum]) currentData[category][playerNum] = {};
-  currentData[category][playerNum][statKey] = value;
-  await setDoc(statDocRef, currentData);
-}
-export function onFirebaseDataChange(path, callback) {
-  const userId = localStorage.getItem("userId");
-  const gameId = localStorage.getItem("activeGameId");
-  const ref = doc(db, "users", userId, "games", gameId, path);
-  return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
-}
-export async function getFirebaseData(path) {
-  const userId = localStorage.getItem("userId");
-  const gameId = localStorage.getItem("activeGameId");
-  const ref = doc(db, "users", userId, "games", gameId, path);
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data() : null;
-}
-export function getActiveGameId() { return localStorage.getItem("activeGameId"); }
-export function setActiveGameId(id) { localStorage.setItem("activeGameId", id); }
-export async function initializeFirebase() { return Promise.resolve(); }
-
-/* -------------------- MAIN APP LOGIC -------------------- */
+/* -------------------- MAIN LOGIC -------------------- */
 let userId=null, activeGameId=null;
 let fieldPlayers=[], goalKeepers=[];
 let statsParte1={campo:{},gr:{}}, statsParte2={campo:{},gr:{}};
 const campoStats=['grPostes','interceptados','fora','golos','passesErrados','faltas'];
 const grStats=['defesas','interceptados','golosSofridos','faltas'];
+
+const loadingEl=document.getElementById("loadingOverlay");
 
 function showNotification(msg,error=false){
   const el=document.getElementById("notification");
@@ -177,6 +158,15 @@ window.updateStat=function(num,tableId,stat,value){
   updateLastSaved();
   showNotification(`Guardado: #${num} ${stat}`);
 }
+async function saveSingleStat(part,category,num,stat,value){
+  const statDocRef=doc(db,"users",userId,"games",activeGameId,"stats",`parte${part}`);
+  const snap=await getDoc(statDocRef);
+  const data=snap.exists()?snap.data():{campo:{},gr:{}};
+  if(!data[category]) data[category]={};
+  if(!data[category][num]) data[category][num]={};
+  data[category][num][stat]=value;
+  await setDoc(statDocRef,data);
+}
 function render(){
   renderTable("tableCampo1",fieldPlayers,statsParte1.campo,campoStats);
   renderTable("tableGR1",goalKeepers,statsParte1.gr,grStats);
@@ -187,6 +177,7 @@ function updatePlayers(allPlayers){
   fieldPlayers=allPlayers.filter(p=>p.estatisticas&&!p.gr).sort((a,b)=>a.numero-b.numero);
   goalKeepers=allPlayers.filter(p=>p.estatisticas&&p.gr).sort((a,b)=>a.numero-b.numero);
   render();
+  loadingEl.style.display="none"; // hide spinner once players are loaded
 }
 async function subscribePlayersAndStats(){
   if(!userId||!activeGameId) return;
@@ -223,7 +214,7 @@ onAuthStateChanged(auth,async user=>{
   if(user) userId=user.uid;
   else { const res=await signInAnonymously(auth); userId=res.user.uid; }
   localStorage.setItem("userId",userId);
-  activeGameId=getActiveGameId();
+  activeGameId=localStorage.getItem("activeGameId");
   if(!activeGameId){ alert("Nenhum jogo ativo."); window.location.href="configjogoequipa.html"; return; }
   await subscribePlayersAndStats();
   render();
