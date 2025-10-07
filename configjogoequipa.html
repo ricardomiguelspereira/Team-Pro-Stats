@@ -2,74 +2,45 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>Team Pro Stats — Gestão de Jogos e Jogadores</title>
 <style>
 :root{
-  --primary:#0077ff;
-  --danger:#e74c3c;
-  --success:#28a745;
-  --muted:#f4f7fa;
-  --card:#fff;
-  --border:#ddd;
-  --text:#222;
+  --primary:#0077ff;--danger:#e74c3c;--success:#28a745;
+  --muted:#f4f7fa;--card:#fff;--border:#ddd;--text:#222;
 }
 *{box-sizing:border-box;}
 body{
   font-family:system-ui,Segoe UI,Roboto,Arial;
-  margin:0;
-  background:var(--muted);
-  color:var(--text);
-  padding:24px;
-  display:flex;
-  justify-content:center;
+  margin:0;padding:16px;background:var(--muted);color:var(--text);
+  display:flex;justify-content:center;
 }
 .wrap{
-  width:100%;
-  max-width:1100px;
-  background:var(--card);
-  border-radius:10px;
-  box-shadow:0 6px 22px rgba(0,0,0,.08);
+  width:100%;max-width:1100px;background:var(--card);
+  border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.08);
   overflow:hidden;
 }
 header{
-  background:var(--primary);
-  color:#fff;
-  padding:16px;
-  font-weight:700;
-  text-align:center;
+  background:var(--primary);color:#fff;text-align:center;
+  padding:14px;font-weight:700;
 }
 main{padding:20px;}
-form{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:10px;
-}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
 label{display:block;font-weight:600;font-size:13px}
 input,select{
-  width:100%;
-  padding:8px;
-  margin-top:4px;
-  border-radius:6px;
+  width:100%;padding:8px;margin-top:4px;border-radius:6px;
   border:1px solid var(--border);
 }
 .actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;}
 button{
-  padding:8px 12px;
-  border-radius:6px;
-  border:0;
-  cursor:pointer;
-  font-weight:600;
+  padding:8px 12px;border-radius:6px;border:0;cursor:pointer;font-weight:600;
 }
 button.primary{background:var(--primary);color:#fff;}
 button.success{background:var(--success);color:#fff;}
 button.danger{background:var(--danger);color:#fff;}
 .notification{
-  margin-top:10px;
-  padding:10px;
-  border-radius:8px;
-  display:none;
-  font-weight:600;
+  margin-top:10px;padding:10px;border-radius:8px;
+  display:none;font-weight:600;
 }
 #gamesList{margin-top:18px;border-top:1px solid var(--border);padding-top:10px;display:none;}
 #gamesList.show{display:block;}
@@ -77,255 +48,207 @@ table{width:100%;border-collapse:collapse;margin-top:10px;}
 th,td{border:1px solid var(--border);padding:8px;text-align:left;font-size:13px;}
 th{background:#f0f6ff;}
 tr.active-row{background:#e6f7ff;}
-.small-btn{
-  padding:6px 8px;
-  font-size:13px;
-  border-radius:4px;
-  border:0;
-  cursor:pointer;
-  margin-right:4px;
-}
+.small-btn{padding:6px 8px;font-size:13px;border-radius:4px;border:0;cursor:pointer;margin-right:4px;}
 .small-btn.load{background:var(--primary);color:#fff;}
 .small-btn.delete{background:var(--danger);color:#fff;}
 hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
+@media(max-width:600px){
+  form{grid-template-columns:1fr;}
+  th,td{font-size:12px;}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>⚽ Team Pro Stats — Gestão de Jogos e Jogadores</header>
-  <main>
-    <h2>Gestão de Jogos</h2>
-    <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
-      <label>Escalão<input id="escalao" name="escalao" /></label>
-      <label>Competição<input id="competicao" name="competicao" /></label>
-      <label>Fase<input id="fase" name="fase" /></label>
-      <label>Grupo<input id="grupo" name="grupo" /></label>
-      <label>Jornada<input id="jornada" name="jornada" /></label>
-      <label>Data<input id="data" type="date" name="data" /></label>
-      <label>Hora<input id="hora" type="time" name="hora" /></label>
-      <label>Local<input id="local" name="local" /></label>
-      <label>Adversário<input id="adversario" name="adversario" /></label>
-    </form>
-
-    <div class="actions">
-      <button class="primary" id="newGameBtn">Novo Jogo</button>
-      <button class="success" id="saveGameBtn" disabled>Salvar (Ativar)</button>
-      <button class="primary" id="toggleGamesBtn">Mostrar/Ocultar Jogos</button>
-      <button class="danger" id="deleteAllGamesBtn">Apagar Todos</button>
-    </div>
-
-    <div id="notification" class="notification"></div>
-
-    <div id="gamesList">
-      <h3>📋 Jogos Guardados</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Escalão</th><th>Competição</th><th>Fase</th><th>Grupo</th><th>Jornada</th>
-            <th>Data / Hora</th><th>Local</th><th>Adversário</th><th>Ativo</th><th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="gamesTableBody"></tbody>
-      </table>
-    </div>
-
-    <hr />
-
-    <h2>Gestão de Jogadores</h2>
-    <div>
-      <label>Nº: <input type="number" id="numero" min="1" max="99"></label>
-      <label>Nome: <input type="text" id="nome"></label>
-      <label>PSE: <input type="checkbox" id="pse"></label>
-      <label>Estatísticas: <input type="checkbox" id="estatisticas"></label>
-      <label>GR: <input type="checkbox" id="gr"></label>
-      <button class="primary" id="addPlayerBtn">Adicionar</button>
-    </div>
-
-    <h3>Jogadores de Campo</h3>
-    <table id="fieldPlayersTable">
-      <thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
-      <tbody></tbody>
-    </table>
-
-    <h3>Guarda-Redes</h3>
-    <table id="goalKeepersTable">
-      <thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
-      <tbody></tbody>
-    </table>
-
-    <button class="danger" id="deleteAllPlayersBtn">Eliminar Todos os Jogadores</button>
-  </main>
+<header>⚽ Team Pro Stats — Gestão de Jogos e Jogadores</header>
+<main>
+<h2>Gestão de Jogos</h2>
+<form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
+  <label>Escalão<input name="escalao"/></label>
+  <label>Competição<input name="competicao"/></label>
+  <label>Fase<input name="fase"/></label>
+  <label>Grupo<input name="grupo"/></label>
+  <label>Jornada<input name="jornada"/></label>
+  <label>Data<input type="date" name="data"/></label>
+  <label>Hora<input type="time" name="hora"/></label>
+  <label>Local<input name="local"/></label>
+  <label>Adversário<input name="adversario"/></label>
+</form>
+<div class="actions">
+  <button class="primary" id="newGameBtn">Novo Jogo</button>
+  <button class="success" id="saveGameBtn" disabled>Salvar (Ativar)</button>
+  <button class="primary" id="toggleGamesBtn">Mostrar/Ocultar Jogos</button>
+  <button class="danger" id="deleteAllGamesBtn">Apagar Todos</button>
+</div>
+<div id="notification" class="notification"></div>
+<div id="gamesList">
+  <h3>📋 Jogos Guardados</h3>
+  <table>
+    <thead>
+      <tr><th>Escalão</th><th>Competição</th><th>Fase</th><th>Grupo</th>
+      <th>Jornada</th><th>Data/Hora</th><th>Local</th><th>Adversário</th>
+      <th>Ativo</th><th>Ações</th></tr>
+    </thead>
+    <tbody id="gamesTableBody"></tbody>
+  </table>
+</div>
+<hr/>
+<h2>Gestão de Jogadores</h2>
+<div>
+  <label>Nº:<input type="number" id="numero" min="1" max="99"></label>
+  <label>Nome:<input type="text" id="nome"></label>
+  <label>PSE:<input type="checkbox" id="pse"></label>
+  <label>Estatísticas:<input type="checkbox" id="estatisticas"></label>
+  <label>GR:<input type="checkbox" id="gr"></label>
+  <button class="primary" id="addPlayerBtn">Adicionar</button>
+</div>
+<h3>Jogadores de Campo</h3>
+<table id="fieldPlayersTable"><thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead><tbody></tbody></table>
+<h3>Guarda-Redes</h3>
+<table id="goalKeepersTable"><thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead><tbody></tbody></table>
+<button class="danger" id="deleteAllPlayersBtn">Eliminar Todos os Jogadores</button>
+</main>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import {getFirestore,collection,doc,setDoc,getDoc,getDocs,deleteDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
-/* ---------------- Firebase Setup ---------------- */
-const firebaseConfig = {
-  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-  authDomain: "team-pro-stats.firebaseapp.com",
-  projectId: "team-pro-stats",
-  storageBucket: "team-pro-stats.firebasestorage.app",
-  messagingSenderId: "758444286089",
-  appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
-  measurementId: "G-D1GDDBPD55"
+/* --- Firebase config --- */
+const firebaseConfig={
+ apiKey:"AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+ authDomain:"team-pro-stats.firebaseapp.com",
+ projectId:"team-pro-stats",
+ storageBucket:"team-pro-stats.firebasestorage.app",
+ messagingSenderId:"758444286089",
+ appId:"1:758444286089:web:fcd8fba3a5d705de01e658"
 };
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const auth=getAuth(app);
 
-let currentUserId = null;
-let activeGameId = localStorage.getItem("activeGameId") || null;
+let currentUserId=null;
+let activeGameId=localStorage.getItem("activeGameId")||null;
 
-async function initAuth() {
-  return new Promise((resolve) => {
-    const unsub = auth.onAuthStateChanged(async (user) => {
-      if (user) currentUserId = user.uid;
+async function initAuth(){
+  return new Promise((res)=>{
+    const unsub=auth.onAuthStateChanged(async(u)=>{
+      if(u) currentUserId=u.uid;
       else {
-        const res = await signInAnonymously(auth);
-        currentUserId = res.user.uid;
+        const r = await signInAnonymously(auth);
+        currentUserId = r.user.uid;
       }
       unsub();
-      resolve();
+      res();
     });
   });
 }
 
-/* ---------------- UI helpers ---------------- */
-function showNotification(msg, isError=false){
-  const n = document.getElementById('notification');
-  n.textContent = msg;
-  n.style.display = 'block';
-  n.style.background = isError ? 'rgba(231,76,60,0.08)' : 'rgba(0,119,255,0.07)';
-  n.style.color = isError ? '#b71c1c' : '#044f9a';
+/* --- UI helpers --- */
+function showNotification(msg,err=false){
+  const n=document.getElementById('notification');
+  n.textContent=msg;n.style.display='block';
+  n.style.background=err?'#ffe8e8':'#e8f1ff';
+  n.style.color=err?'#b71c1c':'#0047b3';
   clearTimeout(showNotification._t);
-  showNotification._t = setTimeout(()=>{ n.style.display='none'; }, 3500);
+  showNotification._t=setTimeout(()=>n.style.display='none',3500);
 }
-function escapeHtml(s){
-  if(!s && s!==0) return '';
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-}
+const esc=s=>s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):'';
 
-/* ---------------- Game Management ---------------- */
-const jogoForm = document.getElementById('jogoForm');
-const gamesBody = document.getElementById('gamesTableBody');
-let games = [];
+/* --- Games --- */
+const jogoForm=document.getElementById('jogoForm');
+const gamesBody=document.getElementById('gamesTableBody');
 
-function getFormData(){
-  const data = {};
-  for(const el of jogoForm.elements) if(el.name) data[el.name]=el.value||'';
-  return data;
-}
-function setFormData(obj={}){
-  for(const el of jogoForm.elements) if(el.name) el.value = obj[el.name] || '';
-}
+function getFormData(){const d={};for(const el of jogoForm.elements) if(el.name) d[el.name]=el.value||''; return d;}
+function setFormData(o={}){ for(const el of jogoForm.elements) if(el.name) el.value = o[el.name] || ''; }
 
 async function loadGames(){
-  const col = collection(db, 'users', currentUserId, 'games');
-  const snaps = await getDocs(col);
-  games = snaps.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-  renderGames();
-}
-function renderGames(){
+  const col=collection(db,'users',currentUserId,'games');
+  const snaps=await getDocs(col);
+  const games=snaps.docs.map(d=>({id:d.id,...d.data()}))
+                        .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
   gamesBody.innerHTML='';
-  if(!games.length){gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>';return;}
+  if(games.length===0){ gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>'; return; }
   games.forEach(g=>{
     const tr=document.createElement('tr');
     if(g.active) tr.classList.add('active-row');
-    const dataHora=`${g.data||''} ${g.hora||''}`.trim();
-    tr.innerHTML=`
-      <td>${escapeHtml(g.escalao)}</td><td>${escapeHtml(g.competicao)}</td><td>${escapeHtml(g.fase)}</td>
-      <td>${escapeHtml(g.grupo)}</td><td>${escapeHtml(g.jornada)}</td><td>${escapeHtml(dataHora)}</td>
-      <td>${escapeHtml(g.local)}</td><td>${escapeHtml(g.adversario)}</td>
+    tr.innerHTML = `<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td>
+      <td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td>
+      <td>${esc(g.local)}</td><td>${esc(g.adversario)}</td>
       <td>${g.active?'✅':''}</td>
-      <td>
-        <button class="small-btn load" data-id="${g.id}">Load</button>
-        <button class="small-btn delete" data-id="${g.id}">Delete</button>
-      </td>`;
+      <td><button class="small-btn load" data-id="${g.id}">Load</button>
+          <button class="small-btn delete" data-id="${g.id}">Del</button></td>`;
     gamesBody.appendChild(tr);
   });
 }
 
 async function newGame(){
-  const col = collection(db,'users',currentUserId,'games');
-  const newRef = doc(col);
-  const gameData = {escalao:'',competicao:'',fase:'',grupo:'',jornada:'',data:'',hora:'',local:'',adversario:'',
-                    active:true,createdAt:new Date().toISOString()};
-  const snaps = await getDocs(col);
-  const updates = snaps.docs.map(d=>setDoc(d.ref,{active:false},{merge:true}));
-  await Promise.all(updates);
-  await setDoc(newRef,gameData);
-  activeGameId = newRef.id;
-  localStorage.setItem("activeGameId",activeGameId);
-  setFormData(gameData);
-  document.getElementById('saveGameBtn').disabled=false;
-  await loadGames();
+  const col=collection(db,'users',currentUserId,'games');
+  const ref=doc(col);
+  const data={escalao:'',competicao:'',fase:'',grupo:'',jornada:'',data:'',hora:'',local:'',adversario:'',
+              active:true,createdAt:new Date().toISOString()};
+  const snaps=await getDocs(col);
+  await Promise.all(snaps.docs.map(d=>setDoc(d.ref,{active:false},{merge:true})));
+  await setDoc(ref,data);
+  activeGameId=ref.id; localStorage.setItem("activeGameId",ref.id);
+  setFormData(data); document.getElementById('saveGameBtn').disabled=false;
+  await loadGames(); subscribePlayers();
   showNotification("🆕 Novo jogo criado e ativo");
 }
 
 async function saveGame(){
-  if(!activeGameId){showNotification('Crie ou carregue um jogo antes',true);return;}
-  const data=getFormData();
-  const col=collection(db,'users',currentUserId,'games');
-  const snaps=await getDocs(col);
-  const ops=snaps.docs.map(d=>setDoc(d.ref,
-      d.id===activeGameId?{...data,active:true}:{active:false},{merge:true}));
-  await Promise.all(ops);
+  if(!activeGameId){ showNotification('Crie ou carregue um jogo antes', true); return; }
+  const d = getFormData();
+  const col = collection(db,'users',currentUserId,'games');
+  const snaps = await getDocs(col);
+  await Promise.all(snaps.docs.map(s=>setDoc(s.ref, s.id===activeGameId ? {...d,active:true} : {active:false}, {merge:true})));
   await loadGames();
-  showNotification("💾 Jogo salvo e ativado");
+  showNotification("💾 Jogo salvo");
 }
 
 async function loadGame(id){
-  const snap=await getDoc(doc(db,'users',currentUserId,'games',id));
-  if(!snap.exists()){showNotification("Jogo não encontrado",true);return;}
-  const data=snap.data();
-  setFormData(data);
-  activeGameId=id;
-  localStorage.setItem("activeGameId",id);
+  const snap = await getDoc(doc(db,'users',currentUserId,'games',id));
+  if(!snap.exists()){ showNotification("Jogo não encontrado", true); return; }
+  setFormData(snap.data());
+  activeGameId=id; localStorage.setItem("activeGameId",id);
   document.getElementById('saveGameBtn').disabled=false;
-  const col=collection(db,'users',currentUserId,'games');
-  const snaps=await getDocs(col);
-  const ops=snaps.docs.map(d=>setDoc(d.ref,{active:d.id===id},{merge:true}));
-  await Promise.all(ops);
-  await loadGames();
-  showNotification("✅ Jogo carregado e ativo");
+  const col = collection(db,'users',currentUserId,'games');
+  const snaps = await getDocs(col);
+  await Promise.all(snaps.docs.map(d=>setDoc(d.ref,{active:d.id===id},{merge:true})));
+  await loadGames(); subscribePlayers();
+  showNotification("✅ Jogo ativo");
 }
 
 async function deleteGame(id){
-  if(!confirm("Eliminar este jogo?"))return;
+  if(!confirm("Eliminar este jogo?")) return;
   await deleteDoc(doc(db,'users',currentUserId,'games',id));
-  if(id===activeGameId){activeGameId=null;localStorage.removeItem("activeGameId");}
+  if(id===activeGameId){ activeGameId=null; localStorage.removeItem("activeGameId"); }
   await loadGames();
   showNotification("🗑️ Jogo apagado");
 }
 
 async function deleteAllGames(){
-  if(!confirm("Eliminar todos os jogos?"))return;
+  if(!confirm("Apagar todos os jogos?")) return;
   const col=collection(db,'users',currentUserId,'games');
   const snaps=await getDocs(col);
   await Promise.all(snaps.docs.map(d=>deleteDoc(d.ref)));
-  activeGameId=null;
-  localStorage.removeItem("activeGameId");
+  activeGameId=null; localStorage.removeItem("activeGameId");
   await loadGames();
-  showNotification("🧹 Todos os jogos apagados");
+  showNotification("🧹 Jogos apagados");
 }
 
-document.getElementById('newGameBtn').onclick=newGame;
-document.getElementById('saveGameBtn').onclick=saveGame;
-document.getElementById('deleteAllGamesBtn').onclick=deleteAllGames;
-document.getElementById('toggleGamesBtn').onclick=()=>{
-  const el=document.getElementById('gamesList');
-  el.classList.toggle('show');
-  if(el.classList.contains('show'))loadGames();
-};
-gamesBody.addEventListener('click',e=>{
+document.getElementById('newGameBtn').onclick = newGame;
+document.getElementById('saveGameBtn').onclick = saveGame;
+document.getElementById('deleteAllGamesBtn').onclick = deleteAllGames;
+document.getElementById('toggleGamesBtn').onclick = ()=> document.getElementById('gamesList').classList.toggle('show');
+
+gamesBody.addEventListener('click', (e)=>{
   if(e.target.matches('.load')) loadGame(e.target.dataset.id);
   if(e.target.matches('.delete')) deleteGame(e.target.dataset.id);
 });
 
-/* ---------------- Player Management ---------------- */
+/* --- Players (subcollection) --- */
 const numero=document.getElementById('numero');
 const nome=document.getElementById('nome');
 const pse=document.getElementById('pse');
@@ -335,96 +258,99 @@ const addBtn=document.getElementById('addPlayerBtn');
 const fieldBody=document.querySelector('#fieldPlayersTable tbody');
 const goalBody=document.querySelector('#goalKeepersTable tbody');
 const delAllPlayers=document.getElementById('deleteAllPlayersBtn');
-let fieldPlayers=[],goalKeepers=[];
+let unsubscribePlayers=null;
 
-function renderPlayers(){
-  fieldBody.innerHTML='';
-  fieldPlayers.forEach((p,i)=>{
-    const row=fieldBody.insertRow();
-    row.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td>
-    <td><button class="small-btn load" data-table="field" data-index="${i}">Editar</button>
-        <button class="small-btn delete" data-table="field" data-index="${i}">Apagar</button></td>`;
+function playerColRef(){
+  if(!currentUserId||!activeGameId) return null;
+  return collection(db,'users',currentUserId,'games',activeGameId,'players');
+}
+
+function renderPlayers(players){
+  const field = players.filter(p=>!p.gr);
+  const goal = players.filter(p=>p.gr);
+  fieldBody.innerHTML = '';
+  goalBody.innerHTML = '';
+  field.forEach(p=>{
+    fieldBody.insertAdjacentHTML('beforeend',
+      `<tr><td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td>
+       <td><button class="small-btn load" data-id="${p.id}">Editar</button>
+           <button class="small-btn delete" data-id="${p.id}">Del</button></td></tr>`);
   });
-  goalBody.innerHTML='';
-  goalKeepers.forEach((p,i)=>{
-    const row=goalBody.insertRow();
-    row.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td>
-    <td><button class="small-btn load" data-table="goal" data-index="${i}">Editar</button>
-        <button class="small-btn delete" data-table="goal" data-index="${i}">Apagar</button></td>`;
+  goal.forEach(p=>{
+    goalBody.insertAdjacentHTML('beforeend',
+      `<tr><td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td>
+       <td><button class="small-btn load" data-id="${p.id}">Editar</button>
+           <button class="small-btn delete" data-id="${p.id}">Del</button></td></tr>`);
   });
 }
 
-function playersDocRef(){
-  if(!currentUserId||!activeGameId)return null;
-  return doc(db,'users',currentUserId,'games',activeGameId,'players');
-}
-
-// Real-time listener
 function subscribePlayers(){
-  const ref=playersDocRef();
-  if(!ref)return;
-  onSnapshot(ref,snap=>{
-    if(snap.exists()){
-      const d=snap.data();
-      fieldPlayers=d.fieldPlayers||[];
-      goalKeepers=d.goalKeepers||[];
-    }else{
-      fieldPlayers=[];goalKeepers=[];
-    }
-    renderPlayers();
+  if(unsubscribePlayers) unsubscribePlayers();
+  const col = playerColRef();
+  if(!col) return;
+  unsubscribePlayers = onSnapshot(col, s=>{
+    const players = s.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=> (a.numero||0) - (b.numero||0));
+    renderPlayers(players);
   });
 }
 
-addBtn.onclick=async()=>{
-  if(!activeGameId){alert('Selecione um jogo ativo primeiro.');return;}
-  const numeroVal=parseInt(numero.value);
-  const nomeVal=nome.value.trim();
-  if(!numeroVal||!nomeVal){alert('Número e Nome obrigatórios');return;}
-  const target=gr.checked?goalKeepers:fieldPlayers;
-  if(target.some(p=>p.numero===numeroVal)){alert('Número duplicado');return;}
-  target.push({numero:numeroVal,nome:nomeVal,pse:pse.checked,estatisticas:estatisticas.checked});
-  await setDoc(playersDocRef(),{fieldPlayers,goalKeepers});
-  numero.value='';nome.value='';pse.checked=estatisticas.checked=gr.checked=false;
+addBtn.onclick = async ()=>{
+  if(!activeGameId){ alert('Selecione um jogo ativo.'); return; }
+  const numeroVal = parseInt(numero.value);
+  const nomeVal = nome.value.trim();
+  if(!numeroVal || !nomeVal){ alert('Número e Nome obrigatórios'); return; }
+  const col = playerColRef();
+  const existing = await getDocs(col);
+  if(existing.docs.some(d => d.data().numero === numeroVal)){ alert('Número duplicado'); return; }
+  const ref = doc(col);
+  await setDoc(ref, {
+    numero: numeroVal,
+    nome: nomeVal,
+    pse: pse.checked,
+    estatisticas: estatisticas.checked,
+    gr: gr.checked,
+    createdAt: new Date().toISOString()
+  });
+  numero.value=''; nome.value=''; pse.checked = estatisticas.checked = gr.checked = false;
 };
 
-document.addEventListener('click', async (e) => {
-  if (e.target.matches('.small-btn.delete')) {
-    const table = e.target.dataset.table;
-    const index = parseInt(e.target.dataset.index);
-    if (table === 'field') fieldPlayers.splice(index, 1);
-    else goalKeepers.splice(index, 1);
-    await setDoc(playersDocRef(), { fieldPlayers, goalKeepers });
+document.addEventListener('click', async (e)=>{
+  if(e.target.matches('.small-btn.delete')){
+    const id = e.target.dataset.id;
+    await deleteDoc(doc(db,'users',currentUserId,'games',activeGameId,'players',id));
   }
-
-  if (e.target.matches('.small-btn.load')) {
-    const table = e.target.dataset.table;
-    const index = parseInt(e.target.dataset.index);
-    const player = table === 'field' ? fieldPlayers[index] : goalKeepers[index];
-    numero.value = player.numero;
-    nome.value = player.nome;
-    pse.checked = player.pse;
-    estatisticas.checked = player.estatisticas;
-    gr.checked = table === 'goal';
-    // Remove from list so when resaved, it overwrites instead of duplicates
-    if (table === 'field') fieldPlayers.splice(index, 1);
-    else goalKeepers.splice(index, 1);
-    await setDoc(playersDocRef(), { fieldPlayers, goalKeepers });
+  if(e.target.matches('.small-btn.load')){
+    const id = e.target.dataset.id;
+    const ref = doc(db,'users',currentUserId,'games',activeGameId,'players',id);
+    const snap = await getDoc(ref);
+    if(snap.exists()){
+      const p = snap.data();
+      numero.value = p.numero;
+      nome.value = p.nome;
+      pse.checked = p.pse;
+      estatisticas.checked = p.estatisticas;
+      gr.checked = p.gr;
+      // remove old doc so saving creates a fresh one (simple edit flow)
+      await deleteDoc(ref);
+    }
   }
 });
 
-delAllPlayers.onclick = async () => {
-  if (!confirm('Eliminar todos os jogadores?')) return;
-  fieldPlayers = [];
-  goalKeepers = [];
-  await setDoc(playersDocRef(), { fieldPlayers, goalKeepers });
-  showNotification('🧹 Todos os jogadores eliminados');
+delAllPlayers.onclick = async ()=>{
+  if(!confirm('Eliminar todos os jogadores?')) return;
+  const col = playerColRef();
+  const snaps = await getDocs(col);
+  await Promise.all(snaps.docs.map(d=>deleteDoc(d.ref)));
+  showNotification('🧹 Jogadores apagados');
 };
 
-/* ---------------- App Init ---------------- */
-await initAuth();
-await loadGames();
-if (activeGameId) subscribePlayers();
-else showNotification("Crie ou carregue um jogo para começar a gerir jogadores");
+/* --- Init app --- */
+(async function(){
+  await initAuth();
+  await loadGames();
+  if(activeGameId) subscribePlayers();
+  else showNotification("Crie ou carregue um jogo para gerir jogadores");
+})();
 </script>
 </body>
 </html>
