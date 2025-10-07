@@ -5,24 +5,89 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Estatísticas</title>
 <style>
-body{font-family:sans-serif; padding:20px; background:#f4f4f4;}
-h2{text-align:center;}
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background:#f0f2f5;
+  margin:0;
+  padding:20px;
+}
+h2 { text-align:center; margin-bottom:20px; color:#333; }
 footer { width:100%; text-align:center; padding:12px 0; font-size:0.8em; color:#666; margin-top:20px; }
-.notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:8px 12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+.notification {
+  display:none;
+  position:fixed;
+  right:12px;
+  top:12px;
+  background:#e0ffe0;
+  padding:10px 14px;
+  border-radius:8px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  font-weight:bold;
+}
 .notification.error { background:#ffdede; }
-.tabs { display:flex; justify-content:center; gap:6px; margin-bottom:12px; }
-.tab-btn { padding:6px 12px; cursor:pointer; border:none; border-radius:4px; background:#2980b9; color:white; }
+.tabs { display:flex; justify-content:center; gap:6px; margin-bottom:20px; }
+.tab-btn {
+  padding:8px 16px;
+  cursor:pointer;
+  border:none;
+  border-radius:6px;
+  background:#2980b9;
+  color:white;
+  font-weight:500;
+  transition:0.2s;
+}
 .tab-btn.active{ background:#1c5980; }
 .tab-content{ display:none; }
 .tab-content.active{ display:block; }
-.responsive{ overflow-x:auto; margin-bottom:16px; }
-table{border-collapse:collapse; width:100%; background:white;}
-th,td{border:1px solid #ccc; padding:6px; text-align:center;}
-.fixed-col{text-align:left;}
-.stat-controls{display:flex; justify-content:center; align-items:center;}
-.stat-controls button{width:24px; height:24px; padding:0; font-weight:bold; border:none; background:#2980b9; color:white; border-radius:4px; cursor:pointer; line-height:1;}
-.stat-controls button:hover{background:#1c5980;}
-.stat-controls input[type=number]{width:40px; text-align:center; margin:0 2px; border:1px solid #ccc; border-radius:4px; height:24px;}
+.responsive{ overflow-x:auto; margin-bottom:20px; }
+table {
+  border-collapse:collapse;
+  width:100%;
+  background:white;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+th,td {
+  padding:10px;
+  text-align:center;
+  border-bottom:1px solid #eee;
+}
+th { background:#f5f5f5; color:#333; font-weight:600; }
+tr:hover { background:#f9f9f9; }
+.fixed-col{text-align:left; width:120px;}
+.stat-controls{display:flex; justify-content:center; align-items:center; gap:4px;}
+.stat-controls button{
+  width:28px;
+  height:28px;
+  font-weight:bold;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:#2980b9;
+  color:white;
+  transition:0.2s;
+}
+.stat-controls button:hover{ background:#1c5980; }
+.stat-controls input[type=number]{
+  width:48px;
+  text-align:center;
+  border:1px solid #ccc;
+  border-radius:6px;
+  height:28px;
+}
+#loading{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-weight:bold;
+  font-size:1.2em;
+  padding:20px;
+  background:white;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  margin-bottom:20px;
+}
 </style>
 </head>
 <body>
@@ -33,6 +98,8 @@ th,td{border:1px solid #ccc; padding:6px; text-align:center;}
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
   <button class="tab-btn" data-tab="part2">2ª Parte</button>
 </div>
+
+<div id="loading">A carregar jogadores e estatísticas...</div>
 
 <div id="part1" class="tab-content active">
   <div class="responsive">
@@ -72,7 +139,7 @@ th,td{border:1px solid #ccc; padding:6px; text-align:center;}
   </div>
 </div>
 
-<div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
+<div id="lastSaved" style="font-size:12px; margin-top:10px;"></div>
 <div id="notification" class="notification"></div>
 
 <script type="module">
@@ -86,20 +153,16 @@ import {
   getActiveGameId
 } from './firebase-data.js';
 
-let eligibleFieldPlayers = [];
-let eligibleGoalKeepers = [];
-let statsParte1 = { campo:{}, gr:{} };
-let statsParte2 = { campo:{}, gr:{} };
+let eligibleFieldPlayers=[], eligibleGoalKeepers=[];
+let statsParte1={campo:{},gr:{}}, statsParte2={campo:{},gr:{}};
+let unsubPlayers=null, unsubStats1=null, unsubStats2=null;
 
-let unsubPlayers = null;
-let unsubStats1 = null;
-let unsubStats2 = null;
+const campoStats=['rem','interceptados','fora','golos','passesErrados','faltas'];
+const grStats=['defesas','interceptados','golosSofridos','faltas'];
 
-const campoStats = ['rem','interceptados','fora','golos','passesErrados','faltas'];
-const grStats = ['defesas','interceptados','golosSofridos','faltas'];
-
-const notificationEl = document.getElementById('notification');
-const lastSavedEl = document.getElementById('lastSaved');
+const notificationEl=document.getElementById('notification');
+const lastSavedEl=document.getElementById('lastSaved');
+const loadingEl=document.getElementById('loading');
 
 function showNotification(msg,isError=false){
   notificationEl.textContent=msg;
@@ -112,11 +175,12 @@ function updateLastSaved(){
   lastSavedEl.textContent=`Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
 }
 
-function renderTable(tableId, players, statsMap, statKeys){
-  const tbody = document.querySelector(`#${tableId} tbody`);
+function renderTable(tableId,players,statsMap,statKeys){
+  const tbody=document.querySelector(`#${tableId} tbody`);
   tbody.innerHTML='';
   players.forEach(player=>{
-    const row = tbody.insertRow();
+    const row=tbody.insertRow();
+    row.dataset.player=player.numero;
     row.innerHTML=`<td class="fixed-col">${player.numero}</td>
                    <td class="fixed-col">${player.nome}</td>
                    ${statKeys.map(k=>`<td>
@@ -134,8 +198,7 @@ function renderTable(tableId, players, statsMap, statKeys){
 window.changeStat=async function(btn,delta){
   const input=btn.parentElement.querySelector('input');
   let val=parseInt(input.value)||0;
-  val+=delta;
-  if(val<0) val=0;
+  val+=delta;if(val<0) val=0;
   input.value=val;
   const playerNum=input.dataset.player;
   const category=input.dataset.category;
@@ -149,10 +212,7 @@ window.changeStat=async function(btn,delta){
     await saveSingleStat(part,category,playerNum,statKey,val);
     updateLastSaved();
     showNotification(`Guardado: ${statKey} (${val}) — #${playerNum}`);
-  }catch(err){
-    console.error(err);
-    showNotification('Erro ao guardar (ver console)',true);
-  }
+  }catch(err){console.error(err); showNotification('Erro ao guardar',true);}
 };
 
 function render(){
@@ -160,11 +220,12 @@ function render(){
   renderTable('tableGR1',eligibleGoalKeepers,statsParte1.gr||{},grStats);
   renderTable('tableCampo2',eligibleFieldPlayers,statsParte2.campo||{},campoStats);
   renderTable('tableGR2',eligibleGoalKeepers,statsParte2.gr||{},grStats);
+  loadingEl.style.display='none';
 }
 
 async function setupFirebaseListeners(){
   if(unsubPlayers) unsubPlayers();
-  unsubPlayers=await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers,async (fieldData)=>{
+  unsubPlayers=await onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers,async fieldData=>{
     const fields=(fieldData?.players)||[];
     const goalData=await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
     const gks=(goalData?.players)||[];
@@ -177,13 +238,13 @@ async function setupFirebaseListeners(){
   });
 
   if(unsubStats1) unsubStats1();
-  unsubStats1=await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1,(data)=>{
+  unsubStats1=await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1,data=>{
     statsParte1=data||{campo:{},gr:{}};
     render();
   });
 
   if(unsubStats2) unsubStats2();
-  unsubStats2=await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2,(data)=>{
+  unsubStats2=await onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2,data=>{
     statsParte2=data||{campo:{},gr:{}};
     render();
   });
