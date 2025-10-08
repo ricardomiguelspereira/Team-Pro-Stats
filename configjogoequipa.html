@@ -60,7 +60,7 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 </head>
 <body>
 <div class="wrap">
-<header>⚽ Team Pro Stats — Gestão de Jogos e Jogadores</header>
+<header>Team Pro Stats — Gestão de Jogos e Jogadores</header>
 <main>
 <h2>Gestão de Jogos</h2>
 <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
@@ -134,11 +134,12 @@ let activeGameId=localStorage.getItem("activeGameId")||null;
 async function initAuth(){
   return new Promise((res)=>{
     const unsub=auth.onAuthStateChanged(async(u)=>{
-      if(u) currentUserId=u.uid;
-      else {
-        const r = await signInAnonymously(auth);
-        currentUserId = r.user.uid;
-      }
+	if(u) currentUserId=u.uid;
+	else {
+	  const r = await signInAnonymously(auth);
+	  currentUserId = r.user.uid;
+	}
+	localStorage.setItem("userId", currentUserId);
       unsub();
       res();
     });

@@ -1,82 +1,120 @@
 // firebase-data.js
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-// Firebase paths (adjust if needed)
+/* ----------------------- FIREBASE CONFIG ----------------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+  authDomain: "team-pro-stats.firebaseapp.com",
+  projectId: "team-pro-stats",
+  storageBucket: "team-pro-stats.firebasestorage.app",
+  messagingSenderId: "758444286089",
+  appId: "1:758444286089:web:fcd8fba3a5d705de01e658"
+};
+
+/* ----------------------- GLOBALS ----------------------- */
+let app, db, auth;
+let currentUserId = null;
+
+/* ----------------------- INITIALIZATION ----------------------- */
+export async function initializeFirebase() {
+  if (app) return;
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+
+  // Anonymous auth
+  const result = await signInAnonymously(auth);
+  currentUserId = result.user.uid;
+  localStorage.setItem("userId", currentUserId);
+  console.log("✅ Firebase initialized as user:", currentUserId);
+}
+
+/* ----------------------- PATH HELPERS ----------------------- */
+function getUserId() {
+  return currentUserId || localStorage.getItem("userId");
+}
+
+function getActiveGamePath(...sub) {
+  const uid = getUserId();
+  const gid = localStorage.getItem("activeGameId");
+  if (!uid || !gid) throw new Error("Missing userId or activeGameId");
+  return ["users", uid, "games", gid, ...sub];
+}
+
+/* ----------------------- PATH CONSTANTS ----------------------- */
 export const FB_PATHS_GLOBAL = {
-  fieldPlayers: "players",       // collection or doc containing all players
-  goalKeepers: "goalKeepers",    // collection or doc containing all goalkeepers
+  fieldPlayers: "players", // collection (same for GR)
+  goalKeepers: "players"
 };
 
 export const FB_PATHS_GAME = {
   estatisticasParte1: "stats/parte1",
-  estatisticasParte2: "stats/parte2",
+  estatisticasParte2: "stats/parte2"
 };
 
-// Firestore reference
-const db = getFirestore();
+/* ----------------------- FIRESTORE HELPERS ----------------------- */
 
-// Save a single stat for a player
+// Save single stat
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
-  if (!part || !category || !playerNum || !statKey) throw new Error("Missing parameters for saveSingleStat");
+  if (!part || !category || !playerNum || !statKey)
+    throw new Error("Missing parameters for saveSingleStat");
 
-  const statDocRef = doc(db, "users", localStorage.getItem("userId"), "games", localStorage.getItem("activeGameId"), "stats", `parte${part}`);
-  const statDocSnap = await getDoc(statDocRef);
-  const currentData = statDocSnap.exists() ? statDocSnap.data() : { campo: {}, gr: {} };
+  const statDocRef = doc(db, ...getActiveGamePath("stats", `parte${part}`));
+  const statSnap = await getDoc(statDocRef);
+  const currentData = statSnap.exists() ? statSnap.data() : { campo: {}, gr: {} };
 
   if (!currentData[category]) currentData[category] = {};
   if (!currentData[category][playerNum]) currentData[category][playerNum] = {};
   currentData[category][playerNum][statKey] = value;
 
-  await setDoc(statDocRef, currentData);
+  await setDoc(statDocRef, currentData, { merge: true });
 }
 
-// Subscribe to real-time updates for a collection or document
+// Subscribe to real-time updates (document or collection)
 export function onFirebaseDataChange(path, callback) {
-  let ref;
-  if (path.includes("/")) {
-    ref = doc(db, "users", localStorage.getItem("userId"), "games", localStorage.getItem("activeGameId"), path);
+  const parts = path.split("/");
+  if (parts.length > 1) {
+    // document (e.g. stats/parte1)
+    const ref = doc(db, ...getActiveGamePath(...parts));
+    return onSnapshot(ref, (snap) => callback(snap.exists() ? snap.data() : null));
   } else {
-    ref = collection(db, "users", localStorage.getItem("userId"), path);
-  }
-
-  return onSnapshot(ref, snapshot => {
-    if (snapshot.docs) {
-      // Collection
-      const data = snapshot.docs.map(d => d.data());
+    // collection (e.g. players)
+    const ref = collection(db, ...getActiveGamePath(path));
+    return onSnapshot(ref, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       callback(data);
-    } else {
-      // Document
-      callback(snapshot.exists() ? snapshot.data() : null);
-    }
-  });
-}
-
-// Get data once from Firestore
-export async function getFirebaseData(path) {
-  let ref;
-  if (path.includes("/")) {
-    ref = doc(db, "users", localStorage.getItem("userId"), "games", localStorage.getItem("activeGameId"), path);
-    const snap = await getDoc(ref);
-    return snap.exists() ? snap.data() : null;
-  } else {
-    ref = collection(db, "users", localStorage.getItem("userId"), path);
-    const snap = await getDoc(ref);
-    return snap.exists() ? snap.data() : null;
+    });
   }
 }
 
-// Active game helper
+// Get data once
+export async function getFirebaseData(path) {
+  const parts = path.split("/");
+  if (parts.length > 1) {
+    const ref = doc(db, ...getActiveGamePath(...parts));
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data() : null;
+  } else {
+    const ref = collection(db, ...getActiveGamePath(path));
+    const snap = await getDocs(ref);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+}
+
+// Game ID helpers
 export function getActiveGameId() {
   return localStorage.getItem("activeGameId");
 }
-
 export function setActiveGameId(gameId) {
   localStorage.setItem("activeGameId", gameId);
-}
-
-// Initialize Firebase placeholder
-export async function initializeFirebase() {
-  // You can place any auth initialization here if needed
-  // Currently just resolves immediately
-  return Promise.resolve();
 }
