@@ -190,14 +190,23 @@ footer{
 </div>
 
 <script type="module">
-import { initializeFirebase, getUserId, getActiveGameId, setActiveGameId } from './firebase-data.js';
-import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-await initializeFirebase();
-const db = getFirestore();
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+  authDomain: "team-pro-stats.firebaseapp.com",
+  projectId: "team-pro-stats",
+  storageBucket: "team-pro-stats.firebasestorage.app",
+  messagingSenderId: "758444286089",
+  appId: "1:758444286089:web:fcd8fba3a5d705de01e658"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-let currentUserId = getUserId();
-let activeGameId = getActiveGameId();
+let currentUserId = "user1";
+let activeGameId = null;
 let unsubscribePlayers = null;
 let editingPlayerId = null;
 
@@ -242,28 +251,78 @@ async function loadGames(){
   games.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); 
   games.forEach(g=>{
     const tr=document.createElement('tr'); if(g.active) tr.classList.add('active-row');
-    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td><td>${g.active?'✅':''}</td><td><button class="small-btn load" data-id="${g.id}">Load</button><button class="small-btn delete" data-id="${g.id}">Del</button></td>`; gamesBody.appendChild(tr);
+    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td><td>${g.active?'✅':''}</td><td><button class="small-btn load" data-id="${g.id}">Load</button><button class="small-btn delete" data-id="${g.id}">Del</button></td>`;
+    gamesBody.appendChild(tr);
   });
 }
 
-// Event Listeners (New Game, Save Game, Delete)
-document.addEventListener('DOMContentLoaded', async ()=>{ await loadGames(); if(activeGameId) subscribePlayers(); });
+// Event Listeners
+document.addEventListener('DOMContentLoaded', async ()=>{ await loadGames(); });
+
 document.getElementById('newGameBtn').onclick = async ()=>{
   const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(g=>setDoc(gameDocRef(g.id), {active:false},{merge:true})));
   const newId = crypto.randomUUID();
   const data={escalao:"",competicao:"",fase:"",grupo:"",jornada:"",data:"",hora:"",local:"",adversario:"",active:true,createdAt:new Date().toISOString()};
   await setDoc(gameDocRef(newId), data);
-  activeGameId=newId; setActiveGameId(newId); setFormData(data); document.getElementById('saveGameBtn').disabled=false;
+  activeGameId=newId; setFormData(data); document.getElementById('saveGameBtn').disabled=false;
   await loadGames(); subscribePlayers(); showNotification("🆕 Novo jogo criado e ativo");
 };
+
 document.getElementById('saveGameBtn').onclick = async ()=>{
   if(!activeGameId) return showNotification("Nenhum jogo ativo",true);
   const d=getFormData();
   const snaps=await getDocs(collection(db, `users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(s=>setDoc(gameDocRef(s.id), s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
   await loadGames(); showNotification("💾 Jogo salvo");
-  setActiveGameId(activeGameId); // update localStorage for estatisticas.html
+};
+
+document.getElementById('toggleGamesBtn').onclick = ()=>document.getElementById('gamesList').classList.toggle('show');
+
+document.getElementById('deleteAllGamesBtn').onclick = async ()=>{
+  if(!confirm("Apagar todos os jogos?")) return;
+  const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
+  await Promise.all(snaps.docs.map(d=>deleteDoc(gameDocRef(d.id))));
+  activeGameId=null; setFormData(); await loadGames(); showNotification("🗑️ Todos os jogos eliminados");
+};
+
+gamesBody.addEventListener('click', async e=>{
+  const id = e.target.dataset.id; if(!id) return;
+  if(e.target.matches('.load')){
+    const snap=await getDoc(gameDocRef(id)); if(!snap.exists()) return showNotification("Jogo não encontrado",true);
+    const snaps=await getDocs(collection(db, `users/${currentUserId}/games`));
+    await Promise.all(snaps.docs.map(g=>setDoc(gameDocRef(g.id), g.id===id?{...g.data(), active:true}:{active:false},{merge:true})));
+    activeGameId=id; setFormData(snap.data()); document.getElementById('saveGameBtn').disabled=false; subscribePlayers(); showNotification("✅ Jogo carregado");
+  }else if(e.target.matches('.delete')){
+    if(!confirm("Apagar jogo?")) return; await deleteDoc(gameDocRef(id)); if(activeGameId===id) activeGameId=null;
+    await loadGames(); showNotification("🗑️ Jogo eliminado");
+  }
+});
+
+// Player Add/Edit/Delete
+addBtn.onclick = async ()=>{
+  if(!activeGameId) return showNotification("Ative um jogo primeiro", true);
+  const n=numero.value, nm=nome.value.trim(); if(!n||!nm) return showNotification("Número e Nome obrigatórios", true);
+  const data={numero:n,nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked,id:editingPlayerId||crypto.randomUUID()};
+  await setDoc(playerDocRef(data.id), data);
+  numero.value=""; nome.value=""; pse.checked=false; estatisticas.checked=false; gr.checked=false; editingPlayerId=null; addBtn.textContent="Adicionar";
+  showNotification("✅ Jogador salvo");
+};
+
+[fieldBody, goalBody].forEach(table => table.addEventListener('click', async e=>{
+  if(!e.target.dataset.id) return; const id=e.target.dataset.id;
+  if(e.target.matches('.load')){
+    const snap = await getDoc(playerDocRef(id)); if(!snap.exists()) return;
+    const p = snap.data(); numero.value=p.numero; nome.value=p.nome; pse.checked=p.pse; estatisticas.checked=p.estatisticas; gr.checked=p.gr; editingPlayerId=id; addBtn.textContent="Atualizar"; showNotification("✏️ Editando jogador");
+  }else if(e.target.matches('.delete')){
+    if(!confirm("Apagar jogador?")) return; await deleteDoc(playerDocRef(id)); showNotification("🗑️ Jogador eliminado");
+  }
+}));
+
+delAllPlayers.onclick=async ()=>{
+  if(!activeGameId) return showNotification("Nenhum jogo ativo",true);
+  if(!confirm("Apagar todos os jogadores do jogo ativo?")) return;
+  const snaps=await getDocs(playerColRef()); await Promise.all(snaps.docs.map(d=>deleteDoc(playerDocRef(d.id)))); showNotification("🗑️ Todos os jogadores eliminados");
 };
 </script>
 </body>

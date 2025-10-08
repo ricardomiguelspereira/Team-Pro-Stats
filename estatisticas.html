@@ -73,7 +73,7 @@ import {
   getUserId,
   getActiveGameId,
   saveSingleStat,
-  onCollectionChange,
+  getFirebaseData,
   onFirebaseDataChange,
   FB_PATHS_GAME
 } from './firebase-data.js';
@@ -153,18 +153,29 @@ async function setupFirebaseListeners() {
 
   const playersPath = `users/${uid}/games/${gameId}/players`;
 
-  // Real-time players listener
-  onCollectionChange(playersPath, playersArray=>{
-    if(!playersArray) return;
+  // Initial fetch
+  const playersSnap = await getFirebaseData(playersPath);
+  if(playersSnap){
+    const playersArray = Object.entries(playersSnap).map(([id,p])=>({id, ...p}));
+    const eligible = playersArray.filter(p=>p.estatisticas===true);
+    fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+    goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+    render();
+  }
+
+  // Real-time listener for players
+  onFirebaseDataChange(playersPath, data=>{
+    if(!data) return;
+    const playersArray = Object.entries(data).map(([id,p])=>({id, ...p}));
     const eligible = playersArray.filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
     render();
   });
 
+  // Listen to stats
   const path1 = FB_PATHS_GAME.estatisticasParte1.replace("{uid}", uid).replace("{gameId}", gameId);
   const path2 = FB_PATHS_GAME.estatisticasParte2.replace("{uid}", uid).replace("{gameId}", gameId);
-
   onFirebaseDataChange(path1, data=>{ statsParte1 = data || { campo:{}, gr:{} }; render(); });
   onFirebaseDataChange(path2, data=>{ statsParte2 = data || { campo:{}, gr:{} }; render(); });
 }
