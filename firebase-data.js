@@ -65,7 +65,7 @@ function getRefFromPath(path) {
 }
 
 /* ----------------------- FIRESTORE HELPERS ----------------------- */
-export async function getFirebaseData(path) {
+/*export async function getFirebaseData(path) {
   const ref = getRefFromPath(path);
   if ("get" in ref) { // Document
     const snap = await getDoc(ref);
@@ -83,7 +83,19 @@ export function onFirebaseDataChange(path, callback) {
   } else { // Collection
     return onSnapshot(ref, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }
+}*/
+
+export async function getFirebaseData(path) {
+  const ref = doc(db, path);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
 }
+
+export function onFirebaseDataChange(path, callback) {
+  const ref = doc(db, path);
+  return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
+}
+
 
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
   if (!part || !category || !playerNum || !statKey)
