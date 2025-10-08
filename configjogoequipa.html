@@ -98,25 +98,22 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 </div>
 
 <script type="module">
-import {
-  initializeFirebase,
-  getUserId,
-  getActiveGameId,
-  setActiveGameId,
-  onFirebaseDataChange,
-  saveSingleStat,
-  getFirebaseData,
-} from './firebase-data.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-import {
-  collection,
-  doc,
-  setDoc,
-  getDocs,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-let currentUserId, activeGameId;
+let currentUserId = "user1"; // hard-coded for demo
+let activeGameId = null;
 let unsubscribePlayers = null;
 
 const jogoForm = document.getElementById('jogoForm');
@@ -132,7 +129,6 @@ const goalBody = document.querySelector('#goalKeepersTable tbody');
 const delAllPlayers = document.getElementById('deleteAllPlayersBtn');
 
 function esc(s){ return s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):''; }
-
 function showNotification(msg, err=false){
   const n=document.getElementById('notification');
   n.textContent=msg;
@@ -145,10 +141,7 @@ function showNotification(msg, err=false){
 function getFormData(){const d={}; for(const el of jogoForm.elements) if(el.name)d[el.name]=el.value||''; return d;}
 function setFormData(o={}){for(const el of jogoForm.elements) if(el.name)el.value=o[el.name]||'';}
 
-function playerColRef(){
-  if(!currentUserId || !activeGameId) return null;
-  return `users/${currentUserId}/games/${activeGameId}/players`;
-}
+function playerColRef(){ return collection(db, `users/${currentUserId}/games/${activeGameId}/players`); }
 
 function renderPlayers(players){
   fieldBody.innerHTML=''; goalBody.innerHTML='';
@@ -170,28 +163,21 @@ function renderPlayers(players){
 
 function subscribePlayers(){
   if(unsubscribePlayers) unsubscribePlayers();
-  const path = playerColRef();
-  if(!path) return;
-  unsubscribePlayers = onFirebaseDataChange(path, data=>{
-    const players = (data||[]).sort((a,b)=>(a.numero||0)-(b.numero||0));
+  if(!activeGameId) return;
+  unsubscribePlayers = onSnapshot(playerColRef(), snapshot=>{
+    const players = snapshot.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.numero-b.numero);
     renderPlayers(players);
   });
 }
 
-document.addEventListener('DOMContentLoaded', async ()=>{
-  await initializeFirebase();
-  currentUserId = getUserId();
-  activeGameId = getActiveGameId();
-  await loadGames();
-  if(activeGameId) subscribePlayers();
-});
-
 async function loadGames(){
-  const path = `users/${currentUserId}/games`;
-  const snaps = await getFirebaseData(path);
+  const colRef = collection(db, `users/${currentUserId}/games`);
+  const snaps = await getDocs(colRef);
   gamesBody.innerHTML='';
-  if(!snaps.length){ gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>'; return; }
-  snaps.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).forEach(g=>{
+  if(snaps.empty){ gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>'; return; }
+  const games = snaps.docs.map(d=>({id:d.id,...d.data()}));
+  games.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  games.forEach(g=>{
     const tr=document.createElement('tr');
     if(g.active) tr.classList.add('active-row');
     tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td>
@@ -203,48 +189,49 @@ async function loadGames(){
   });
 }
 
+// Button actions
 document.getElementById('newGameBtn').onclick = async ()=>{
-  const path = `users/${currentUserId}/games`;
+  const colRef = collection(db, `users/${currentUserId}/games`);
   const data={escalao:'',competicao:'',fase:'',grupo:'',jornada:'',data:'',hora:'',local:'',adversario:'',active:true,createdAt:new Date().toISOString()};
-  const snaps = await getFirebaseData(path);
-  await Promise.all(snaps.map(d=>setDoc(doc(`users/${currentUserId}/games`,d.id),{active:false},{merge:true})));
+  // Deactivate all others
+  const snaps = await getDocs(colRef);
+  snaps.forEach(s=>setDoc(doc(db, `users/${currentUserId}/games`, s.id), {active:false},{merge:true}));
   const newId = crypto.randomUUID();
-  await setDoc(doc(`users/${currentUserId}/games`, newId), data);
-  activeGameId = newId; setActiveGameId(newId); setFormData(data);
-  document.getElementById('saveGameBtn').disabled=false;
-  await loadGames(); subscribePlayers();
-  showNotification('🆕 Novo jogo criado e ativo');
+  await setDoc(doc(db, `users/${currentUserId}/games`, newId), data);
+  activeGameId = newId; setFormData(data); document.getElementById('saveGameBtn').disabled=false;
+  await loadGames(); subscribePlayers(); showNotification('🆕 Novo jogo criado e ativo');
 };
 
 document.getElementById('saveGameBtn').onclick = async ()=>{
   if(!activeGameId){ showNotification('Crie ou carregue um jogo antes',true); return; }
   const d = getFormData();
-  const path = `users/${currentUserId}/games`;
-  const snaps = await getFirebaseData(path);
-  await Promise.all(snaps.map(s=>setDoc(doc(`users/${currentUserId}/games`,s.id), s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
+  const colRef = collection(db, `users/${currentUserId}/games`);
+  const snaps = await getDocs(colRef);
+  snaps.forEach(s=>{
+    setDoc(doc(db, `users/${currentUserId}/games`, s.id), s.id===activeGameId?{...d,active:true}:{active:false},{merge:true});
+  });
   await loadGames(); showNotification('💾 Jogo salvo');
 };
 
 document.getElementById('toggleGamesBtn').onclick = ()=>document.getElementById('gamesList').classList.toggle('show');
 
 gamesBody.addEventListener('click', async e=>{
+  const id = e.target.dataset.id;
+  if(!id) return;
   if(e.target.matches('.load')){
-    const id = e.target.dataset.id;
-    const snap = await getFirebaseData(`users/${currentUserId}/games/${id}`);
-    if(!snap){ showNotification('Jogo não encontrado',true); return; }
-    activeGameId = id; setActiveGameId(id); setFormData(snap); subscribePlayers(); showNotification('✅ Jogo carregado');
+    const docSnap = await getDocs(collection(db, `users/${currentUserId}/games`));
+    const game = docSnap.docs.find(d=>d.id===id);
+    if(game){ activeGameId = id; setFormData(game.data()); subscribePlayers(); showNotification('✅ Jogo carregado'); }
   } else if(e.target.matches('.delete')){
-    const id = e.target.dataset.id;
-    if(confirm('Apagar jogo?')){ await deleteDoc(doc(`users/${currentUserId}/games`,id)); if(activeGameId===id){ activeGameId=null; setActiveGameId(null); } await loadGames(); showNotification('🗑️ Jogo eliminado'); }
+    if(confirm('Apagar jogo?')){ await deleteDoc(doc(db, `users/${currentUserId}/games`, id)); if(activeGameId===id){ activeGameId=null; } await loadGames(); showNotification('🗑️ Jogo eliminado'); }
   }
 });
 
 delAllPlayers.onclick=async ()=>{
   if(!activeGameId){ showNotification('Nenhum jogo ativo',true); return; }
   if(confirm('Apagar todos os jogadores do jogo ativo?')){
-    const path = playerColRef();
-    const snaps = await getFirebaseData(path);
-    await Promise.all((snaps||[]).map(p=>deleteDoc(doc(path,p.id))));
+    const snaps = await getDocs(playerColRef());
+    snaps.forEach(p=>deleteDoc(doc(db, `users/${currentUserId}/games/${activeGameId}/players`, p.id)));
     showNotification('🗑️ Todos os jogadores eliminados');
   }
 };
@@ -253,13 +240,13 @@ addBtn.onclick=async ()=>{
   if(!activeGameId){ showNotification('Ative um jogo primeiro',true); return; }
   const n=numero.value, nm=nome.value.trim(); if(!n||!nm){ showNotification('Número e Nome obrigatórios',true); return; }
   const data={numero:n,nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked,id:crypto.randomUUID()};
-  const path=playerColRef();
-  const snaps = await getFirebaseData(path);
-  await setDoc(doc(path,data.id), data);
+  await setDoc(doc(playerColRef(), data.id), data);
   numero.value=''; nome.value=''; pse.checked=false; estatisticas.checked=false; gr.checked=false;
   showNotification('➕ Jogador adicionado');
 };
 
+// Initialize
+loadGames();
 </script>
 
 </body>
