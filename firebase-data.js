@@ -1,7 +1,16 @@
 // firebase-data.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import {
+  getFirestore,
+  doc,
+  collection,
+  getDoc,
+  getDocs,
+  setDoc,
+  onSnapshot,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 /* ----------------------- FIREBASE CONFIG ----------------------- */
 const firebaseConfig = {
@@ -45,17 +54,35 @@ export function setActiveGameId(gameId) {
 }
 
 /* ----------------------- FIRESTORE HELPERS ----------------------- */
+// Fetch single document
 export async function getFirebaseData(path) {
   const ref = doc(db, path);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
+// Real-time listener for single document
 export function onFirebaseDataChange(path, callback) {
   const ref = doc(db, path);
   return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
 }
 
+// Fetch collection
+export async function getFirebaseCollection(path) {
+  const ref = collection(db, path);
+  const snap = await getDocs(ref);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Real-time listener for collection
+export function onFirebaseCollectionChange(path, callback) {
+  const ref = collection(db, path);
+  return onSnapshot(ref, snapshot => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+// Save single stat
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
   if (!part || !category || !playerNum || !statKey)
     throw new Error("Missing parameters for saveSingleStat");
@@ -74,7 +101,7 @@ export async function saveSingleStat(part, category, playerNum, statKey, value) 
   await setDoc(statDocRef, currentData, { merge: true });
 }
 
-/* ----------------------- DELETE HELPERS ----------------------- */
+// Delete document by path
 export async function deleteDocByPath(path) {
   const ref = doc(db, path);
   await deleteDoc(ref);
