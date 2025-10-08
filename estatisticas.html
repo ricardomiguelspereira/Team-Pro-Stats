@@ -69,17 +69,15 @@ tr:hover { background:#f9f9f9; }
 
 <script type="module">
 import {
-  FB_PATHS_GAME,
   initializeFirebase,
   saveSingleStat,
   onFirebaseDataChange,
   getFirebaseData,
-  getActiveGameId
+  getUserId,
+  getActiveGameId,
+  FB_PATHS_GAME
 } from './firebase-data.js';
 
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-
-let db;
 let fieldPlayers = [], goalKeepers = [];
 let statsParte1 = { campo: {}, gr: {} };
 let statsParte2 = { campo: {}, gr: {} };
@@ -146,31 +144,33 @@ function render() {
 }
 
 async function setupFirebaseListeners() {
-  const uid = localStorage.getItem("userId");
-  const activeGame = getActiveGameId();
-  if(!uid || !activeGame){
+  const uid = getUserId();
+  const gameId = getActiveGameId();
+  if(!uid || !gameId){
     alert("Nenhum jogo ativo. Redirecionando...");
     window.location.href="configjogoequipa.html";
     return;
   }
 
-  db = getFirestore();
-
-  const playersRef = collection(db, "users", uid, "games", activeGame, "players");
-  onSnapshot(playersRef, snap=>{
-    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
-    const eligible = all.filter(p=>p.estatisticas===true);
+  // Players listener
+  onFirebaseDataChange(`users/${uid}/games/${gameId}/players`, (playersData)=>{
+    const eligible = (playersData || []).filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
     render();
   });
 
-  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, data=>{
-    statsParte1 = data || {campo:{}, gr:{}};
+  // Stats listeners with dynamic path replacement
+  const path1 = FB_PATHS_GAME.estatisticasParte1.replace("{uid}", uid).replace("{gameId}", gameId);
+  const path2 = FB_PATHS_GAME.estatisticasParte2.replace("{uid}", uid).replace("{gameId}", gameId);
+
+  onFirebaseDataChange(path1, data=>{
+    statsParte1 = data || { campo:{}, gr:{} };
     render();
   });
-  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, data=>{
-    statsParte2 = data || {campo:{}, gr:{}};
+
+  onFirebaseDataChange(path2, data=>{
+    statsParte2 = data || { campo:{}, gr:{} };
     render();
   });
 }
@@ -183,10 +183,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     window.location.href="configjogoequipa.html";
     return;
   }
-  statsParte1 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte1) || {campo:{}, gr:{}};
-  statsParte2 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte2) || {campo:{}, gr:{}};
+
   await setupFirebaseListeners();
-  render();
 });
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{

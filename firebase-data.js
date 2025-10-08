@@ -8,7 +8,8 @@ import {
   setDoc,
   onSnapshot,
   collection,
-  getDocs
+  getDocs,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 /* ----------------------- FIREBASE CONFIG ----------------------- */
@@ -40,29 +41,58 @@ export async function initializeFirebase() {
 }
 
 /* ----------------------- PATH HELPERS ----------------------- */
-function getUserId() {
+export function getUserId() {
   return currentUserId || localStorage.getItem("userId");
 }
 
-function getActiveGamePath(...sub) {
-  const uid = getUserId();
-  const gid = localStorage.getItem("activeGameId");
-  if (!uid || !gid) throw new Error("Missing userId or activeGameId");
-  return ["users", uid, "games", gid, ...sub];
+export function getActiveGameId() {
+  return localStorage.getItem("activeGameId");
+}
+
+export function setActiveGameId(gameId) {
+  localStorage.setItem("activeGameId", gameId);
+}
+
+/**
+ * Returns a Firestore reference (doc or collection) for any path relative to the user
+ * path: "users/{uid}/games/{gameId}/players" or "games" etc.
+ * Returns a Firestore doc if the last path segment is not a collection, otherwise a collection ref
+ */
+function getRefFromPath(path) {
+  const segments = path.split("/").filter(s => s);
+  if (!segments.length) throw new Error("Invalid path");
+  return segments.length % 2 === 0 ? doc(db, ...segments) : collection(db, ...segments);
 }
 
 /* ----------------------- FIRESTORE HELPERS ----------------------- */
-export const FB_PATHS_GAME = {
-  estatisticasParte1: "stats/parte1",
-  estatisticasParte2: "stats/parte2"
-};
+export async function getFirebaseData(path) {
+  const ref = getRefFromPath(path);
+  if ("get" in ref) { // Document
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data() : null;
+  } else { // Collection
+    const snap = await getDocs(ref);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+}
 
-// Save single stat
+export function onFirebaseDataChange(path, callback) {
+  const ref = getRefFromPath(path);
+  if ("onSnapshot" in ref || "get" in ref) { // Document
+    return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
+  } else { // Collection
+    return onSnapshot(ref, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+  }
+}
+
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
   if (!part || !category || !playerNum || !statKey)
     throw new Error("Missing parameters for saveSingleStat");
 
-  const statDocRef = doc(db, ...getActiveGamePath("stats", `parte${part}`));
+  const gameId = getActiveGameId();
+  if (!gameId) throw new Error("No active game set");
+
+  const statDocRef = doc(db, "users", getUserId(), "games", gameId, "stats", `parte${part}`);
   const statSnap = await getDoc(statDocRef);
   const currentData = statSnap.exists() ? statSnap.data() : { campo: {}, gr: {} };
 
@@ -73,39 +103,15 @@ export async function saveSingleStat(part, category, playerNum, statKey, value) 
   await setDoc(statDocRef, currentData, { merge: true });
 }
 
-// Subscribe to real-time document or collection
-export function onFirebaseDataChange(path, callback) {
-  const parts = path.split("/");
-  if (parts.length > 1) {
-    const ref = doc(db, ...getActiveGamePath(...parts));
-    return onSnapshot(ref, (snap) => callback(snap.exists() ? snap.data() : null));
-  } else {
-    const ref = collection(db, ...getActiveGamePath(path));
-    return onSnapshot(ref, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      callback(data);
-    });
-  }
+/* ----------------------- DELETE HELPERS ----------------------- */
+export async function deleteDocByPath(path) {
+  const ref = getRefFromPath(path);
+  if (!("delete" in ref)) throw new Error("Path is not a document");
+  await deleteDoc(ref);
 }
 
-// Get data once
-export async function getFirebaseData(path) {
-  const parts = path.split("/");
-  if (parts.length > 1) {
-    const ref = doc(db, ...getActiveGamePath(...parts));
-    const snap = await getDoc(ref);
-    return snap.exists() ? snap.data() : null;
-  } else {
-    const ref = collection(db, ...getActiveGamePath(path));
-    const snap = await getDocs(ref);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  }
-}
-
-// Game ID helpers
-export function getActiveGameId() {
-  return localStorage.getItem("activeGameId");
-}
-export function setActiveGameId(gameId) {
-  localStorage.setItem("activeGameId", gameId);
-}
+/* ----------------------- CONSTANTS ----------------------- */
+export const FB_PATHS_GAME = {
+  estatisticasParte1: "users/{uid}/games/{gameId}/stats/parte1",
+  estatisticasParte2: "users/{uid}/games/{gameId}/stats/parte2"
+};
