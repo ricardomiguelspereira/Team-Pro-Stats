@@ -73,15 +73,14 @@ import {
   getUserId,
   getActiveGameId,
   saveSingleStat,
-  getFirebaseData,
   onFirebaseDataChange,
+  getFirebaseData,
   FB_PATHS_GAME
 } from './firebase-data.js';
 
 let fieldPlayers = [], goalKeepers = [];
 let statsParte1 = { campo: {}, gr: {} };
 let statsParte2 = { campo: {}, gr: {} };
-
 const campoStats = ['interceptados','fora','golos','passesErrados','faltas'];
 const grStats = ['defesas','interceptados','golosSofridos','faltas'];
 
@@ -154,19 +153,21 @@ async function setupFirebaseListeners() {
 
   const playersPath = `users/${uid}/games/${gameId}/players`;
 
-  // Initial fetch
+  // Initial fetch and convert object to array
   const playersData = await getFirebaseData(playersPath);
   if(playersData){
-    const eligible = Object.values(playersData).filter(p=>p.estatisticas===true);
+    const playersArray = Object.entries(playersData).map(([id,p])=>({id, ...p}));
+    const eligible = playersArray.filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
     render();
   }
 
-  // Real-time updates
-  onFirebaseDataChange(playersPath, playersData => {
-    if(!playersData) return;
-    const eligible = Object.values(playersData).filter(p=>p.estatisticas===true);
+  // Real-time listener
+  onFirebaseDataChange(playersPath, data=>{
+    if(!data) return;
+    const playersArray = Object.entries(data).map(([id,p])=>({id, ...p}));
+    const eligible = playersArray.filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
     render();
@@ -174,7 +175,6 @@ async function setupFirebaseListeners() {
 
   const path1 = FB_PATHS_GAME.estatisticasParte1.replace("{uid}", uid).replace("{gameId}", gameId);
   const path2 = FB_PATHS_GAME.estatisticasParte2.replace("{uid}", uid).replace("{gameId}", gameId);
-
   onFirebaseDataChange(path1, data=>{ statsParte1 = data || { campo:{}, gr:{} }; render(); });
   onFirebaseDataChange(path2, data=>{ statsParte2 = data || { campo:{}, gr:{} }; render(); });
 }
@@ -190,7 +190,6 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await setupFirebaseListeners();
 });
 
-// Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
