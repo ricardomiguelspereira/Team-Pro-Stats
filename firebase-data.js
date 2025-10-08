@@ -4,12 +4,12 @@ import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/1
 import {
   getFirestore,
   doc,
-  getDoc,
-  setDoc,
-  onSnapshot,
   collection,
+  getDoc,
   getDocs,
-  deleteDoc
+  setDoc,
+  deleteDoc,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 /* ----------------------- FIREBASE CONFIG ----------------------- */
@@ -33,7 +33,6 @@ export async function initializeFirebase() {
   auth = getAuth(app);
   db = getFirestore(app);
 
-  // Anonymous auth
   const result = await signInAnonymously(auth);
   currentUserId = result.user.uid;
   localStorage.setItem("userId", currentUserId);
@@ -53,38 +52,30 @@ export function setActiveGameId(gameId) {
   localStorage.setItem("activeGameId", gameId);
 }
 
-/* ----------------------- FIRESTORE HELPERS ----------------------- */
+/* ----------------------- REFERENCE HELPERS ----------------------- */
 function getRefFromPath(path) {
   const segments = path.split("/").filter(s => s);
   if (!segments.length) throw new Error("Invalid path");
   return segments.length % 2 === 0 ? doc(db, ...segments) : collection(db, ...segments);
 }
 
-// Get single document
+/* ----------------------- FIRESTORE HELPERS ----------------------- */
 export async function getFirebaseData(path) {
-  const ref = doc(db, path);
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data() : null;
+  const ref = getRefFromPath(path);
+  if ("get" in ref) { // Document
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data() : null;
+  } else { // Collection
+    const snap = await getDocs(ref);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
 }
 
-// Real-time document listener
 export function onFirebaseDataChange(path, callback) {
-  const ref = doc(db, path);
-  return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
-}
-
-// Get collection documents as array
-export async function getDocsFromCollection(path) {
-  const ref = collection(db, path);
-  const snap = await getDocs(ref);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-// Real-time listener for collections
-export function onCollectionChange(path, callback) {
-  const ref = collection(db, path);
-  return onSnapshot(ref, snapshot => {
-    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  const ref = getRefFromPath(path);
+  return onSnapshot(ref, snap => {
+    if ("docs" in snap) callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    else callback(snap.exists() ? snap.data() : null);
   });
 }
 
@@ -119,3 +110,11 @@ export const FB_PATHS_GAME = {
   estatisticasParte1: "users/{uid}/games/{gameId}/stats/parte1",
   estatisticasParte2: "users/{uid}/games/{gameId}/stats/parte2"
 };
+
+/* ----------------------- COLLECTION REAL-TIME LISTENER ----------------------- */
+export function onCollectionChange(path, callback) {
+  const ref = getRefFromPath(path);
+  return onSnapshot(ref, snapshot => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}

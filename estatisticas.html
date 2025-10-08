@@ -73,9 +73,8 @@ import {
   getUserId,
   getActiveGameId,
   saveSingleStat,
-  onFirebaseDataChange,
-  getDocsFromCollection,
   onCollectionChange,
+  onFirebaseDataChange,
   FB_PATHS_GAME
 } from './firebase-data.js';
 
@@ -154,8 +153,9 @@ async function setupFirebaseListeners() {
 
   const playersPath = `users/${uid}/games/${gameId}/players`;
 
-  // Initial fetch and real-time collection listener
+  // Real-time players listener
   onCollectionChange(playersPath, playersArray=>{
+    if(!playersArray) return;
     const eligible = playersArray.filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
@@ -164,6 +164,7 @@ async function setupFirebaseListeners() {
 
   const path1 = FB_PATHS_GAME.estatisticasParte1.replace("{uid}", uid).replace("{gameId}", gameId);
   const path2 = FB_PATHS_GAME.estatisticasParte2.replace("{uid}", uid).replace("{gameId}", gameId);
+
   onFirebaseDataChange(path1, data=>{ statsParte1 = data || { campo:{}, gr:{} }; render(); });
   onFirebaseDataChange(path2, data=>{ statsParte2 = data || { campo:{}, gr:{} }; render(); });
 }

@@ -191,13 +191,17 @@ footer{
 
 <script type="module">
 import { initializeFirebase, getUserId, getActiveGameId, setActiveGameId } from './firebase-data.js';
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-let currentUserId, activeGameId;
+await initializeFirebase();
+const db = getFirestore();
+
+let currentUserId = getUserId();
+let activeGameId = getActiveGameId();
 let unsubscribePlayers = null;
 let editingPlayerId = null;
 
-const db = getFirestore();
+// Elements
 const jogoForm = document.getElementById('jogoForm');
 const gamesBody = document.getElementById('gamesTableBody');
 const numero = document.getElementById('numero');
@@ -209,16 +213,16 @@ const addBtn = document.getElementById('addPlayerBtn');
 const fieldBody = document.querySelector('#fieldPlayersTable tbody');
 const goalBody = document.querySelector('#goalKeepersTable tbody');
 const delAllPlayers = document.getElementById('deleteAllPlayersBtn');
-const notificationEl = document.getElementById('notification');
 
 function esc(s){return s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):'';}
-function showNotification(msg,err=false){ notificationEl.textContent=msg; notificationEl.style.display='block'; notificationEl.style.background=err?'#ffe8e8':'#e8f1ff'; notificationEl.style.color=err?'#b71c1c':'#0047b3'; setTimeout(()=>notificationEl.style.display='none',3500);}
+function showNotification(msg,err=false){ const n=document.getElementById('notification'); n.textContent=msg; n.style.display='block'; n.style.background=err?'#ffe8e8':'#e8f1ff'; n.style.color=err?'#b71c1c':'#0047b3'; setTimeout(()=>n.style.display='none',3500); }
 function getFormData(){return {escalao:jogoForm.escalao.value,competicao:jogoForm.competicao.value,fase:jogoForm.fase.value,grupo:jogoForm.grupo.value,jornada:jogoForm.jornada.value,data:jogoForm.data.value,hora:jogoForm.hora.value,local:jogoForm.local.value,adversario:jogoForm.adversario.value};}
 function setFormData(o={}){for(const el of jogoForm.elements) if(el.name) el.value=o[el.name]||'';}
-function playerColRef(){return activeGameId?collection(db, `users/${currentUserId}/games/${activeGameId}/players`):null;}
+function playerColRef(){return activeGameId ? collection(db, `users/${currentUserId}/games/${activeGameId}/players`) : null;}
 function gameDocRef(id){return doc(db, `users/${currentUserId}/games/${id}`);}
 function playerDocRef(id){return doc(db, `users/${currentUserId}/games/${activeGameId}/players/${id}`);}
 
+// Render Players
 function renderPlayers(players){
   fieldBody.innerHTML=''; goalBody.innerHTML='';
   players.sort((a,b)=>a.numero-b.numero);
@@ -227,60 +231,39 @@ function renderPlayers(players){
   goal.forEach(p=>goalBody.insertAdjacentHTML('beforeend', `<tr><td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td><td><button class="small-btn load" data-id="${p.id}">Editar</button><button class="small-btn delete" data-id="${p.id}">Del</button></td></tr>`));
 }
 
-function subscribePlayers(){
-  if(unsubscribePlayers) unsubscribePlayers();
-  if(!activeGameId) return;
-  const colRef = playerColRef();
-  unsubscribePlayers = onSnapshot(colRef, snap=>{
-    const players = snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderPlayers(players);
-  });
-}
+function subscribePlayers(){ if(unsubscribePlayers) unsubscribePlayers(); if(!activeGameId) return; unsubscribePlayers = onSnapshot(playerColRef(), snapshot=>{ const players = snapshot.docs.map(d=>({id:d.id,...d.data()})); renderPlayers(players); }); }
 
+// Load Games
 async function loadGames(){
   const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
   gamesBody.innerHTML='';
   if(snaps.empty){ gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>'; return; }
-  const games = snaps.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  const games = snaps.docs.map(d=>({id:d.id,...d.data()}));
+  games.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); 
   games.forEach(g=>{
     const tr=document.createElement('tr'); if(g.active) tr.classList.add('active-row');
-    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td><td>${g.active?'✅':''}</td><td><button class="small-btn load" data-id="${g.id}">Load</button><button class="small-btn delete" data-id="${g.id}">Del</button></td>`;
-    gamesBody.appendChild(tr);
+    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td><td>${g.active?'✅':''}</td><td><button class="small-btn load" data-id="${g.id}">Load</button><button class="small-btn delete" data-id="${g.id}">Del</button></td>`; gamesBody.appendChild(tr);
   });
 }
 
-document.addEventListener('DOMContentLoaded', async ()=>{
-  await initializeFirebase();
-  currentUserId = getUserId();
-  activeGameId = getActiveGameId();
-  await loadGames();
-  subscribePlayers();
-});
-
-// Player add/edit/delete
-addBtn.onclick = async ()=>{
-  if(!activeGameId) return showNotification("Ative um jogo primeiro", true);
-  const n=numero.value, nm=nome.value.trim(); if(!n||!nm) return showNotification("Número e Nome obrigatórios", true);
-  const data={numero:n,nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked,id:editingPlayerId||crypto.randomUUID()};
-  await setDoc(playerDocRef(data.id), data);
-  numero.value=""; nome.value=""; pse.checked=false; estatisticas.checked=false; gr.checked=false; editingPlayerId=null; addBtn.textContent="Adicionar";
-  showNotification("✅ Jogador salvo");
+// Event Listeners (New Game, Save Game, Delete)
+document.addEventListener('DOMContentLoaded', async ()=>{ await loadGames(); if(activeGameId) subscribePlayers(); });
+document.getElementById('newGameBtn').onclick = async ()=>{
+  const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
+  await Promise.all(snaps.docs.map(g=>setDoc(gameDocRef(g.id), {active:false},{merge:true})));
+  const newId = crypto.randomUUID();
+  const data={escalao:"",competicao:"",fase:"",grupo:"",jornada:"",data:"",hora:"",local:"",adversario:"",active:true,createdAt:new Date().toISOString()};
+  await setDoc(gameDocRef(newId), data);
+  activeGameId=newId; setActiveGameId(newId); setFormData(data); document.getElementById('saveGameBtn').disabled=false;
+  await loadGames(); subscribePlayers(); showNotification("🆕 Novo jogo criado e ativo");
 };
-
-[fieldBody, goalBody].forEach(table => table.addEventListener('click', async e=>{
-  if(!e.target.dataset.id) return; const id=e.target.dataset.id;
-  if(e.target.matches('.load')){
-    const snap = await getDoc(playerDocRef(id)); if(!snap.exists()) return;
-    const p = snap.data(); numero.value=p.numero; nome.value=p.nome; pse.checked=p.pse; estatisticas.checked=p.estatisticas; gr.checked=p.gr; editingPlayerId=id; addBtn.textContent="Atualizar"; showNotification("✏️ Editando jogador");
-  }else if(e.target.matches('.delete')){
-    if(!confirm("Apagar jogador?")) return; await deleteDoc(playerDocRef(id)); showNotification("🗑️ Jogador eliminado");
-  }
-}));
-
-delAllPlayers.onclick=async ()=>{ 
+document.getElementById('saveGameBtn').onclick = async ()=>{
   if(!activeGameId) return showNotification("Nenhum jogo ativo",true);
-  if(!confirm("Apagar todos os jogadores do jogo ativo?")) return;
-  const snaps=await getDocs(playerColRef()); await Promise.all(snaps.docs.map(d=>deleteDoc(playerDocRef(d.id)))); showNotification("🗑️ Todos os jogadores eliminados");
+  const d=getFormData();
+  const snaps=await getDocs(collection(db, `users/${currentUserId}/games`));
+  await Promise.all(snaps.docs.map(s=>setDoc(gameDocRef(s.id), s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
+  await loadGames(); showNotification("💾 Jogo salvo");
+  setActiveGameId(activeGameId); // update localStorage for estatisticas.html
 };
 </script>
 </body>
