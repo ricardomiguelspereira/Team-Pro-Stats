@@ -36,7 +36,7 @@ export async function initializeFirebase() {
   const result = await signInAnonymously(auth);
   currentUserId = result.user.uid;
   localStorage.setItem("userId", currentUserId);
-  console.log("✅ Firebase initialized as user:", currentUserId);
+  console.log("✅ Firebase initialized:", currentUserId);
 }
 
 /* ----------------------- PATH HELPERS ----------------------- */
@@ -51,18 +51,11 @@ function getActiveGamePath(...sub) {
   return ["users", uid, "games", gid, ...sub];
 }
 
-/* ----------------------- PATH CONSTANTS ----------------------- */
-export const FB_PATHS_GLOBAL = {
-  fieldPlayers: "players", // collection (same for GR)
-  goalKeepers: "players"
-};
-
+/* ----------------------- FIRESTORE HELPERS ----------------------- */
 export const FB_PATHS_GAME = {
   estatisticasParte1: "stats/parte1",
   estatisticasParte2: "stats/parte2"
 };
-
-/* ----------------------- FIRESTORE HELPERS ----------------------- */
 
 // Save single stat
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
@@ -80,15 +73,13 @@ export async function saveSingleStat(part, category, playerNum, statKey, value) 
   await setDoc(statDocRef, currentData, { merge: true });
 }
 
-// Subscribe to real-time updates (document or collection)
+// Subscribe to real-time document or collection
 export function onFirebaseDataChange(path, callback) {
   const parts = path.split("/");
   if (parts.length > 1) {
-    // document (e.g. stats/parte1)
     const ref = doc(db, ...getActiveGamePath(...parts));
     return onSnapshot(ref, (snap) => callback(snap.exists() ? snap.data() : null));
   } else {
-    // collection (e.g. players)
     const ref = collection(db, ...getActiveGamePath(path));
     return onSnapshot(ref, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));

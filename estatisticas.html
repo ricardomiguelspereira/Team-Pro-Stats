@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Estatísticas</title>
 <style>
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
 h2 { text-align:center; margin-bottom:20px; color:#333; }
 footer { text-align:center; padding:12px 0; font-size:0.8em; color:#666; margin-top:20px; }
 .notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:10px 14px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2); font-weight:bold; }
@@ -38,35 +38,21 @@ tr:hover { background:#f9f9f9; }
 
 <div id="loading">A carregar jogadores e estatísticas...</div>
 
-<!-- 1ª Parte -->
 <div id="part1" class="tab-content active">
   <div class="responsive">
-    <table id="tableCampo1">
-      <thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <table id="tableCampo1"><thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead><tbody></tbody></table>
   </div>
   <div class="responsive">
-    <table id="tableGR1">
-      <thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <table id="tableGR1"><thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead><tbody></tbody></table>
   </div>
 </div>
 
-<!-- 2ª Parte -->
 <div id="part2" class="tab-content">
   <div class="responsive">
-    <table id="tableCampo2">
-      <thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <table id="tableCampo2"><thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead><tbody></tbody></table>
   </div>
   <div class="responsive">
-    <table id="tableGR2">
-      <thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <table id="tableGR2"><thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead><tbody></tbody></table>
   </div>
 </div>
 
@@ -165,18 +151,17 @@ async function setupFirebaseListeners() {
 
   db = getFirestore();
 
-  // Real-time players listener (only from active game)
+  // Players listener
   const playersRef = collection(db, "users", uid, "games", activeGame, "players");
   onSnapshot(playersRef, (snap) => {
     const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    // Only players marked for statistics
     const eligible = all.filter(p => p.estatisticas === true);
     fieldPlayers = eligible.filter(p => !p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p => p.gr).sort((a,b)=>a.numero-b.numero);
     render();
   });
 
-  // Stats listeners (parte1 + parte2)
+  // Stats listeners
   onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data) => {
     statsParte1 = data || { campo:{}, gr:{} };
     render();
