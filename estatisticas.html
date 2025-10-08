@@ -1,8 +1,8 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Estatísticas</title>
 <style>
 body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
@@ -29,7 +29,7 @@ tr:hover { background:#f9f9f9; }
 </head>
 <body>
 
-<h2>Estatísticas</h2>
+<h2>Estatísticas do Jogo Ativo</h2>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
@@ -40,19 +40,27 @@ tr:hover { background:#f9f9f9; }
 
 <div id="part1" class="tab-content active">
   <div class="responsive">
-    <table id="tableCampo1"><thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+    <table id="tableCampo1"><thead>
+      <tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
+    </thead><tbody></tbody></table>
   </div>
   <div class="responsive">
-    <table id="tableGR1"><thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+    <table id="tableGR1"><thead>
+      <tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr>
+    </thead><tbody></tbody></table>
   </div>
 </div>
 
 <div id="part2" class="tab-content">
   <div class="responsive">
-    <table id="tableCampo2"><thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+    <table id="tableCampo2"><thead>
+      <tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
+    </thead><tbody></tbody></table>
   </div>
   <div class="responsive">
-    <table id="tableGR2"><thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+    <table id="tableGR2"><thead>
+      <tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr>
+    </thead><tbody></tbody></table>
   </div>
 </div>
 
@@ -69,11 +77,7 @@ import {
   getActiveGameId
 } from './firebase-data.js';
 
-import {
-  getFirestore,
-  collection,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let db;
 let fieldPlayers = [], goalKeepers = [];
@@ -93,6 +97,7 @@ function showNotification(msg, err=false) {
   notificationEl.style.display = 'block';
   setTimeout(()=>notificationEl.style.display='none',2000);
 }
+
 function updateLastSaved() {
   lastSavedEl.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
 }
@@ -103,33 +108,33 @@ function renderTable(tableId, players, statsMap, statKeys) {
   players.forEach(p => {
     const row = tbody.insertRow();
     row.dataset.player = p.numero;
-    row.innerHTML = `<td>${p.numero}</td><td>${p.nome}${p.gr ? ' 🧤' : ''}</td>` +
-      statKeys.map(k => `
-      <td><div class="stat-controls">
-        <button onclick="changeStat(this,-1)">−</button>
-        <input type="number" min="0" value="${statsMap[p.numero]?.[k]||0}"
-          data-player="${p.numero}" data-category="${tableId.includes('Campo')?'campo':'gr'}"
-          data-part="${tableId.includes('1')?'1':'2'}" data-stat="${k}">
-        <button onclick="changeStat(this,1)">+</button>
-      </div></td>`).join('');
+    row.innerHTML = `<td>${p.numero}</td><td>${p.nome}${p.gr?' 🧤':''}</td>` +
+      statKeys.map(k => `<td>
+        <div class="stat-controls">
+          <button onclick="changeStat(this,-1)">−</button>
+          <input type="number" min="0" value="${statsMap[p.numero]?.[k]||0}"
+            data-player="${p.numero}" data-category="${tableId.includes('Campo')?'campo':'gr'}"
+            data-part="${tableId.includes('1')?'1':'2'}" data-stat="${k}">
+          <button onclick="changeStat(this,1)">+</button>
+        </div>
+      </td>`).join('');
   });
 }
 
 window.changeStat = async function(btn, delta) {
   const input = btn.parentElement.querySelector('input');
   let val = parseInt(input.value)||0;
-  val += delta; if (val < 0) val = 0;
-  input.value = val;
-  const {player:playerNum, category, part, stat:statKey} = input.dataset;
+  val += delta; if(val<0) val=0; input.value=val;
+  const {player, category, part, stat:statKey} = input.dataset;
   const stats = part==='1' ? statsParte1 : statsParte2;
-  if(!stats[category]) stats[category] = {};
-  if(!stats[category][playerNum]) stats[category][playerNum] = {};
-  stats[category][playerNum][statKey] = val;
-  try {
-    await saveSingleStat(part, category, playerNum, statKey, val);
+  if(!stats[category]) stats[category]={};
+  if(!stats[category][player]) stats[category][player]={};
+  stats[category][player][statKey]=val;
+  try{
+    await saveSingleStat(part, category, player, statKey, val);
     updateLastSaved();
-    showNotification(`Guardado: ${statKey} (${val}) — #${playerNum}`);
-  } catch(e) { console.error(e); showNotification('Erro ao guardar', true); }
+    showNotification(`Guardado: ${statKey} (${val}) — #${player}`);
+  }catch(e){ console.error(e); showNotification('Erro ao guardar', true); }
 };
 
 function render() {
@@ -137,59 +142,55 @@ function render() {
   renderTable('tableGR1', goalKeepers, statsParte1.gr, grStats);
   renderTable('tableCampo2', fieldPlayers, statsParte2.campo, campoStats);
   renderTable('tableGR2', goalKeepers, statsParte2.gr, grStats);
-  loadingEl.style.display = 'none';
+  loadingEl.style.display='none';
 }
 
 async function setupFirebaseListeners() {
   const uid = localStorage.getItem("userId");
   const activeGame = getActiveGameId();
-  if (!uid || !activeGame) {
+  if(!uid || !activeGame){
     alert("Nenhum jogo ativo. Redirecionando...");
-    window.location.href = "configjogoequipa.html";
+    window.location.href="configjogoequipa.html";
     return;
   }
 
   db = getFirestore();
 
-  // Players listener
   const playersRef = collection(db, "users", uid, "games", activeGame, "players");
-  onSnapshot(playersRef, (snap) => {
-    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const eligible = all.filter(p => p.estatisticas === true);
-    fieldPlayers = eligible.filter(p => !p.gr).sort((a,b)=>a.numero-b.numero);
-    goalKeepers = eligible.filter(p => p.gr).sort((a,b)=>a.numero-b.numero);
+  onSnapshot(playersRef, snap=>{
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const eligible = all.filter(p=>p.estatisticas===true);
+    fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+    goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
     render();
   });
 
-  // Stats listeners
-  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data) => {
-    statsParte1 = data || { campo:{}, gr:{} };
+  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, data=>{
+    statsParte1 = data || {campo:{}, gr:{}};
     render();
   });
-  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, (data) => {
-    statsParte2 = data || { campo:{}, gr:{} };
+  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, data=>{
+    statsParte2 = data || {campo:{}, gr:{}};
     render();
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async ()=>{
   await initializeFirebase();
   const activeGame = getActiveGameId();
-  if (!activeGame) {
+  if(!activeGame){
     alert("Nenhum jogo ativo. Redirecionando...");
-    window.location.href = "configjogoequipa.html";
+    window.location.href="configjogoequipa.html";
     return;
   }
-  statsParte1 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte1) || { campo:{}, gr:{} };
-  statsParte2 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte2) || { campo:{}, gr:{} };
+  statsParte1 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte1) || {campo:{}, gr:{}};
+  statsParte2 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte2) || {campo:{}, gr:{}};
   await setupFirebaseListeners();
   render();
 });
-</script>
 
-<script>
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
@@ -201,5 +202,3 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </body>
 </html>
-
-
