@@ -374,7 +374,7 @@ hr {
 <header>Team Pro Stats — Gestão de Jogos e Jogadores</header>
 <main>
 
-<h2>🏆 Gestão de Jogos</h2>
+<h2>🏒 Gestão de Jogos</h2>
 <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
   <label>Escalão<input name="escalao"/></label>
   <label>Competição<input name="competicao"/></label>
@@ -419,13 +419,13 @@ hr {
   <button class="primary" id="addPlayerBtn">Adicionar</button>
 </div>
 
-<h3>⚽ Jogadores de Campo</h3>
+<h3>🛼 Jogadores de Campo</h3>
 <table id="fieldPlayersTable">
   <thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
   <tbody></tbody>
 </table>
 
-<h3>🧤 Guarda-Redes</h3>
+<h3>🥅 Guarda-Redes</h3>
 <table id="goalKeepersTable">
   <thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
   <tbody></tbody>
@@ -441,15 +441,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebas
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 // 🔑 Replace with your Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-    authDomain: "team-pro-stats.firebaseapp.com",
-    projectId: "team-pro-stats",
-    storageBucket: "team-pro-stats.firebasestorage.app",
-    messagingSenderId: "758444286089",
-    appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
-    measurementId: "G-D1GDDBPD55"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
+  authDomain: "team-pro-stats.firebaseapp.com",
+  projectId: "team-pro-stats",
+  storageBucket: "team-pro-stats.firebasestorage.app",
+  messagingSenderId: "758444286089",
+  appId: "1:758444286089:web:fcd8fba3a5d705de01e658",
+  measurementId: "G-D1GDDBPD55"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -515,4 +515,4 @@ function subscribePlayers(){
 async function loadGames(){
   const snaps = await getDocs(collection(db, `users/${currentUser Id}/games`));
   gamesBody.innerHTML='';
-  if(snaps.empty){ gamesBody.innerHTML='
+  if(snaps.empty){ gamesBody.innerHTML='<tr>
