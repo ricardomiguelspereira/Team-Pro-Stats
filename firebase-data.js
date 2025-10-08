@@ -8,8 +8,8 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  deleteDoc,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 /* ----------------------- FIREBASE CONFIG ----------------------- */
@@ -54,32 +54,35 @@ export function setActiveGameId(gameId) {
 }
 
 /* ----------------------- FIRESTORE HELPERS ----------------------- */
-
-// Document helpers
+// Fetch single document
 export async function getFirebaseData(path) {
   const ref = doc(db, path);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
+// Real-time listener for single document
 export function onFirebaseDataChange(path, callback) {
   const ref = doc(db, path);
   return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
 }
 
-// Collection helpers
-export async function getCollectionData(path) {
+// Fetch collection
+export async function getFirebaseCollection(path) {
   const ref = collection(db, path);
   const snap = await getDocs(ref);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export function onCollectionChange(path, callback) {
+// Real-time listener for collection
+export function onFirebaseCollectionChange(path, callback) {
   const ref = collection(db, path);
-  return onSnapshot(ref, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(ref, snapshot => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
 }
 
-// Save single statistic
+// Save single stat
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
   if (!part || !category || !playerNum || !statKey)
     throw new Error("Missing parameters for saveSingleStat");
@@ -98,7 +101,7 @@ export async function saveSingleStat(part, category, playerNum, statKey, value) 
   await setDoc(statDocRef, currentData, { merge: true });
 }
 
-/* ----------------------- DELETE HELPERS ----------------------- */
+// Delete document by path
 export async function deleteDocByPath(path) {
   const ref = doc(db, path);
   await deleteDoc(ref);

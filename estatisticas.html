@@ -75,6 +75,8 @@ import {
   saveSingleStat,
   onFirebaseDataChange,
   getFirebaseData,
+  getFirebaseCollection,
+  onFirebaseCollectionChange,
   FB_PATHS_GAME
 } from './firebase-data.js';
 
@@ -154,20 +156,15 @@ async function setupFirebaseListeners() {
   const playersPath = `users/${uid}/games/${gameId}/players`;
 
   // Initial fetch
-  const playersSnap = await getDocs(collection(db, playersPath));
-  if(playersSnap){
-    const playersArray = playersSnap.docs.map(d=>({id:d.id, ...d.data()}));
-    const eligible = playersArray.filter(p=>p.estatisticas===true);
-    fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-    goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
-    render();
-  }
+  const playersArray = await getFirebaseCollection(playersPath);
+  const eligible = playersArray.filter(p=>p.estatisticas===true);
+  fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+  render();
 
-  // Real-time listener
-  onFirebaseDataChange(playersPath, data=>{
-    if(!data) return;
-    const playersArray = Object.entries(data).map(([id,p])=>({id, ...p}));
-    const eligible = playersArray.filter(p=>p.estatisticas===true);
+  // Real-time updates
+  onFirebaseCollectionChange(playersPath, data=>{
+    const eligible = data.filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
     render();
