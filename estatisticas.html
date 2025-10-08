@@ -1,1 +1,205 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Estatísticas</title>
+<style>
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
+h2 { text-align:center; margin-bottom:20px; color:#333; }
+footer { text-align:center; padding:12px 0; font-size:0.8em; color:#666; margin-top:20px; }
+.notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:10px 14px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2); font-weight:bold; }
+.notification.error { background:#ffdede; }
+.tabs { display:flex; justify-content:center; gap:6px; margin-bottom:20px; }
+.tab-btn { padding:8px 16px; border:none; border-radius:6px; background:#2980b9; color:white; cursor:pointer; transition:0.2s; font-weight:500; }
+.tab-btn.active { background:#1c5980; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.responsive { overflow-x:auto; margin-bottom:20px; }
+table { border-collapse:collapse; width:100%; background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+th,td { padding:10px; text-align:center; border-bottom:1px solid #eee; }
+th { background:#f5f5f5; color:#333; font-weight:600; }
+tr:hover { background:#f9f9f9; }
+.stat-controls { display:flex; justify-content:center; align-items:center; gap:4px; }
+.stat-controls button { width:28px; height:28px; border:none; border-radius:6px; background:#2980b9; color:white; font-weight:bold; cursor:pointer; }
+.stat-controls button:hover { background:#1c5980; }
+.stat-controls input[type=number] { width:48px; text-align:center; border:1px solid #ccc; border-radius:6px; height:28px; }
+#loading { display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:1.2em; padding:20px; background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.15); margin-bottom:20px; }
+</style>
+</head>
+<body>
+
+<h2>Estatísticas</h2>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="part1">1ª Parte</button>
+  <button class="tab-btn" data-tab="part2">2ª Parte</button>
+</div>
+
+<div id="loading">A carregar jogadores e estatísticas...</div>
+
+<div id="part1" class="tab-content active">
+  <div class="responsive">
+    <table id="tableCampo1"><thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="responsive">
+    <table id="tableGR1"><thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div id="part2" class="tab-content">
+  <div class="responsive">
+    <table id="tableCampo2"><thead><tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="responsive">
+    <table id="tableGR2"><thead><tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div id="lastSaved" style="font-size:12px; margin-top:10px;"></div>
+<div id="notification" class="notification"></div>
+
+<script type="module">
+import {
+  FB_PATHS_GAME,
+  initializeFirebase,
+  saveSingleStat,
+  onFirebaseDataChange,
+  getFirebaseData,
+  getActiveGameId
+} from './firebase-data.js';
+
+import {
+  getFirestore,
+  collection,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+let db;
+let fieldPlayers = [], goalKeepers = [];
+let statsParte1 = { campo: {}, gr: {} };
+let statsParte2 = { campo: {}, gr: {} };
+
+const campoStats = ['interceptados','fora','golos','passesErrados','faltas'];
+const grStats = ['defesas','interceptados','golosSofridos','faltas'];
+
+const notificationEl = document.getElementById('notification');
+const lastSavedEl = document.getElementById('lastSaved');
+const loadingEl = document.getElementById('loading');
+
+function showNotification(msg, err=false) {
+  notificationEl.textContent = msg;
+  notificationEl.className = err ? 'notification error' : 'notification';
+  notificationEl.style.display = 'block';
+  setTimeout(()=>notificationEl.style.display='none',2000);
+}
+function updateLastSaved() {
+  lastSavedEl.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
+}
+
+function renderTable(tableId, players, statsMap, statKeys) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML = '';
+  players.forEach(p => {
+    const row = tbody.insertRow();
+    row.dataset.player = p.numero;
+    row.innerHTML = `<td>${p.numero}</td><td>${p.nome}${p.gr ? ' 🧤' : ''}</td>` +
+      statKeys.map(k => `
+      <td><div class="stat-controls">
+        <button onclick="changeStat(this,-1)">−</button>
+        <input type="number" min="0" value="${statsMap[p.numero]?.[k]||0}"
+          data-player="${p.numero}" data-category="${tableId.includes('Campo')?'campo':'gr'}"
+          data-part="${tableId.includes('1')?'1':'2'}" data-stat="${k}">
+        <button onclick="changeStat(this,1)">+</button>
+      </div></td>`).join('');
+  });
+}
+
+window.changeStat = async function(btn, delta) {
+  const input = btn.parentElement.querySelector('input');
+  let val = parseInt(input.value)||0;
+  val += delta; if (val < 0) val = 0;
+  input.value = val;
+  const {player:playerNum, category, part, stat:statKey} = input.dataset;
+  const stats = part==='1' ? statsParte1 : statsParte2;
+  if(!stats[category]) stats[category] = {};
+  if(!stats[category][playerNum]) stats[category][playerNum] = {};
+  stats[category][playerNum][statKey] = val;
+  try {
+    await saveSingleStat(part, category, playerNum, statKey, val);
+    updateLastSaved();
+    showNotification(`Guardado: ${statKey} (${val}) — #${playerNum}`);
+  } catch(e) { console.error(e); showNotification('Erro ao guardar', true); }
+};
+
+function render() {
+  renderTable('tableCampo1', fieldPlayers, statsParte1.campo, campoStats);
+  renderTable('tableGR1', goalKeepers, statsParte1.gr, grStats);
+  renderTable('tableCampo2', fieldPlayers, statsParte2.campo, campoStats);
+  renderTable('tableGR2', goalKeepers, statsParte2.gr, grStats);
+  loadingEl.style.display = 'none';
+}
+
+async function setupFirebaseListeners() {
+  const uid = localStorage.getItem("userId");
+  const activeGame = getActiveGameId();
+  if (!uid || !activeGame) {
+    alert("Nenhum jogo ativo. Redirecionando...");
+    window.location.href = "configjogoequipa.html";
+    return;
+  }
+
+  db = getFirestore();
+
+  // Players listener
+  const playersRef = collection(db, "users", uid, "games", activeGame, "players");
+  onSnapshot(playersRef, (snap) => {
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const eligible = all.filter(p => p.estatisticas === true);
+    fieldPlayers = eligible.filter(p => !p.gr).sort((a,b)=>a.numero-b.numero);
+    goalKeepers = eligible.filter(p => p.gr).sort((a,b)=>a.numero-b.numero);
+    render();
+  });
+
+  // Stats listeners
+  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte1, (data) => {
+    statsParte1 = data || { campo:{}, gr:{} };
+    render();
+  });
+  onFirebaseDataChange(FB_PATHS_GAME.estatisticasParte2, (data) => {
+    statsParte2 = data || { campo:{}, gr:{} };
+    render();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeFirebase();
+  const activeGame = getActiveGameId();
+  if (!activeGame) {
+    alert("Nenhum jogo ativo. Redirecionando...");
+    window.location.href = "configjogoequipa.html";
+    return;
+  }
+  statsParte1 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte1) || { campo:{}, gr:{} };
+  statsParte2 = await getFirebaseData(FB_PATHS_GAME.estatisticasParte2) || { campo:{}, gr:{} };
+  await setupFirebaseListeners();
+  render();
+});
+</script>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+</body>
+</html>
+
 
