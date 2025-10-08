@@ -72,7 +72,6 @@ import {
   initializeFirebase,
   saveSingleStat,
   onFirebaseDataChange,
-  getFirebaseData,
   getUserId,
   getActiveGameId,
   FB_PATHS_GAME
@@ -109,37 +108,45 @@ function renderTable(tableId, players, statsMap, statKeys) {
     row.innerHTML = `<td>${p.numero}</td><td>${p.nome}${p.gr?' 🧤':''}</td>` +
       statKeys.map(k => `<td>
         <div class="stat-controls">
-          <button onclick="changeStat(this,-1)">−</button>
+          <button class="decrease">−</button>
           <input type="number" min="0" value="${statsMap[p.numero]?.[k]||0}"
             data-player="${p.numero}" data-category="${tableId.includes('Campo')?'campo':'gr'}"
             data-part="${tableId.includes('1')?'1':'2'}" data-stat="${k}">
-          <button onclick="changeStat(this,1)">+</button>
+          <button class="increase">+</button>
         </div>
       </td>`).join('');
   });
 }
 
-window.changeStat = async function(btn, delta) {
-  const input = btn.parentElement.querySelector('input');
-  let val = parseInt(input.value)||0;
-  val += delta; if(val<0) val=0; input.value=val;
-  const {player, category, part, stat:statKey} = input.dataset;
-  const stats = part==='1' ? statsParte1 : statsParte2;
-  if(!stats[category]) stats[category]={};
-  if(!stats[category][player]) stats[category][player]={};
-  stats[category][player][statKey]=val;
-  try{
-    await saveSingleStat(part, category, player, statKey, val);
-    updateLastSaved();
-    showNotification(`Guardado: ${statKey} (${val}) — #${player}`);
-  }catch(e){ console.error(e); showNotification('Erro ao guardar', true); }
-};
+// Attach event listeners for all stat buttons
+function attachStatButtons() {
+  document.querySelectorAll('.stat-controls button').forEach(btn=>{
+    btn.onclick = async function(){
+      const input = btn.parentElement.querySelector('input');
+      let val = parseInt(input.value)||0;
+      val += btn.classList.contains('increase') ? 1 : -1;
+      if(val<0) val=0;
+      input.value = val;
+      const {player, category, part, stat:statKey} = input.dataset;
+      const stats = part==='1'? statsParte1 : statsParte2;
+      if(!stats[category]) stats[category]={};
+      if(!stats[category][player]) stats[category][player]={};
+      stats[category][player][statKey] = val;
+      try{
+        await saveSingleStat(part, category, player, statKey, val);
+        updateLastSaved();
+        showNotification(`Guardado: ${statKey} (${val}) — #${player}`);
+      }catch(e){ console.error(e); showNotification('Erro ao guardar', true);}
+    };
+  });
+}
 
 function render() {
   renderTable('tableCampo1', fieldPlayers, statsParte1.campo, campoStats);
   renderTable('tableGR1', goalKeepers, statsParte1.gr, grStats);
   renderTable('tableCampo2', fieldPlayers, statsParte2.campo, campoStats);
   renderTable('tableGR2', goalKeepers, statsParte2.gr, grStats);
+  attachStatButtons();
   loadingEl.style.display='none';
 }
 
@@ -152,7 +159,6 @@ async function setupFirebaseListeners() {
     return;
   }
 
-  // Players listener
   onFirebaseDataChange(`users/${uid}/games/${gameId}/players`, (playersData)=>{
     const eligible = (playersData || []).filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
@@ -160,19 +166,11 @@ async function setupFirebaseListeners() {
     render();
   });
 
-  // Stats listeners with dynamic path replacement
   const path1 = FB_PATHS_GAME.estatisticasParte1.replace("{uid}", uid).replace("{gameId}", gameId);
   const path2 = FB_PATHS_GAME.estatisticasParte2.replace("{uid}", uid).replace("{gameId}", gameId);
 
-  onFirebaseDataChange(path1, data=>{
-    statsParte1 = data || { campo:{}, gr:{} };
-    render();
-  });
-
-  onFirebaseDataChange(path2, data=>{
-    statsParte2 = data || { campo:{}, gr:{} };
-    render();
-  });
+  onFirebaseDataChange(path1, data=>{ statsParte1 = data || { campo:{}, gr:{} }; render(); });
+  onFirebaseDataChange(path2, data=>{ statsParte2 = data || { campo:{}, gr:{} }; render(); });
 }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
@@ -183,10 +181,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     window.location.href="configjogoequipa.html";
     return;
   }
-
   await setupFirebaseListeners();
 });
 
+// Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
