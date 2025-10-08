@@ -74,7 +74,8 @@ import {
   getActiveGameId,
   saveSingleStat,
   onFirebaseDataChange,
-  getFirebaseData,
+  getDocsFromCollection,
+  onCollectionChange,
   FB_PATHS_GAME
 } from './firebase-data.js';
 
@@ -153,20 +154,8 @@ async function setupFirebaseListeners() {
 
   const playersPath = `users/${uid}/games/${gameId}/players`;
 
-  // Initial fetch and convert object to array
-  const playersData = await getFirebaseData(playersPath);
-  if(playersData){
-    const playersArray = Object.entries(playersData).map(([id,p])=>({id, ...p}));
-    const eligible = playersArray.filter(p=>p.estatisticas===true);
-    fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-    goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
-    render();
-  }
-
-  // Real-time listener
-  onFirebaseDataChange(playersPath, data=>{
-    if(!data) return;
-    const playersArray = Object.entries(data).map(([id,p])=>({id, ...p}));
+  // Initial fetch and real-time collection listener
+  onCollectionChange(playersPath, playersArray=>{
     const eligible = playersArray.filter(p=>p.estatisticas===true);
     fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
     goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);

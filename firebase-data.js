@@ -53,50 +53,42 @@ export function setActiveGameId(gameId) {
   localStorage.setItem("activeGameId", gameId);
 }
 
-/**
- * Returns a Firestore reference (doc or collection) for any path relative to the user
- * path: "users/{uid}/games/{gameId}/players" or "games" etc.
- * Returns a Firestore doc if the last path segment is not a collection, otherwise a collection ref
- */
+/* ----------------------- FIRESTORE HELPERS ----------------------- */
 function getRefFromPath(path) {
   const segments = path.split("/").filter(s => s);
   if (!segments.length) throw new Error("Invalid path");
   return segments.length % 2 === 0 ? doc(db, ...segments) : collection(db, ...segments);
 }
 
-/* ----------------------- FIRESTORE HELPERS ----------------------- */
-/*export async function getFirebaseData(path) {
-  const ref = getRefFromPath(path);
-  if ("get" in ref) { // Document
-    const snap = await getDoc(ref);
-    return snap.exists() ? snap.data() : null;
-  } else { // Collection
-    const snap = await getDocs(ref);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  }
-}
-
-export function onFirebaseDataChange(path, callback) {
-  const ref = getRefFromPath(path);
-  if ("onSnapshot" in ref || "get" in ref) { // Document
-    return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
-  } else { // Collection
-    return onSnapshot(ref, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-  }
-}*/
-
+// Get single document
 export async function getFirebaseData(path) {
   const ref = doc(db, path);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
+// Real-time document listener
 export function onFirebaseDataChange(path, callback) {
   const ref = doc(db, path);
   return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
 }
 
+// Get collection documents as array
+export async function getDocsFromCollection(path) {
+  const ref = collection(db, path);
+  const snap = await getDocs(ref);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
+// Real-time listener for collections
+export function onCollectionChange(path, callback) {
+  const ref = collection(db, path);
+  return onSnapshot(ref, snapshot => {
+    callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/* ----------------------- SAVE STAT ----------------------- */
 export async function saveSingleStat(part, category, playerNum, statKey, value) {
   if (!part || !category || !playerNum || !statKey)
     throw new Error("Missing parameters for saveSingleStat");
