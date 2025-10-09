@@ -19,6 +19,7 @@ h2 {
 .tabs {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 6px;
   margin-bottom: 18px;
 }
@@ -34,6 +35,12 @@ h2 {
 }
 .tab-btn.active {
   background: #28a745;
+}
+.tab-btn.extra {
+  background: #888;
+}
+.tab-btn.extra:hover {
+  background: #777;
 }
 .tab-content {
   display: none;
@@ -94,7 +101,7 @@ tr:hover {
   background: #1e7e34;
 }
 .stat-controls input[type=number] {
-  width: 50px;
+  width: 60px;
   text-align: center;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -156,23 +163,6 @@ footer {
 .reset-buttons button:hover {
   background: #b71c1c;
 }
-.extra-button {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-.extra-button button {
-  padding: 10px 20px;
-  background: #0077ff;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.extra-button button:hover {
-  background: #005fcc;
-}
 </style>
 </head>
 <body>
@@ -182,6 +172,7 @@ footer {
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
   <button class="tab-btn" data-tab="part2">2ª Parte</button>
+  <button class="tab-btn extra" onclick="window.location.href='entradassaidas.html'">Entradas / Saídas</button>
 </div>
 
 <div id="loading">A carregar jogadores e estatísticas...</div>
@@ -260,10 +251,6 @@ footer {
   <button id="resetPart1Btn">Reset Estatísticas 1ª Parte</button>
   <button id="resetPart2Btn">Reset Estatísticas 2ª Parte</button>
   <button id="resetAllBtn">Reset Todas as Estatísticas</button>
-</div>
-
-<div class="extra-button">
-  <button onclick="window.location.href='entradassaidas.html'">Entradas / Saídas</button>
 </div>
 
 <div id="notification"></div>
@@ -396,9 +383,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await findActiveGame();
 });
 
-document.querySelectorAll('.tab-btn').forEach(btn=>{
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
