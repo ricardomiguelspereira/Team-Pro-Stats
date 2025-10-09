@@ -11,11 +11,13 @@
   .title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px; gap: 8px; }
   .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .tab-btn, .nav-btn { height: 34px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 6px; cursor: pointer; border: none; user-select: none; }
+  .tab-btn, .nav-btn, .reset-btn { height: 34px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 6px; cursor: pointer; border: none; user-select: none; }
   .tab-btn { background-color: #ccc; color: black; transition: 0.2s; }
   .tab-btn.active { background-color: #2ecc71; color: white; }
   .nav-btn { background-color: #3498db; color: white; }
   .nav-btn:hover { background-color: #5dade2; }
+  .reset-btn { background-color: #e67e22; color: white; }
+  .reset-btn:hover { opacity: 0.85; }
   .tab-btn:hover { opacity: 0.85; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
@@ -42,6 +44,8 @@
       <button class="tab-btn active" data-tab="inOutPart1" type="button">1ª Parte</button>
       <button class="tab-btn" data-tab="inOutPart2" type="button">2ª Parte</button>
       <button id="backStats" class="nav-btn" type="button">Estatísticas</button>
+      <button id="resetPart1" class="reset-btn" type="button">Reset 1ª Parte</button>
+      <button id="resetPart2" class="reset-btn" type="button">Reset 2ª Parte</button>
     </div>
   </div>
 </div>
@@ -80,27 +84,31 @@ import {
 let inOutData = {};
 let playersCampo = [], playersGR = [];
 
-// Interval presets
 const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const levelIntervalsMap = { sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals };
 function getIntervalsForLevel(level){ return levelIntervalsMap[level] || defaultIntervals; }
 
-// Normalize text
-function normalizeText(text){
-  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+function normalizeText(text){ return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
+
+async function getLevel(){
+  const gameId = await getActiveGameId();
+  if(!gameId) return 'sub13';
+  const jogoData = await getFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}`);
+  if(!jogoData) return 'sub13';
+  const esc = normalizeText(jogoData.escalao||'');
+  const map = {sub13:'sub13',sub15:'sub15',sub17:'sub17',sub19:'sub19',sub23:'sub23',seniores:'seniores',seniors:'seniores'};
+  return map[esc]||'sub13';
 }
 
-// Load players from global paths
 async function loadPlayers(){
   const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers) || {};
   const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers) || {};
-  playersCampo = (fieldPlayersData.players || []).filter(p=>p.estatisticas);
-  playersGR = (goalKeepersData.players || []).filter(p=>p.estatisticas);
+  playersCampo = (fieldPlayersData.players||[]).filter(p=>p.estatisticas);
+  playersGR = (goalKeepersData.players||[]).filter(p=>p.estatisticas);
 }
 
-// Render In/Out table
 async function renderInOut(){
   const gameId = await getActiveGameId();
   if(!gameId){
@@ -109,80 +117,58 @@ async function renderInOut(){
     return;
   }
 
-  const savedData = await getFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
-  inOutData = savedData.inOut || {};
+  const saved = await getFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
+  inOutData = saved.inOut || {};
   await loadPlayers();
-
-  const allPlayers = [...playersCampo, ...playersGR];
+  const allPlayers = [...playersCampo,...playersGR];
   const intervals = getIntervalsForLevel(await getLevel());
 
   function buildHeader(table){
     const tr = table.querySelector('thead tr');
-    tr.innerHTML = '<th>#</th><th>Nome</th>';
-    intervals.forEach(iv=> tr.innerHTML += `<th>${iv}</th>`);
+    tr.innerHTML='<th>#</th><th>Nome</th>';
+    intervals.forEach(iv=>tr.innerHTML+=`<th>${iv}</th>`);
   }
 
   function buildBody(table, part){
     const tbody = table.querySelector('tbody');
-    tbody.innerHTML = '';
+    tbody.innerHTML='';
     allPlayers.forEach(p=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.numero}</td><td>${p.nome}</td>`;
+      tr.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td>`;
       intervals.forEach(iv=>{
         const td = document.createElement('td');
         const key = `tableInOut${part}_${p.numero}_${iv}`;
-        const val = inOutData[key] || '';
-        td.dataset.key = key;
-        td.dataset.state = val;
-        td.textContent = val;
+        const val = inOutData[key]||'';
+        td.dataset.key=key; td.dataset.state=val; td.textContent=val;
         if(val==='E'){ td.style.background='green'; td.style.color='white'; }
         else if(val==='S'){ td.style.background='orange'; td.style.color='white'; }
-
         td.addEventListener('click', async ()=>{
-          let state = td.dataset.state || '';
-          if(state==='') state='E';
-          else if(state==='E') state='S';
-          else state='';
-          td.dataset.state=state;
-          td.textContent=state;
+          let state = td.dataset.state||'';
+          state = state===''?'E':state==='E'?'S':'';
+          td.dataset.state=state; td.textContent=state;
           td.style.background = state==='E'?'green':state==='S'?'orange':'';
-          td.style.color = state? 'white':'';
+          td.style.color = state?'white':'';
           inOutData[key]=state;
           await setFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, {inOut: inOutData});
           showNotification("✔️ Guardado com sucesso");
         });
-
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
     });
   }
 
-  const t1 = document.getElementById('tableInOut1'), t2 = document.getElementById('tableInOut2');
+  const t1=document.getElementById('tableInOut1'), t2=document.getElementById('tableInOut2');
   buildHeader(t1); buildBody(t1,'1');
   buildHeader(t2); buildBody(t2,'2');
 }
 
-// Get level
-async function getLevel(){
-  const gameId = await getActiveGameId();
-  if(!gameId) return 'sub13';
-  const jogoData = await getFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}`);
-  if(!jogoData) return 'sub13';
-  const esc = normalizeText(jogoData.escalao||'');
-  const map = {sub13:'sub13',sub15:'sub15',sub17:'sub17',sub19:'sub19',sub23:'sub23',seniores:'seniores',seniors:'seniores'};
-  return map[esc] || 'sub13';
-}
-
-// Notification
 function showNotification(msg){
-  const n = document.getElementById('notification');
-  n.textContent = msg;
-  n.style.opacity='1';
+  const n=document.getElementById('notification');
+  n.textContent=msg; n.style.opacity='1';
   setTimeout(()=>n.style.opacity='0',2500);
 }
 
-// Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -193,10 +179,30 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
-// Back button
 document.getElementById('backStats').addEventListener('click', ()=>window.location.href='estatisticas.html');
 
-// Initialize
+// Reset buttons
+document.getElementById('resetPart1').addEventListener('click', async ()=>{
+  if(!confirm("Tem certeza que deseja resetar a 1ª Parte?")) return;
+  const gameId = await getActiveGameId();
+  if(!gameId) return;
+  Object.keys(inOutData).forEach(k=>{ if(k.includes('_1_')) inOutData[k]=''; });
+  await setFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, {inOut: inOutData});
+  await renderInOut();
+  showNotification("✔️ 1ª Parte resetada");
+});
+
+document.getElementById('resetPart2').addEventListener('click', async ()=>{
+  if(!confirm("Tem certeza que deseja resetar a 2ª Parte?")) return;
+  const gameId = await getActiveGameId();
+  if(!gameId) return;
+  Object.keys(inOutData).forEach(k=>{ if(k.includes('_2_')) inOutData[k]=''; });
+  await setFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, {inOut: inOutData});
+  await renderInOut();
+  showNotification("✔️ 2ª Parte resetada");
+});
+
+// Init
 window.addEventListener('load', async ()=>{
   await initializeFirebase();
   const savedTab = localStorage.getItem('activeInOutTab');
@@ -208,7 +214,6 @@ window.addEventListener('load', async ()=>{
   }
   await renderInOut();
 
-  // Real-time updates
   const gameId = await getActiveGameId();
   if(gameId){
     onFirebaseDataChange(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, renderInOut);
