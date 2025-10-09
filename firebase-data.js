@@ -24,7 +24,7 @@ const firebaseConfig = {
 
 /* ----------------------- GLOBALS ----------------------- */
 let app, db, auth;
-let currentUserId = null;
+let currentUser Id = null;
 
 /* ----------------------- INITIALIZATION ----------------------- */
 export async function initializeFirebase() {
@@ -35,14 +35,14 @@ export async function initializeFirebase() {
 
   // Anonymous auth
   const result = await signInAnonymously(auth);
-  currentUserId = result.user.uid;
-  localStorage.setItem("userId", currentUserId);
-  console.log("✅ Firebase initialized:", currentUserId);
+  currentUser Id = result.user.uid;
+  localStorage.setItem("userId", currentUser Id);
+  console.log("✅ Firebase initialized:", currentUser Id);
 }
 
 /* ----------------------- PATH HELPERS ----------------------- */
-export function getUserId() {
-  return currentUserId || localStorage.getItem("userId");
+export function getUser Id() {
+  return currentUser Id || localStorage.getItem("userId");
 }
 
 export function getActiveGameId() {
@@ -51,6 +51,21 @@ export function getActiveGameId() {
 
 export function setActiveGameId(gameId) {
   localStorage.setItem("activeGameId", gameId);
+}
+
+/* ----------------------- NEW: Get Active Game from DB ----------------------- */
+export async function getActiveGameIdFromDB() {
+  const uid = getUser Id();
+  if (!uid) return null;
+  const gamesRef = collection(db, `users/${uid}/games`);
+  const snapshot = await getDocs(gamesRef);
+  for (let docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    if (data.active === true) {
+      return docSnap.id;
+    }
+  }
+  return null;
 }
 
 /* ----------------------- FIRESTORE HELPERS ----------------------- */
@@ -90,7 +105,7 @@ export async function saveSingleStat(part, category, playerNum, statKey, value) 
   const gameId = getActiveGameId();
   if (!gameId) throw new Error("No active game set");
 
-  const statDocRef = doc(db, "users", getUserId(), "games", gameId, "stats", `parte${part}`);
+  const statDocRef = doc(db, "users", getUser Id(), "games", gameId, "stats", `parte${part}`);
   const statSnap = await getDoc(statDocRef);
   const currentData = statSnap.exists() ? statSnap.data() : { campo: {}, gr: {} };
 

@@ -70,8 +70,10 @@ tr:hover { background:#f9f9f9; }
 <script type="module">
 import {
   initializeFirebase,
-  getUserId,
+  getUser Id,
   getActiveGameId,
+  setActiveGameId,
+  getActiveGameIdFromDB,
   saveSingleStat,
   onFirebaseDataChange,
   getFirebaseData,
@@ -145,7 +147,7 @@ function render() {
 }
 
 async function setupFirebaseListeners() {
-  const uid = getUserId();
+  const uid = getUser Id();
   const gameId = getActiveGameId();
   if(!uid || !gameId){
     alert("Nenhum jogo ativo. Redirecionando...");
@@ -178,12 +180,13 @@ async function setupFirebaseListeners() {
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   await initializeFirebase();
-  const activeGame = getActiveGameId();
-  if(!activeGame){
+  const gameId = await getActiveGameIdFromDB(); // NEW: Dynamically fetch active game from DB
+  if(!gameId){
     alert("Nenhum jogo ativo. Redirecionando...");
     window.location.href="configjogoequipa.html";
     return;
   }
+  setActiveGameId(gameId); // Set in localStorage for compatibility with existing code
   await setupFirebaseListeners();
 });
 
