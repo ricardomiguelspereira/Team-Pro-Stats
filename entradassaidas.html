@@ -6,30 +6,23 @@
 <title>Entradas / Saídas</title>
 <link rel="stylesheet" href="estatisticas.css" />
 <style>
-  body { font-family: Arial, sans-serif; margin: 15px; background: #f9f9f9; }
-  .header-container { margin-bottom: 15px; }
-  .title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px; gap: 8px; }
-  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .tab-btn, .nav-btn { height: 34px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 6px; cursor: pointer; border: none; user-select: none; }
-  .tab-btn { background-color: #888; color: white; transition: 0.2s; }
-  .tab-btn.active { background-color: #2ecc71; color: white; }
-  .nav-btn { background-color: #3498db; color: white; }
-  .nav-btn:hover { background-color: #5dade2; }
-  .tab-btn:hover { opacity: 0.85; }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* Table styling */
-  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; background: white; }
+  body { font-family: Arial, sans-serif; padding: 10px; background: #f7f7f7; }
+  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; background: white; }
   table.part-table-inout { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
   table.part-table-inout thead tr { background-color: #3498db; color: white; }
   table.part-table-inout th, table.part-table-inout td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; white-space: nowrap; cursor: pointer; }
   table.part-table-inout th:first-child, table.part-table-inout td:first-child { text-align: left; cursor: default; }
-  table.part-table-inout td:nth-child(3), table.part-table-inout td:nth-child(4) { min-width: 30px; }
-
-  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; transition: 0.3s; opacity: 0; }
-  footer { margin-top: 25px; font-size: 11px; text-align: center; color: #999; }
+  .header-container { margin-bottom: 15px; }
+  .title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px; gap: 8px; }
+  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .tab-btn, .nav-btn { height: 32px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none; user-select: none; }
+  .tab-btn { background-color: #888; color: white; }
+  .tab-btn.active { background-color: #2ecc71; }
+  .nav-btn { background-color: #3498db; color: white; }
+  .nav-btn:hover { background-color: #5dade2; }
+  .tab-btn:hover { opacity: 0.9; }
+  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; transition: opacity 0.4s; }
 </style>
 </head>
 <body>
@@ -47,7 +40,6 @@
   </div>
 </div>
 
-<!-- 1ª Parte -->
 <div id="inOutPart1" class="tab-content active">
   <div class="responsive-inout">
     <table id="tableInOut1" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 1ª Parte">
@@ -57,7 +49,6 @@
   </div>
 </div>
 
-<!-- 2ª Parte -->
 <div id="inOutPart2" class="tab-content">
   <div class="responsive-inout">
     <table id="tableInOut2" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 2ª Parte">
@@ -67,93 +58,97 @@
   </div>
 </div>
 
-<div id="lastSaved" style="font-size:10px;margin-top:10px;"></div>
-<div class="notification" id="notification"></div>
+<div id="notification" class="notification"></div>
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 
 <script type="module">
-import {
-  db,
-  getFirebaseDoc,
-  setFirebaseDoc,
-  getFirebaseCollection,
-  onFirebaseDocChange,
-  onFirebaseCollectionChange,
-  getActiveGameId,
-  FB_PATHS_GLOBAL
-} from "./firebase-data.js";
+import { db, getFirebaseDoc, setFirebaseDoc, onFirebaseDocChange } from './firebase-data.js';
+import { getDocs, collection } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
+const STORAGE_KEY = 'estatisticas_valores';
 let inOutData = {};
-let playersCampo = [], playersGR = [];
+let gameId = null;
 
-// Interval presets
+// 🔹 Intervalos por escalão
 const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const levelIntervalsMap = { sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals };
+
 function getIntervalsForLevel(level){ return levelIntervalsMap[level] || defaultIntervals; }
 
-function showNotification(msg){
-  const n = document.getElementById('notification');
+// 🔹 Notification
+function showNotification(msg, color="#27ae60") {
+  const n = document.getElementById("notification");
   n.textContent = msg;
-  n.style.opacity = '1';
-  setTimeout(()=>{ n.style.opacity='0'; },2500);
+  n.style.color = color;
+  n.style.opacity = "1";
+  setTimeout(() => { n.style.opacity = "0"; }, 2500);
 }
 
-// Load players from Firebase (same logic as estatisticas.html)
-async function loadPlayers(){
-  const gameId = await getActiveGameId();
-  if(!gameId) return [];
-  const allPlayers = await getFirebaseCollection(`${FB_PATHS_GLOBAL.games}/${gameId}/players`);
-  playersCampo = allPlayers.filter(p=>p.tipo==='campo' && p.estatisticas);
-  playersGR = allPlayers.filter(p=>p.tipo==='gr' && p.estatisticas);
+// 🔹 Get active game
+async function getActiveGameId() {
+  const active = await getFirebaseDoc("activeGame/active");
+  return active?.id || null;
 }
 
-// Render In/Out table
-async function renderInOut(){
-  const gameId = await getActiveGameId();
-  if(!gameId){
-    alert('❌ Nenhum jogo activo. Configure em "Configurar Jogo".');
-    window.location.href='configjogoequipa.html';
-    return;
-  }
+// 🔹 Fetch players from Firebase
+async function fetchPlayers() {
+  if (!gameId) return [];
+  const snap = await getDocs(collection(db, `games/${gameId}/players`));
+  const all = [];
+  snap.forEach(docSnap => {
+    const p = docSnap.data();
+    if (p.estatisticas) all.push(p);
+  });
+  return all;
+}
 
-  await loadPlayers();
-  const saved = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
-  inOutData = saved.inOut || {};
-  const allPlayers = [...playersCampo, ...playersGR];
-  const intervals = getIntervalsForLevel(saved.level || 'sub13');
+// 🔹 Render In/Out Table
+async function renderInOut() {
+  const savedDoc = await getFirebaseDoc(`games/${gameId}/inOutData`);
+  inOutData = (savedDoc && savedDoc.inOut) ? savedDoc.inOut : {};
+
+  const gameData = await getFirebaseDoc(`games/${gameId}`);
+  const level = (gameData?.escalao || 'sub13').toLowerCase().replace(/\s/g, '');
+  const players = await fetchPlayers();
+  const intervals = getIntervalsForLevel(level);
+
+  const t1 = document.getElementById("tableInOut1");
+  const t2 = document.getElementById("tableInOut2");
 
   function buildHeader(table){
-    const tr = table.querySelector('thead tr');
-    tr.innerHTML = '<th>#</th><th>Nome</th>';
-    intervals.forEach(iv=>{ tr.innerHTML += `<th>${iv}</th>`; });
+    const tr = table.querySelector("thead tr");
+    tr.innerHTML = "<th>#</th><th>Nome</th>";
+    intervals.forEach(iv => { tr.innerHTML += `<th>${iv}</th>`; });
   }
 
-  async function buildBody(table, part){
-    const tbody = table.querySelector('tbody');
-    tbody.innerHTML = '';
-    allPlayers.forEach(p=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.numero}</td><td>${p.nome}</td>`;
-      intervals.forEach(iv=>{
-        const td = document.createElement('td');
+  function buildBody(table, part){
+    const tbody = table.querySelector("tbody");
+    tbody.innerHTML = "";
+    players.forEach(p => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${p.numero || ''}</td><td>${p.nome || ''}</td>`;
+      intervals.forEach(iv => {
+        const td = document.createElement("td");
         const key = `tableInOut${part}_${p.numero}_${iv}`;
-        const val = inOutData[key]||'';
+        const val = inOutData[key] || "";
         td.dataset.key = key;
         td.dataset.state = val;
         td.textContent = val;
         if(val==='E'){ td.style.background='green'; td.style.color='white'; }
         else if(val==='S'){ td.style.background='orange'; td.style.color='white'; }
 
-        td.addEventListener('click', async ()=>{
-          let state = td.dataset.state||'';
-          if(state==='') state='E'; else if(state==='E') state='S'; else state='';
+        td.addEventListener("click", async () => {
+          let state = td.dataset.state || "";
+          if(state === "") state = "E"; else if(state === "E") state = "S"; else state = "";
           td.dataset.state = state;
           td.textContent = state;
-          td.style.background = state==='E'?'green':state==='S'?'orange':'';
-          td.style.color = state?'white':'';
+          td.style.background = state==="E" ? "green" : state==="S" ? "orange" : "";
+          td.style.color = state ? "white" : "";
           inOutData[key] = state;
-          await setFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, { inOut: inOutData });
+          await setFirebaseDoc(`games/${gameId}/inOutData`, { inOut: inOutData });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ inOut: inOutData }));
           showNotification("✔️ Guardado com sucesso");
         });
 
@@ -163,47 +158,37 @@ async function renderInOut(){
     });
   }
 
-  const t1 = document.getElementById('tableInOut1');
-  const t2 = document.getElementById('tableInOut2');
-  buildHeader(t1); await buildBody(t1,'1');
-  buildHeader(t2); await buildBody(t2,'2');
+  buildHeader(t1); buildBody(t1, "1");
+  buildHeader(t2); buildBody(t2, "2");
 }
 
-// Tabs
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.add('active');
-    localStorage.setItem('activeInOutTab',btn.dataset.tab);
+// 🔹 Tabs
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
   });
 });
 
-// Back button
-document.getElementById('backStats').addEventListener('click',()=>{ window.location.href='estatisticas.html'; });
+// 🔹 Back button
+document.getElementById("backStats").addEventListener("click", () => {
+  window.location.href = "estatisticas.html";
+});
 
-// Initialization
-window.addEventListener('load', async ()=>{
-  const savedTab = localStorage.getItem('activeInOutTab');
-  if(savedTab){
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-    document.querySelector(`.tab-btn[data-tab="${savedTab}"]`)?.classList.add('active');
-    document.getElementById(savedTab)?.classList.add('active');
-  }
+// 🔹 Initialize
+window.addEventListener("load", async () => {
+  showNotification("🔄 A carregar dados...");
+  gameId = await getActiveGameId();
+  if (!gameId) return showNotification("❌ Nenhum jogo ativo encontrado", "#e74c3c");
 
   await renderInOut();
+  showNotification("✅ Dados carregados");
 
-  // Listen for realtime changes
-  const gameId = await getActiveGameId();
-  if(gameId){
-    onFirebaseDocChange(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, renderInOut);
-    onFirebaseCollectionChange(`${FB_PATHS_GLOBAL.games}/${gameId}/players`, renderInOut);
-  }
+  // Listen for real-time Firestore updates
+  onFirebaseDocChange(`games/${gameId}/inOutData`, renderInOut);
 });
 </script>
-
-<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </body>
 </html>
