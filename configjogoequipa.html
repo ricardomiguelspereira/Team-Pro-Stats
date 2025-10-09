@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>Team Pro Stats — Gestão de Jogos e Jogadores</title>
 <style>
 :root{--primary:#0077ff;--danger:#e74c3c;--success:#28a745;--muted:#f4f7fa;--card:#fff;--border:#ddd;--text:#222;}
@@ -14,6 +14,7 @@ main{padding:20px;}
 form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
 label{display:block;font-weight:600;font-size:13px;}
 input,select{width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid var(--border);}
+input[readonly],select[disabled]{background:#f5f5f5;color:#777;}
 .actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;}
 button{padding:8px 12px;border-radius:6px;border:0;cursor:pointer;font-weight:600;}
 button.primary{background:var(--primary);color:#fff;}
@@ -39,7 +40,7 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 <h2>Gestão de Jogos</h2>
 <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
   <label>Escalão
-    <select name="escalao">
+    <select name="escalao" disabled>
       <option value="">-- Selecionar --</option>
       <option value="Sub-13">Sub-13</option>
       <option value="Sub-15">Sub-15</option>
@@ -49,19 +50,20 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
       <option value="Séniores">Séniores</option>
     </select>
   </label>
-  <label>Competição<input name="competicao"/></label>
-  <label>Fase<input name="fase"/></label>
-  <label>Grupo<input name="grupo"/></label>
-  <label>Jornada<input name="jornada"/></label>
-  <label>Data<input type="date" name="data"/></label>
-  <label>Hora<input type="time" name="hora"/></label>
-  <label>Local<input name="local"/></label>
-  <label>Adversário<input name="adversario"/></label>
+  <label>Competição<input name="competicao" readonly /></label>
+  <label>Fase<input name="fase" readonly /></label>
+  <label>Grupo<input name="grupo" readonly /></label>
+  <label>Jornada<input name="jornada" readonly /></label>
+  <label>Data<input type="date" name="data" readonly /></label>
+  <label>Hora<input type="time" name="hora" readonly /></label>
+  <label>Local<input name="local" readonly /></label>
+  <label>Adversário<input name="adversario" readonly /></label>
 </form>
 
 <div class="actions">
   <button class="primary" id="newGameBtn">Novo Jogo</button>
   <button class="success" id="saveGameBtn" disabled>Salvar</button>
+  <button class="primary" id="editGameBtn">Editar</button>
   <button class="primary" id="toggleGamesBtn">Mostrar/Ocultar Jogos</button>
   <button class="danger" id="deleteAllGamesBtn">Apagar Todos</button>
 </div>
@@ -80,7 +82,7 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
   </table>
 </div>
 
-<hr/>
+<hr />
 <h2>Gestão de Jogadores</h2>
 <div>
   <label>Nº:<input type="number" id="numero" min="1" max="99"></label>
@@ -114,49 +116,55 @@ import {
   query, where, onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-const currentUserId = "user1";
-let activeGameId = null;
-let unsubscribePlayers = null;
-let editingPlayerId = null;
+const currentUserId="user1";
+let activeGameId=null;
+let unsubscribePlayers=null;
+let editingPlayerId=null;
+let editingGame=false;
 
-const jogoForm = document.getElementById("jogoForm");
-const gamesBody = document.getElementById("gamesTableBody");
-const numero = document.getElementById("numero");
-const nome = document.getElementById("nome");
-const pse = document.getElementById("pse");
-const estatisticas = document.getElementById("estatisticas");
-const gr = document.getElementById("gr");
-const addBtn = document.getElementById("addPlayerBtn");
-const fieldBody = document.querySelector("#fieldPlayersTable tbody");
-const goalBody = document.querySelector("#goalKeepersTable tbody");
+const jogoForm=document.getElementById("jogoForm");
+const gamesBody=document.getElementById("gamesTableBody");
+const numero=document.getElementById("numero");
+const nome=document.getElementById("nome");
+const pse=document.getElementById("pse");
+const estatisticas=document.getElementById("estatisticas");
+const gr=document.getElementById("gr");
+const addBtn=document.getElementById("addPlayerBtn");
+const fieldBody=document.querySelector("#fieldPlayersTable tbody");
+const goalBody=document.querySelector("#goalKeepersTable tbody");
 
 function esc(s){return s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):'';}
 function notify(msg,err=false){
   const n=document.getElementById("notification");
-  n.textContent=msg;
-  n.style.display="block";
+  n.textContent=msg;n.style.display="block";
   n.style.background=err?"#ffe8e8":"#e8f1ff";
   n.style.color=err?"#b71c1c":"#0047b3";
   setTimeout(()=>n.style.display="none",3500);
 }
 function getFormData(){return Object.fromEntries(new FormData(jogoForm).entries());}
-function setFormData(o={}){for(const el of jogoForm.elements) if(el.name) el.value=o[el.name]||"";}
+function setFormData(o={}){for(const el of jogoForm.elements)if(el.name)el.value=o[el.name]||"";}
+function setReadOnly(state){
+  for(const el of jogoForm.elements){
+    if(el.tagName==="SELECT") el.disabled=state;
+    else if(el.name) el.readOnly=state;
+  }
+  editingGame=!state;
+}
 function gameDocRef(id){return doc(db,`users/${currentUserId}/games/${id}`);}
 function playerCol(){return activeGameId?collection(db,`users/${currentUserId}/games/${activeGameId}/players`):null;}
 function playerDoc(id){return doc(db,`users/${currentUserId}/games/${activeGameId}/players/${id}`);}
 
-/* ---------- GAMES ---------- */
+/* ---- GAMES ---- */
 async function loadGamesLive(){
   onSnapshot(collection(db,`users/${currentUserId}/games`),snap=>{
     gamesBody.innerHTML="";
     if(snap.empty){
-      gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>';
-      return;
+      gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>';return;
     }
     snap.forEach(docSnap=>{
       const g=docSnap.data();
       const tr=document.createElement("tr");
-      if(g.active) tr.classList.add("active-row");
+      if(g.active)tr.classList.add("active-row");
       tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td>
       <td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td>
       <td>${g.active?"✅":""}</td>
@@ -175,12 +183,13 @@ async function loadActiveGame(){
     activeGameId=gdoc.id;
     setFormData(gdoc.data());
     document.getElementById("saveGameBtn").disabled=false;
+    setReadOnly(true);
     notify("✅ Jogo ativo carregado");
     subscribePlayers();
-  }else notify("ℹ️ Nenhum jogo ativo encontrado");
+  }else{setReadOnly(true);notify("ℹ️ Nenhum jogo ativo encontrado");}
 }
 
-/* ---------- PLAYERS ---------- */
+/* ---- PLAYERS ---- */
 function renderPlayers(tbody,arr){
   tbody.innerHTML="";
   if(!arr.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center">Sem jogadores.</td></tr>';return;}
@@ -192,10 +201,9 @@ function renderPlayers(tbody,arr){
     tbody.appendChild(tr);
   });
 }
-
 function subscribePlayers(){
-  if(unsubscribePlayers) unsubscribePlayers();
-  if(!activeGameId) return;
+  if(unsubscribePlayers)unsubscribePlayers();
+  if(!activeGameId)return;
   unsubscribePlayers=onSnapshot(playerCol(),snap=>{
     const players=snap.docs.map(d=>d.data());
     const field=players.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
@@ -205,11 +213,14 @@ function subscribePlayers(){
   });
 }
 
-/* ---------- EVENTS ---------- */
-document.addEventListener("DOMContentLoaded",async()=>{
-  loadGamesLive();
-  await loadActiveGame();
-});
+/* ---- EVENTS ---- */
+document.addEventListener("DOMContentLoaded",async()=>{loadGamesLive();await loadActiveGame();});
+
+document.getElementById("editGameBtn").onclick=()=>{
+  if(!activeGameId)return notify("Nenhum jogo ativo",true);
+  if(editingGame){setReadOnly(true);notify("🔒 Edição bloqueada");}
+  else{setReadOnly(false);notify("✏️ Campos editáveis");}
+};
 
 document.getElementById("newGameBtn").onclick=async()=>{
   const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
@@ -217,18 +228,19 @@ document.getElementById("newGameBtn").onclick=async()=>{
   const id=crypto.randomUUID();
   const data={escalao:"",competicao:"",fase:"",grupo:"",jornada:"",data:"",hora:"",local:"",adversario:"",active:true,createdAt:new Date().toISOString()};
   await setDoc(gameDocRef(id),data);
-  activeGameId=id;
-  setFormData(data);
+  activeGameId=id;setFormData(data);
   document.getElementById("saveGameBtn").disabled=false;
+  setReadOnly(false);
   notify("🆕 Novo jogo criado e ativo");
   subscribePlayers();
 };
 
 document.getElementById("saveGameBtn").onclick=async()=>{
-  if(!activeGameId) return notify("Nenhum jogo ativo",true);
+  if(!activeGameId)return notify("Nenhum jogo ativo",true);
   const d=getFormData();
   const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(s=>setDoc(gameDocRef(s.id),s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
+  setReadOnly(true);
   notify("💾 Jogo salvo");
 };
 
@@ -238,8 +250,7 @@ document.getElementById("deleteAllGamesBtn").onclick=async()=>{
   if(!confirm("Apagar todos os jogos?"))return;
   const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(d=>deleteDoc(gameDocRef(d.id))));
-  activeGameId=null;
-  setFormData();
+  activeGameId=null;setFormData();setReadOnly(true);
   notify("🗑️ Jogos eliminados");
 };
 
@@ -249,20 +260,22 @@ gamesBody.addEventListener("click",async e=>{
     const snap=await getDoc(gameDocRef(id));if(!snap.exists())return;
     activeGameId=id;setFormData(snap.data());
     document.getElementById("saveGameBtn").disabled=false;
+    setReadOnly(true);
     notify("✅ Jogo carregado");
     subscribePlayers();
   }else if(e.target.matches(".delete")){
     if(!confirm("Apagar jogo?"))return;
     await deleteDoc(gameDocRef(id));
-    if(activeGameId===id) activeGameId=null;
+    if(activeGameId===id)activeGameId=null;
     notify("🗑️ Jogo eliminado");
   }
 });
 
+/* ---- PLAYERS ---- */
 addBtn.onclick=async()=>{
-  if(!activeGameId) return notify("Ative um jogo primeiro",true);
-  const n=numero.value.trim(), nm=nome.value.trim();
-  if(!n||!nm) return notify("Número e Nome obrigatórios",true);
+  if(!activeGameId)return notify("Ative um jogo primeiro",true);
+  const n=numero.value.trim(),nm=nome.value.trim();
+  if(!n||!nm)return notify("Número e Nome obrigatórios",true);
   const data={numero:Number(n),nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked};
   const id=editingPlayerId||crypto.randomUUID();
   await setDoc(playerDoc(id),{id,...data});
@@ -288,7 +301,7 @@ addBtn.onclick=async()=>{
 }));
 
 document.getElementById("deleteAllPlayersBtn").onclick=async()=>{
-  if(!activeGameId) return notify("Nenhum jogo ativo",true);
+  if(!activeGameId)return notify("Nenhum jogo ativo",true);
   if(!confirm("Apagar todos os jogadores?"))return;
   const snaps=await getDocs(playerCol());
   await Promise.all(snaps.docs.map(d=>deleteDoc(playerDoc(d.id))));
