@@ -6,93 +6,30 @@
 <title>Entradas / Saídas</title>
 <link rel="stylesheet" href="estatisticas.css" />
 <style>
-  .responsive-inout {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    max-width: 100%;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-bottom: 15px;
-  }
-  table.part-table-inout {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 600px;
-  }
-  table.part-table-inout thead tr {
-    background-color: #3498db;
-    color: white;
-  }
-  table.part-table-inout th, table.part-table-inout td {
-    border: 1px solid #ddd;
-    padding: 6px 8px;
-    text-align: center;
-    font-size: 12px;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  table.part-table-inout th:first-child, table.part-table-inout td:first-child {
-    text-align: left;
-    cursor: default;
-  }
-  .header-container {
-    margin-bottom: 15px;
-  }
-  .title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-    gap: 8px;
-  }
-  .controls-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .tabs {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .tab-btn, .nav-btn {
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 14px;
-    font-size: 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    border: none;
-    user-select: none;
-  }
-  .tab-btn {
-    background-color: #888;
-    color: white;
-  }
-  .tab-btn.active {
-    background-color: #2ecc71;
-    color: white;
-  }
-  .nav-btn {
-    background-color: #3498db;
-    color: white;
-  }
-  .nav-btn:hover {
-    background-color: #5dade2;
-  }
-  .tab-btn:hover {
-    opacity: 0.9;
-  }
-  .notification {
-    margin-top: 10px;
-    font-size: 12px;
-    color: #e74c3c;
-  }
+  body { font-family: Arial, sans-serif; margin: 15px; background: #f9f9f9; }
+  .header-container { margin-bottom: 15px; }
+  .title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px; gap: 8px; }
+  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .tab-btn, .nav-btn { height: 34px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 6px; cursor: pointer; border: none; user-select: none; }
+  .tab-btn { background-color: #888; color: white; transition: 0.2s; }
+  .tab-btn.active { background-color: #2ecc71; color: white; }
+  .nav-btn { background-color: #3498db; color: white; }
+  .nav-btn:hover { background-color: #5dade2; }
+  .tab-btn:hover { opacity: 0.85; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Table styling */
+  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; background: white; }
+  table.part-table-inout { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
+  table.part-table-inout thead tr { background-color: #3498db; color: white; }
+  table.part-table-inout th, table.part-table-inout td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; white-space: nowrap; cursor: pointer; }
+  table.part-table-inout th:first-child, table.part-table-inout td:first-child { text-align: left; cursor: default; }
+  table.part-table-inout td:nth-child(3), table.part-table-inout td:nth-child(4) { min-width: 30px; }
+
+  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; opacity: 0; transition: opacity 0.3s; }
+  footer { margin-top: 25px; font-size: 11px; text-align: center; color: #999; }
 </style>
 </head>
 <body>
@@ -132,109 +69,98 @@
 <div class="notification" id="notification"></div>
 
 <script type="module">
-import {
-  initializeFirebase,
-  getActiveGameId,
-  getFirebaseData,
-  setFirebaseData,
-  onFirebaseDataChange,
-  FB_PATHS_GLOBAL
+import { 
+  db, 
+  getFirebaseCollection, 
+  getFirebaseDoc, 
+  setFirebaseDoc, 
+  onFirebaseDocChange, 
+  onFirebaseCollectionChange 
 } from './firebase-data.js';
 
-const STORAGE_KEY = 'inOutData';
+const FB_PATHS_GLOBAL = { games: "games" };
+
+export function getActiveGameId() {
+  return localStorage.getItem('activeGameId');
+}
+
 let inOutData = {};
 let playersCampo = [], playersGR = [];
 
-// ==================== INTERVALS BY ESCALÃO ====================
 const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
-const levelIntervalsMap = {sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals};
-
+const levelIntervalsMap = { sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals };
 function getIntervalsForLevel(level){ return levelIntervalsMap[level] || defaultIntervals; }
 
-// ==================== NORMALIZE TEXT ====================
-function normalizeText(text) {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
+function normalizeText(text){
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 }
 
-// ==================== LOAD ESCALÃO ====================
 async function getLevelFromConfig() {
-  const jogoDataRaw = await getFirebaseData(`games/${getActiveGameId()}/jogoFormData`);
-  if (!jogoDataRaw) return 'sub13';
-  try {
-    const esc = normalizeText(jogoDataRaw.escalao || '');
-    const map = { sub13: 'sub13', sub15: 'sub15', sub17: 'sub17', sub19: 'sub19', sub23: 'sub23', seniores: 'seniores', seniors: 'seniores' };
-    return map[esc] || 'sub13';
-  } catch {
-    return 'sub13';
-  }
+  const gameId = getActiveGameId();
+  if (!gameId) return 'sub13';
+  const jogoData = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}`);
+  if(!jogoData) return 'sub13';
+  let esc = normalizeText(jogoData.escalao || '');
+  const map = { sub13:'sub13', sub15:'sub15', sub17:'sub17', sub19:'sub19', sub23:'sub23', seniores:'seniores', seniors:'seniores' };
+  return map[esc] || 'sub13';
 }
 
-// ==================== LOAD PLAYERS ====================
-async function loadPlayersFromConfig() {
-  const fieldPlayersData = await getFirebaseData(FB_PATHS_GLOBAL.fieldPlayers);
-  const goalKeepersData = await getFirebaseData(FB_PATHS_GLOBAL.goalKeepers);
-  const fieldPlayers = fieldPlayersData ? fieldPlayersData.players : [];
-  const goalKeepers = goalKeepersData ? goalKeepersData.players : [];
-  playersCampo = fieldPlayers.filter(p => p.estatisticas);
-  playersGR = goalKeepers.filter(p => p.estatisticas);
+async function loadPlayersFromFirebase(){
+  const gameId = getActiveGameId();
+  if(!gameId) return;
+  const playersSnap = await getFirebaseCollection(`${FB_PATHS_GLOBAL.games}/${gameId}/players`);
+  playersCampo = playersSnap.filter(p=>p.tipo==="campo" && p.estatisticas);
+  playersGR = playersSnap.filter(p=>p.tipo==="gr" && p.estatisticas);
 }
 
-// ==================== RENDER TABLES ====================
-async function renderInOut() {
-  const activeGame = getActiveGameId();
-  if (!activeGame) {
-    console.warn("No active game to render.");
+async function renderInOut(){
+  const gameId = getActiveGameId();
+  if(!gameId){
+    alert("❌ Nenhum jogo ativo. Configure em 'Configurar Jogo'.");
+    window.location.href="configjogoequipa.html";
     return;
   }
 
-  const saved = await getFirebaseData(`games/${activeGame}/${STORAGE_KEY}`) || {};
+  const saved = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
   inOutData = saved.inOut || {};
-  await loadPlayersFromConfig();
+  await loadPlayersFromFirebase();
   const allPlayers = [...playersCampo, ...playersGR];
   const intervals = getIntervalsForLevel(await getLevelFromConfig());
 
-  function buildHeader(table) {
+  function buildHeader(table){
     const tr = table.querySelector('thead tr');
     tr.innerHTML = '<th>#</th><th>Nome</th>';
-    intervals.forEach(iv => { tr.innerHTML += `<th>${iv}</th>`; });
+    intervals.forEach(iv=>{ tr.innerHTML += `<th>${iv}</th>`; });
   }
 
-  async function buildBody(table, part) {
+  async function buildBody(table, part){
     const tbody = table.querySelector('tbody');
     tbody.innerHTML = '';
-    allPlayers.forEach(p => {
+    allPlayers.forEach(p=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${p.numero}</td><td>${p.nome}</td>`;
-      intervals.forEach(iv => {
+      intervals.forEach(iv=>{
         const td = document.createElement('td');
         const key = `tableInOut${part}_${p.numero}_${iv}`;
-        const val = inOutData[key] || '';
+        const val = inOutData[key]||'';
         td.dataset.key = key;
         td.dataset.state = val;
         td.textContent = val;
-        if (val === 'E') { td.style.background = 'green'; td.style.color = 'white'; }
-        else if (val === 'S') { td.style.background = 'orange'; td.style.color = 'white'; }
-
-        td.addEventListener('click', async () => {
+        if(val==='E'){ td.style.background='green'; td.style.color='white'; }
+        else if(val==='S'){ td.style.background='orange'; td.style.color='white'; }
+        td.addEventListener('click', async ()=>{
           let state = td.dataset.state || '';
-          if (state === '') state = 'E';
-          else if (state === 'E') state = 'S';
-          else state = '';
-
+          if(state==='') state='E'; else if(state==='E') state='S'; else state='';
           td.dataset.state = state;
           td.textContent = state;
-          td.style.background = state === 'E' ? 'green' : state === 'S' ? 'orange' : '';
+          td.style.background = state==='E'?'green': state==='S'?'orange':'';
           td.style.color = state ? 'white' : '';
-
           inOutData[key] = state;
           saved.inOut = inOutData;
-          await setFirebaseData(`games/${activeGame}/${STORAGE_KEY}`, saved);
+          await setFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, saved);
+          showNotification("✔️ Guardado com sucesso");
         });
         tr.appendChild(td);
       });
@@ -242,52 +168,46 @@ async function renderInOut() {
     });
   }
 
-  const t1 = document.getElementById('tableInOut1');
-  const t2 = document.getElementById('tableInOut2');
-  buildHeader(t1); await buildBody(t1, '1');
-  buildHeader(t2); await buildBody(t2, '2');
+  const t1 = document.getElementById('tableInOut1'), t2 = document.getElementById('tableInOut2');
+  buildHeader(t1); await buildBody(t1,'1');
+  buildHeader(t2); await buildBody(t2,'2');
 }
 
-// ==================== TABS ====================
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+function showNotification(msg){
+  const n = document.getElementById('notification');
+  n.textContent = msg;
+  n.style.opacity='1';
+  setTimeout(()=>n.style.opacity='0',2500);
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
     localStorage.setItem('activeInOutTab', btn.dataset.tab);
   });
 });
 
-// ==================== BACK BUTTON ====================
-document.getElementById('backStats').addEventListener('click', () => {
-  window.location.href = 'estatisticas.html';
-});
+document.getElementById('backStats').addEventListener('click', ()=>{ window.location.href='estatisticas.html'; });
 
-// ==================== INITIALIZER ====================
-document.addEventListener('DOMContentLoaded', async () => {
-  await initializeFirebase();
-  const activeGame = getActiveGameId();
-  if (!activeGame) {
-    alert("Nenhum jogo ativo. Por favor, selecione ou crie um jogo em 'Configurar Jogo'.");
-    window.location.href = 'configjogoequipa.html';
-    return;
-  }
-
+window.addEventListener('load', async ()=>{
   const savedTab = localStorage.getItem('activeInOutTab');
-  if (savedTab) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  if(savedTab){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     document.querySelector(`.tab-btn[data-tab="${savedTab}"]`)?.classList.add('active');
     document.getElementById(savedTab)?.classList.add('active');
   }
-
   await renderInOut();
-});
 
-// ==================== REALTIME SYNC ====================
-onFirebaseDataChange(FB_PATHS_GLOBAL.fieldPlayers, renderInOut);
-onFirebaseDataChange(FB_PATHS_GLOBAL.goalKeepers, renderInOut);
+  const gameId = getActiveGameId();
+  if(gameId){
+    onFirebaseDocChange(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, renderInOut);
+    onFirebaseCollectionChange(`${FB_PATHS_GLOBAL.games}/${gameId}/players`, renderInOut);
+  }
+});
 </script>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
