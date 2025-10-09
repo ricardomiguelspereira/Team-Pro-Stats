@@ -125,6 +125,24 @@ footer {
   color: #555;
   margin-top: 20px;
 }
+.reset-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.reset-buttons button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #e74c3c;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.reset-buttons button:hover {
+  background: #b71c1c;
+}
 </style>
 </head>
 <body>
@@ -134,6 +152,12 @@ footer {
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
   <button class="tab-btn" data-tab="part2">2ª Parte</button>
+</div>
+
+<div class="reset-buttons">
+  <button id="resetPart1Btn">Reset Statistics 1ª Parte</button>
+  <button id="resetPart2Btn">Reset Statistics 2ª Parte</button>
+  <button id="resetAllBtn">Reset All Statistics</button>
 </div>
 
 <div id="loading">A carregar jogadores e estatísticas...</div>
@@ -182,7 +206,7 @@ footer {
 
 <script type="module">
 import {
-  db, getFirebaseCollection, setFirebaseDoc, onFirebaseCollectionChange
+  db, getFirebaseCollection, setFirebaseDoc
 } from "./firebase-data.js";
 import {
   collection, query, where, getDocs
@@ -293,6 +317,25 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById(btn.dataset.tab).classList.add('active');
   });
 });
+
+// --- RESET BUTTONS ---
+async function resetStats(part){
+  try{
+    await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/${part}`, {campo:{}, gr:{}});
+    await renderAll();
+    showNotification(`✅ Estatísticas ${part==='parte1'?'1ª Parte':part==='parte2'?'2ª Parte':'Todas'} resetadas`);
+  } catch(e){
+    console.error(e);
+    showNotification("Erro ao resetar estatísticas", true);
+  }
+}
+
+document.getElementById('resetPart1Btn').onclick=()=>resetStats('parte1');
+document.getElementById('resetPart2Btn').onclick=()=>resetStats('parte2');
+document.getElementById('resetAllBtn').onclick=async()=>{
+  await resetStats('parte1');
+  await resetStats('parte2');
+};
 </script>
 </body>
 </html>
