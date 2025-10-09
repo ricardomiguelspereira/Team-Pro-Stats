@@ -1,193 +1,221 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Entradas / Saídas</title>
-<link rel="stylesheet" href="estatisticas.css" />
 <style>
-  body { font-family: Arial, sans-serif; padding: 10px; background: #f7f7f7; }
-  .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; background: white; }
-  table.part-table-inout { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
-  table.part-table-inout thead tr { background-color: #3498db; color: white; }
-  table.part-table-inout th, table.part-table-inout td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; white-space: nowrap; cursor: pointer; }
-  table.part-table-inout th:first-child, table.part-table-inout td:first-child { text-align: left; cursor: default; }
-  .header-container { margin-bottom: 15px; }
-  .title-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px; gap: 8px; }
-  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .tab-btn, .nav-btn { height: 32px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none; user-select: none; }
-  .tab-btn { background-color: #888; color: white; }
-  .tab-btn.active { background-color: #2ecc71; }
-  .nav-btn { background-color: #3498db; color: white; }
-  .nav-btn:hover { background-color: #5dade2; }
-  .tab-btn:hover { opacity: 0.9; }
-  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; transition: opacity 0.4s; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f3f5f7;
+  margin: 0;
+  padding: 20px;
+  color: #222;
+}
+h2 { text-align: center; margin-bottom: 16px; }
+.tabs {
+  display: flex; justify-content: center; gap: 6px; margin-bottom: 18px;
+}
+.tab-btn {
+  padding: 10px 18px; border: none; border-radius: 6px;
+  background: #888; color: white; cursor: pointer; font-weight: 500;
+  transition: 0.25s;
+}
+.tab-btn.active { background: #28a745; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.responsive { overflow-x: auto; margin-bottom: 20px; }
+table {
+  border-collapse: collapse; width: 100%; background: #fff;
+  border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  font-size: 13px;
+}
+th, td {
+  padding: 6px; text-align: center; border-bottom: 1px solid #eee;
+  min-width: 36px; cursor: pointer;
+}
+th {
+  background: #f5f7fa; font-weight: 600;
+  position: sticky; top: 0; z-index: 2;
+}
+tr:hover { background: #f9f9f9; }
+.reset-buttons {
+  display: flex; justify-content: center; gap: 10px;
+  margin-top: 10px; margin-bottom: 14px;
+}
+.reset-buttons button {
+  padding: 8px 18px; border-radius: 6px; border: none;
+  background: #e74c3c; color: #fff; font-weight: 600; cursor: pointer;
+}
+.reset-buttons button:hover { background: #b71c1c; }
+#notification {
+  display: none; position: fixed; top: 14px; right: 14px;
+  background: #e8f1ff; color: #0047b3;
+  padding: 10px 14px; border-radius: 8px; font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<div class="header-container">
-  <div class="title-row">
-    <h2>Entradas / Saídas</h2>
+<h2>👟 Entradas / Saídas</h2>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="part1">1ª Parte</button>
+  <button class="tab-btn" data-tab="part2">2ª Parte</button>
+  <button class="tab-btn" onclick="window.location.href='estatisticas.html'">📊 Estatísticas</button>
+</div>
+
+<div id="notification"></div>
+
+<div id="part1" class="tab-content active">
+  <div class="responsive">
+    <table id="tableCampo1"><thead></thead><tbody></tbody></table>
   </div>
-  <div class="controls-row">
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="inOutPart1" type="button">1ª Parte</button>
-      <button class="tab-btn" data-tab="inOutPart2" type="button">2ª Parte</button>
-      <button id="backStats" class="nav-btn" type="button">Estatísticas</button>
-    </div>
+  <div class="responsive">
+    <table id="tableGR1"><thead></thead><tbody></tbody></table>
   </div>
 </div>
 
-<div id="inOutPart1" class="tab-content active">
-  <div class="responsive-inout">
-    <table id="tableInOut1" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 1ª Parte">
-      <thead><tr></tr></thead>
-      <tbody></tbody>
-    </table>
+<div id="part2" class="tab-content">
+  <div class="responsive">
+    <table id="tableCampo2"><thead></thead><tbody></tbody></table>
+  </div>
+  <div class="responsive">
+    <table id="tableGR2"><thead></thead><tbody></tbody></table>
   </div>
 </div>
 
-<div id="inOutPart2" class="tab-content">
-  <div class="responsive-inout">
-    <table id="tableInOut2" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 2ª Parte">
-      <thead><tr></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<div class="reset-buttons">
+  <button id="resetPart1Btn">Reset 1ª Parte</button>
+  <button id="resetPart2Btn">Reset 2ª Parte</button>
+  <button id="resetAllBtn">Reset Tudo</button>
 </div>
 
-<div id="notification" class="notification"></div>
-<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+<footer>© 2025 Team Pro Stats · Entradas / Saídas</footer>
 
 <script type="module">
-import { db, getFirebaseDoc, setFirebaseDoc, onFirebaseDocChange } from './firebase-data.js';
-import { getDocs, collection } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-const STORAGE_KEY = 'estatisticas_valores';
-let inOutData = {};
-let gameId = null;
-
-// 🔹 Intervalos por escalão
-const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
-const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
-const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
-const levelIntervalsMap = { sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals };
-
-function getIntervalsForLevel(level){ return levelIntervalsMap[level] || defaultIntervals; }
-
-// 🔹 Notification
-function showNotification(msg, color="#27ae60") {
-  const n = document.getElementById("notification");
-  n.textContent = msg;
-  n.style.color = color;
-  n.style.opacity = "1";
-  setTimeout(() => { n.style.opacity = "0"; }, 2500);
+let userId = "user1";
+let activeGameId = null;
+let fieldPlayers = [], goalKeepers = [];
+const times = [];
+for(let sec = 25*60; sec >= 30; sec -= 30){
+  let m = Math.floor(sec/60), s = sec%60;
+  times.push(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+}
+const notification = document.getElementById("notification");
+function notify(msg,err=false){
+  notification.textContent=msg;
+  notification.style.background=err?"#ffe8e8":"#e8f1ff";
+  notification.style.color=err?"#b71c1c":"#0047b3";
+  notification.style.display="block";
+  setTimeout(()=>notification.style.display="none",2000);
 }
 
-// 🔹 Get active game
-async function getActiveGameId() {
-  const active = await getFirebaseDoc("activeGame/active");
-  return active?.id || null;
+function createHeader(){
+  const cols = ["#","Nome",...times];
+  return "<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
 }
 
-// 🔹 Fetch players from Firebase
-async function fetchPlayers() {
-  if (!gameId) return [];
-  const snap = await getDocs(collection(db, `games/${gameId}/players`));
-  const all = [];
-  snap.forEach(docSnap => {
-    const p = docSnap.data();
-    if (p.estatisticas) all.push(p);
-  });
-  return all;
-}
-
-// 🔹 Render In/Out Table
-async function renderInOut() {
-  const savedDoc = await getFirebaseDoc(`games/${gameId}/inOutData`);
-  inOutData = (savedDoc && savedDoc.inOut) ? savedDoc.inOut : {};
-
-  const gameData = await getFirebaseDoc(`games/${gameId}`);
-  const level = (gameData?.escalao || 'sub13').toLowerCase().replace(/\s/g, '');
-  const players = await fetchPlayers();
-  const intervals = getIntervalsForLevel(level);
-
-  const t1 = document.getElementById("tableInOut1");
-  const t2 = document.getElementById("tableInOut2");
-
-  function buildHeader(table){
-    const tr = table.querySelector("thead tr");
-    tr.innerHTML = "<th>#</th><th>Nome</th>";
-    intervals.forEach(iv => { tr.innerHTML += `<th>${iv}</th>`; });
-  }
-
-  function buildBody(table, part){
-    const tbody = table.querySelector("tbody");
-    tbody.innerHTML = "";
-    players.forEach(p => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${p.numero || ''}</td><td>${p.nome || ''}</td>`;
-      intervals.forEach(iv => {
-        const td = document.createElement("td");
-        const key = `tableInOut${part}_${p.numero}_${iv}`;
-        const val = inOutData[key] || "";
-        td.dataset.key = key;
-        td.dataset.state = val;
-        td.textContent = val;
-        if(val==='E'){ td.style.background='green'; td.style.color='white'; }
-        else if(val==='S'){ td.style.background='orange'; td.style.color='white'; }
-
-        td.addEventListener("click", async () => {
-          let state = td.dataset.state || "";
-          if(state === "") state = "E"; else if(state === "E") state = "S"; else state = "";
-          td.dataset.state = state;
-          td.textContent = state;
-          td.style.background = state==="E" ? "green" : state==="S" ? "orange" : "";
-          td.style.color = state ? "white" : "";
-          inOutData[key] = state;
-          await setFirebaseDoc(`games/${gameId}/inOutData`, { inOut: inOutData });
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ inOut: inOutData }));
-          showNotification("✔️ Guardado com sucesso");
-        });
-
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
+function renderTable(tableId, players, data){
+  const table = document.getElementById(tableId);
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+  thead.innerHTML = createHeader();
+  tbody.innerHTML = "";
+  players.forEach(p=>{
+    const row = document.createElement("tr");
+    let cells = `<td>${p.numero}</td><td>${p.nome}</td>`;
+    times.forEach(t=>{
+      const val = data[p.numero]?.[t] || "";
+      cells += `<td data-player="${p.numero}" data-time="${t}" data-part="${tableId.includes('1')?'parte1':'parte2'}">${val}</td>`;
     });
-  }
-
-  buildHeader(t1); buildBody(t1, "1");
-  buildHeader(t2); buildBody(t2, "2");
+    row.innerHTML = cells;
+    tbody.appendChild(row);
+  });
 }
 
-// 🔹 Tabs
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+async function saveCell(part, player, time, val, category){
+  try{
+    await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`, {
+      [category]: { [player]: { [time]: val } }
+    });
+  }catch(e){ console.error(e); notify("Erro ao guardar",true); }
+}
+
+async function loadData(){
+  const snaps = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/entradasSaidas`);
+  const parte1 = snaps.find(s=>s.id==="parte1")||{campo:{},gr:{}};
+  const parte2 = snaps.find(s=>s.id==="parte2")||{campo:{},gr:{}};
+  renderTable("tableCampo1", fieldPlayers, parte1.campo||{});
+  renderTable("tableGR1", goalKeepers, parte1.gr||{});
+  renderTable("tableCampo2", fieldPlayers, parte2.campo||{});
+  renderTable("tableGR2", goalKeepers, parte2.gr||{});
+}
+
+async function loadPlayers(){
+  const players = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
+  const active = players.filter(p=>p.estatisticas===true);
+  fieldPlayers = active.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers = active.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+  await loadData();
+}
+
+async function findActiveGame(){
+  const q=query(collection(db,`users/${userId}/games`),where("active","==",true));
+  const snap=await getDocs(q);
+  if(!snap.empty){
+    activeGameId=snap.docs[0].id;
+    await loadPlayers();
+  }else{
+    alert("Nenhum jogo ativo encontrado.");
+    window.location.href="configjogoequipa.html";
+  }
+}
+
+document.addEventListener("DOMContentLoaded",()=>findActiveGame());
+
+document.body.addEventListener("click",async e=>{
+  if(e.target.tagName!=="TD" || !e.target.dataset.player) return;
+  const td = e.target;
+  const current = td.textContent.trim();
+  const next = current===""?"E":current==="E"?"S":"";
+  td.textContent = next;
+  const part = td.dataset.part;
+  const player = td.dataset.player;
+  const time = td.dataset.time;
+  const category = td.closest("table").id.includes("GR")?"gr":"campo";
+  await saveCell(part, player, time, next, category);
+});
+
+async function reset(part){
+  try{
+    if(part==="all"){
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{campo:{},gr:{}});
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{campo:{},gr:{}});
+    } else {
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{campo:{},gr:{}});
+    }
+    await loadData();
+    notify("✅ Reset concluído");
+  }catch(e){ console.error(e); notify("Erro ao resetar",true); }
+}
+
+document.getElementById("resetPart1Btn").onclick=()=>reset("parte1");
+document.getElementById("resetPart2Btn").onclick=()=>reset("parte2");
+document.getElementById("resetAllBtn").onclick=()=>reset("all");
+
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
     btn.classList.add("active");
-    document.getElementById(btn.dataset.tab).classList.add("active");
+    if(btn.dataset.tab) document.getElementById(btn.dataset.tab).classList.add("active");
   });
-});
-
-// 🔹 Back button
-document.getElementById("backStats").addEventListener("click", () => {
-  window.location.href = "estatisticas.html";
-});
-
-// 🔹 Initialize
-window.addEventListener("load", async () => {
-  showNotification("🔄 A carregar dados...");
-  gameId = await getActiveGameId();
-  if (!gameId) return showNotification("❌ Nenhum jogo ativo encontrado", "#e74c3c");
-
-  await renderInOut();
-  showNotification("✅ Dados carregados");
-
-  // Listen for real-time Firestore updates
-  onFirebaseDocChange(`games/${gameId}/inOutData`, renderInOut);
 });
 </script>
 </body>
