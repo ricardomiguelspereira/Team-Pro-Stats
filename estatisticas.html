@@ -19,7 +19,6 @@ h2 {
 .tabs {
   display: flex;
   justify-content: center;
-  align-items: center;
   gap: 6px;
   margin-bottom: 18px;
 }
@@ -35,12 +34,6 @@ h2 {
 }
 .tab-btn.active {
   background: #28a745;
-}
-.tab-btn.extra {
-  background: #888;
-}
-.tab-btn.extra:hover {
-  background: #777;
 }
 .tab-content {
   display: none;
@@ -58,11 +51,13 @@ table {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  font-size: 14px;
 }
 th, td {
   padding: 8px;
   text-align: center;
   border-bottom: 1px solid #eee;
+  font-size: 14px;
 }
 th {
   background: #f5f7fa;
@@ -101,14 +96,14 @@ tr:hover {
   background: #1e7e34;
 }
 .stat-controls input[type=number] {
-  width: 60px;
+  width: 30px;
   text-align: center;
   border: 1px solid #ccc;
   border-radius: 6px;
   height: 36px;
   pointer-events: none;
   background: #f9f9f9;
-  font-size: 16px;
+  font-size: 14px;
 }
 #notification {
   display: none;
@@ -149,7 +144,8 @@ footer {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 10px;
+  margin-bottom: 14px;
 }
 .reset-buttons button {
   padding: 8px 18px;
@@ -172,7 +168,7 @@ footer {
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
   <button class="tab-btn" data-tab="part2">2ª Parte</button>
-  <button class="tab-btn extra" onclick="window.location.href='entradassaidas.html'">Entradas / Saídas</button>
+  <button class="tab-btn" onclick="window.location.href='entradassaidas.html'">Entradas / Saídas</button>
 </div>
 
 <div id="loading">A carregar jogadores e estatísticas...</div>
@@ -250,7 +246,7 @@ footer {
 <div class="reset-buttons">
   <button id="resetPart1Btn">Reset 1ª Parte</button>
   <button id="resetPart2Btn">Reset 2ª Parte</button>
-  <button id="resetAllBtn">Reset Todas as Estatísticas</button>
+  <button id="resetAllBtn">Reset All Statistics</button>
 </div>
 
 <div id="notification"></div>
@@ -289,40 +285,21 @@ function renderTable(tableId, players, statKeys, statsData){
   tbody.innerHTML = '';
   players.forEach(p=>{
     const row = tbody.insertRow();
-    if(tableId.includes("Campo")){
-      row.innerHTML = `
-        <td>${p.numero}</td>
-        <td>${p.nome}</td>
-        <td>
+    row.innerHTML = `
+      <td>${p.numero}</td>
+      <td>${p.nome}</td>
+      ${statKeys.map(k=>{
+        // Goalkeepers do not have GR / Postes
+        if((k==='grPostes') && p.gr) return '';
+        return `<td>
           <div class="stat-controls">
             <button class="decrease" onclick="changeStat(this,-1)">−</button>
-            <input type="number" value="${statsData[p.numero]?.grPostes||0}" data-player="${p.numero}" data-stat="grPostes" data-category="campo" data-table="${tableId}" readonly>
+            <input type="number" value="${statsData[p.numero]?.[k]||0}" data-player="${p.numero}" data-stat="${k}" data-category="${p.gr?'gr':'campo'}" data-table="${tableId}" readonly>
             <button class="increase" onclick="changeStat(this,1)">+</button>
           </div>
-        </td>
-        ${['interceptados','fora','golos','passesErrados','faltas'].map(k=>`
-          <td>
-            <div class="stat-controls">
-              <button class="decrease" onclick="changeStat(this,-1)">−</button>
-              <input type="number" value="${statsData[p.numero]?.[k]||0}" data-player="${p.numero}" data-stat="${k}" data-category="campo" data-table="${tableId}" readonly>
-              <button class="increase" onclick="changeStat(this,1)">+</button>
-            </div>
-          </td>`).join('')}
-      `;
-    } else {
-      row.innerHTML = `
-        <td>${p.numero}</td>
-        <td>${p.nome}</td>
-        ${grStats.map(k=>`
-          <td>
-            <div class="stat-controls">
-              <button class="decrease" onclick="changeStat(this,-1)">−</button>
-              <input type="number" value="${statsData[p.numero]?.[k]||0}" data-player="${p.numero}" data-stat="${k}" data-category="gr" data-table="${tableId}" readonly>
-              <button class="increase" onclick="changeStat(this,1)">+</button>
-            </div>
-          </td>`).join('')}
-      `;
-    }
+        </td>`;
+      }).join('')}
+    `;
   });
 }
 
@@ -374,7 +351,7 @@ async function findActiveGame(){
     activeGameId = active.id;
     await loadPlayers();
   } else {
-    alert("Nenhum jogo ativo encontrado. Redirecionando...");
+    alert("Nenhum jogo activo encontrado. Redirecionando...");
     window.location.href="configjogoequipa.html";
   }
 }
@@ -383,20 +360,27 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await findActiveGame();
 });
 
-document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
+document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-btn[data-tab]').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab) document.getElementById(btn.dataset.tab).classList.add('active');
   });
 });
 
 async function resetStats(part){
   try{
-    await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/${part}`, {campo:{}, gr:{}});
-    await renderAll();
-    showNotification("✅ Todas as Estatísticas Eliminadas");
+    if(part==='all'){
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/parte1`, {campo:{}, gr:{}});
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/parte2`, {campo:{}, gr:{}});
+      await renderAll();
+      showNotification("✅ Todas as Estatísticas Eliminadas");
+    } else {
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/${part}`, {campo:{}, gr:{}});
+      await renderAll();
+      showNotification(`✅ Estatísticas ${part==='parte1'?'1ª Parte':'2ª Parte'} resetadas`);
+    }
   } catch(e){
     console.error(e);
     showNotification("Erro ao resetar estatísticas", true);
@@ -405,12 +389,7 @@ async function resetStats(part){
 
 document.getElementById('resetPart1Btn').onclick=()=>resetStats('parte1');
 document.getElementById('resetPart2Btn').onclick=()=>resetStats('parte2');
-document.getElementById('resetAllBtn').onclick=async()=>{
-  await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/parte1`, {campo:{}, gr:{}});
-  await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/parte2`, {campo:{}, gr:{}});
-  await renderAll();
-  showNotification("✅ Todas as Estatísticas Eliminadas");
-};
+document.getElementById('resetAllBtn').onclick=()=>resetStats('all');
 </script>
 </body>
 </html>
