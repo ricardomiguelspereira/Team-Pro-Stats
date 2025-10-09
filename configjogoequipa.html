@@ -8,7 +8,7 @@
 :root{--primary:#0077ff;--danger:#e74c3c;--success:#28a745;--muted:#f4f7fa;--card:#fff;--border:#ddd;--text:#222;}
 *{box-sizing:border-box;}
 body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;padding:16px;background:var(--muted);color:var(--text);display:flex;justify-content:center;}
-.wrap{width:100%;max-width:1100px;background:var(--card);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.08);overflow:hidden;}
+.wrap{width:100%;max-width:1100px;background:var(--card);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.08);}
 header{background:var(--primary);color:#fff;text-align:center;padding:14px;font-weight:700;}
 main{padding:20px;}
 form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
@@ -38,7 +38,17 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 <main>
 <h2>Gestão de Jogos</h2>
 <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
-  <label>Escalão<input name="escalao"/></label>
+  <label>Escalão
+    <select name="escalao">
+      <option value="">-- Selecionar --</option>
+      <option value="Sub-13">Sub-13</option>
+      <option value="Sub-15">Sub-15</option>
+      <option value="Sub-17">Sub-17</option>
+      <option value="Sub-19">Sub-19</option>
+      <option value="Sub-23">Sub-23</option>
+      <option value="Séniores">Séniores</option>
+    </select>
+  </label>
   <label>Competição<input name="competicao"/></label>
   <label>Fase<input name="fase"/></label>
   <label>Grupo<input name="grupo"/></label>
@@ -71,7 +81,6 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 </div>
 
 <hr/>
-
 <h2>Gestão de Jogadores</h2>
 <div>
   <label>Nº:<input type="number" id="numero" min="1" max="99"></label>
@@ -83,190 +92,207 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 </div>
 
 <h3>Jogadores de Campo</h3>
-<table id="fieldPlayersTable"><thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead><tbody></tbody></table>
+<table id="fieldPlayersTable">
+  <thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
+  <tbody></tbody>
+</table>
 
 <h3>Guarda-Redes</h3>
-<table id="goalKeepersTable"><thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead><tbody></tbody></table>
+<table id="goalKeepersTable">
+  <thead><tr><th>Nº</th><th>Nome</th><th>PSE</th><th>Estatísticas</th><th>Ações</th></tr></thead>
+  <tbody></tbody>
+</table>
 
 <button class="danger" id="deleteAllPlayersBtn">Eliminar Todos os Jogadores</button>
-
 </main>
 </div>
 
 <script type="module">
-import { db, setFirebaseDoc, getFirebaseCollection } from "./firebase-data.js";
-import { collection, doc, getDocs, deleteDoc, setDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db } from "./firebase-data.js";
+import {
+  collection, doc, getDocs, getDoc, setDoc, deleteDoc,
+  query, where, onSnapshot
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-let currentUserId = "user1";
+const currentUserId = "user1";
 let activeGameId = null;
 let unsubscribePlayers = null;
 let editingPlayerId = null;
 
-const jogoForm = document.getElementById('jogoForm');
-const gamesBody = document.getElementById('gamesTableBody');
-const numero = document.getElementById('numero');
-const nome = document.getElementById('nome');
-const pse = document.getElementById('pse');
-const estatisticas = document.getElementById('estatisticas');
-const gr = document.getElementById('gr');
-const addBtn = document.getElementById('addPlayerBtn');
-const fieldBody = document.querySelector('#fieldPlayersTable tbody');
-const goalBody = document.querySelector('#goalKeepersTable tbody');
-const delAllPlayers = document.getElementById('deleteAllPlayersBtn');
+const jogoForm = document.getElementById("jogoForm");
+const gamesBody = document.getElementById("gamesTableBody");
+const numero = document.getElementById("numero");
+const nome = document.getElementById("nome");
+const pse = document.getElementById("pse");
+const estatisticas = document.getElementById("estatisticas");
+const gr = document.getElementById("gr");
+const addBtn = document.getElementById("addPlayerBtn");
+const fieldBody = document.querySelector("#fieldPlayersTable tbody");
+const goalBody = document.querySelector("#goalKeepersTable tbody");
 
 function esc(s){return s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):'';}
-function showNotification(msg, err=false){const n=document.getElementById('notification');n.textContent=msg;n.style.display='block';n.style.background=err?'#ffe8e8':'#e8f1ff';n.style.color=err?'#b71c1c':'#0047b3';setTimeout(()=>n.style.display='none',3500);}
+function notify(msg,err=false){
+  const n=document.getElementById("notification");
+  n.textContent=msg;
+  n.style.display="block";
+  n.style.background=err?"#ffe8e8":"#e8f1ff";
+  n.style.color=err?"#b71c1c":"#0047b3";
+  setTimeout(()=>n.style.display="none",3500);
+}
 function getFormData(){return Object.fromEntries(new FormData(jogoForm).entries());}
-function setFormData(o={}){for(const el of jogoForm.elements) if(el.name) el.value=o[el.name]||'';}
-function playerColRef(){return activeGameId?collection(db,`users/${currentUserId}/games/${activeGameId}/players`):null;}
+function setFormData(o={}){for(const el of jogoForm.elements) if(el.name) el.value=o[el.name]||"";}
 function gameDocRef(id){return doc(db,`users/${currentUserId}/games/${id}`);}
-function playerDocRef(id){return doc(db,`users/${currentUserId}/games/${activeGameId}/players/${id}`);}
+function playerCol(){return activeGameId?collection(db,`users/${currentUserId}/games/${activeGameId}/players`):null;}
+function playerDoc(id){return doc(db,`users/${currentUserId}/games/${activeGameId}/players/${id}`);}
 
-async function loadGames(){
-  const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
-  gamesBody.innerHTML='';
-  if(snaps.empty){gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>';return;}
-  snaps.forEach(docSnap=>{
-    const g=docSnap.data();
-    const tr=document.createElement('tr');
-    if(g.active) tr.classList.add('active-row');
-    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td>
-    <td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td>
-    <td>${g.active?'✅':''}</td>
-    <td><button class="small-btn load" data-id="${docSnap.id}">Load</button>
-    <button class="small-btn delete" data-id="${docSnap.id}">Del</button></td>`;
-    gamesBody.appendChild(tr);
+/* ---------- GAMES ---------- */
+async function loadGamesLive(){
+  onSnapshot(collection(db,`users/${currentUserId}/games`),snap=>{
+    gamesBody.innerHTML="";
+    if(snap.empty){
+      gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>';
+      return;
+    }
+    snap.forEach(docSnap=>{
+      const g=docSnap.data();
+      const tr=document.createElement("tr");
+      if(g.active) tr.classList.add("active-row");
+      tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td>
+      <td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td>
+      <td>${g.active?"✅":""}</td>
+      <td><button class="small-btn load" data-id="${docSnap.id}">Load</button>
+      <button class="small-btn delete" data-id="${docSnap.id}">Del</button></td>`;
+      gamesBody.appendChild(tr);
+    });
   });
 }
 
 async function loadActiveGame(){
-  const q = query(collection(db,`users/${currentUserId}/games`), where("active","==",true));
-  const snaps = await getDocs(q);
-  if(!snaps.empty){
-    const active = snaps.docs[0];
-    activeGameId = active.id;
-    const g = active.data();
-    setFormData(g);
-    document.getElementById('saveGameBtn').disabled=false;
-    showNotification("✅ Jogo ativo carregado automaticamente");
-    await loadPlayers();
-  } else {
-    showNotification("ℹ️ Nenhum jogo ativo encontrado");
-  }
+  const q=query(collection(db,`users/${currentUserId}/games`),where("active","==",true));
+  const snap=await getDocs(q);
+  if(!snap.empty){
+    const gdoc=snap.docs[0];
+    activeGameId=gdoc.id;
+    setFormData(gdoc.data());
+    document.getElementById("saveGameBtn").disabled=false;
+    notify("✅ Jogo ativo carregado");
+    subscribePlayers();
+  }else notify("ℹ️ Nenhum jogo ativo encontrado");
 }
 
-async function loadPlayers(){
-  if(!activeGameId) return;
-  const players = await getFirebaseCollection(`users/${currentUserId}/games/${activeGameId}/players`);
-  const field = players.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-  const gk = players.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
-  renderPlayers(fieldBody, field);
-  renderPlayers(goalBody, gk);
-}
-
-function renderPlayers(tbody, arr){
-  tbody.innerHTML='';
+/* ---------- PLAYERS ---------- */
+function renderPlayers(tbody,arr){
+  tbody.innerHTML="";
   if(!arr.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center">Sem jogadores.</td></tr>';return;}
   arr.forEach(p=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✅':''}</td><td>${p.estatisticas?'📊':''}</td>
-    <td><button class="small-btn load" data-id="${p.id}">Edit</button><button class="small-btn delete" data-id="${p.id}">Del</button></td>`;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?"✅":""}</td><td>${p.estatisticas?"📊":""}</td>
+      <td><button class="small-btn load" data-id="${p.id}">Edit</button>
+      <button class="small-btn delete" data-id="${p.id}">Del</button></td>`;
     tbody.appendChild(tr);
   });
 }
 
-document.addEventListener('DOMContentLoaded', async ()=>{
-  await loadGames();
+function subscribePlayers(){
+  if(unsubscribePlayers) unsubscribePlayers();
+  if(!activeGameId) return;
+  unsubscribePlayers=onSnapshot(playerCol(),snap=>{
+    const players=snap.docs.map(d=>d.data());
+    const field=players.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+    const gk=players.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+    renderPlayers(fieldBody,field);
+    renderPlayers(goalBody,gk);
+  });
+}
+
+/* ---------- EVENTS ---------- */
+document.addEventListener("DOMContentLoaded",async()=>{
+  loadGamesLive();
   await loadActiveGame();
 });
 
-document.getElementById('newGameBtn').onclick = async ()=>{
-  const snaps = await getDocs(collection(db,`users/${currentUserId}/games`));
+document.getElementById("newGameBtn").onclick=async()=>{
+  const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(d=>setDoc(gameDocRef(d.id),{active:false},{merge:true})));
   const id=crypto.randomUUID();
   const data={escalao:"",competicao:"",fase:"",grupo:"",jornada:"",data:"",hora:"",local:"",adversario:"",active:true,createdAt:new Date().toISOString()};
   await setDoc(gameDocRef(id),data);
   activeGameId=id;
   setFormData(data);
-  document.getElementById('saveGameBtn').disabled=false;
-  await loadGames();
-  showNotification("🆕 Novo jogo criado e ativo");
-  await loadPlayers();
+  document.getElementById("saveGameBtn").disabled=false;
+  notify("🆕 Novo jogo criado e ativo");
+  subscribePlayers();
 };
 
-document.getElementById('saveGameBtn').onclick = async ()=>{
-  if(!activeGameId) return showNotification("Nenhum jogo ativo",true);
+document.getElementById("saveGameBtn").onclick=async()=>{
+  if(!activeGameId) return notify("Nenhum jogo ativo",true);
   const d=getFormData();
   const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(s=>setDoc(gameDocRef(s.id),s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
-  await loadGames();
-  showNotification("💾 Jogo salvo");
+  notify("💾 Jogo salvo");
 };
 
-document.getElementById('toggleGamesBtn').onclick=()=>document.getElementById('gamesList').classList.toggle('show');
-document.getElementById('deleteAllGamesBtn').onclick=async()=>{
+document.getElementById("toggleGamesBtn").onclick=()=>document.getElementById("gamesList").classList.toggle("show");
+
+document.getElementById("deleteAllGamesBtn").onclick=async()=>{
   if(!confirm("Apagar todos os jogos?"))return;
   const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(d=>deleteDoc(gameDocRef(d.id))));
   activeGameId=null;
   setFormData();
-  await loadGames();
-  showNotification("🗑️ Todos os jogos eliminados");
+  notify("🗑️ Jogos eliminados");
 };
 
-gamesBody.addEventListener('click',async e=>{
+gamesBody.addEventListener("click",async e=>{
   const id=e.target.dataset.id;if(!id)return;
-  if(e.target.matches('.load')){
+  if(e.target.matches(".load")){
     const snap=await getDoc(gameDocRef(id));if(!snap.exists())return;
     activeGameId=id;setFormData(snap.data());
-    document.getElementById('saveGameBtn').disabled=false;
-    showNotification("✅ Jogo carregado");
-    await loadPlayers();
-  }else if(e.target.matches('.delete')){
+    document.getElementById("saveGameBtn").disabled=false;
+    notify("✅ Jogo carregado");
+    subscribePlayers();
+  }else if(e.target.matches(".delete")){
     if(!confirm("Apagar jogo?"))return;
     await deleteDoc(gameDocRef(id));
     if(activeGameId===id) activeGameId=null;
-    await loadGames();
-    showNotification("🗑️ Jogo eliminado");
+    notify("🗑️ Jogo eliminado");
   }
 });
 
 addBtn.onclick=async()=>{
-  if(!activeGameId)return showNotification("Ative um jogo primeiro",true);
-  const n=numero.value,nm=nome.value.trim();
-  if(!n||!nm)return showNotification("Número e Nome obrigatórios",true);
+  if(!activeGameId) return notify("Ative um jogo primeiro",true);
+  const n=numero.value.trim(), nm=nome.value.trim();
+  if(!n||!nm) return notify("Número e Nome obrigatórios",true);
   const data={numero:Number(n),nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked};
   const id=editingPlayerId||crypto.randomUUID();
-  await setDoc(playerDocRef(id),{id,...data});
+  await setDoc(playerDoc(id),{id,...data});
   numero.value="";nome.value="";pse.checked=false;estatisticas.checked=false;gr.checked=false;
   editingPlayerId=null;addBtn.textContent="Adicionar";
-  showNotification("✅ Jogador salvo");
-  await loadPlayers();
+  notify("✅ Jogador salvo");
 };
 
-[fieldBody,goalBody].forEach(t=>t.addEventListener('click',async e=>{
+[fieldBody,goalBody].forEach(t=>t.addEventListener("click",async e=>{
   if(!e.target.dataset.id)return;
   const id=e.target.dataset.id;
-  if(e.target.matches('.load')){
-    const snap=await getDoc(playerDocRef(id));if(!snap.exists())return;
-    const p=snap.data();numero.value=p.numero;nome.value=p.nome;pse.checked=p.pse;estatisticas.checked=p.estatisticas;gr.checked=p.gr;
+  if(e.target.matches(".load")){
+    const snap=await getDoc(playerDoc(id));if(!snap.exists())return;
+    const p=snap.data();
+    numero.value=p.numero;nome.value=p.nome;pse.checked=p.pse;estatisticas.checked=p.estatisticas;gr.checked=p.gr;
     editingPlayerId=id;addBtn.textContent="Atualizar";
-    showNotification("✏️ Editando jogador");
-  }else if(e.target.matches('.delete')){
+    notify("✏️ Editando jogador");
+  }else if(e.target.matches(".delete")){
     if(!confirm("Apagar jogador?"))return;
-    await deleteDoc(playerDocRef(id));
-    showNotification("🗑️ Jogador eliminado");
-    await loadPlayers();
+    await deleteDoc(playerDoc(id));
+    notify("🗑️ Jogador eliminado");
   }
 }));
 
-delAllPlayers.onclick=async()=>{
-  if(!activeGameId)return showNotification("Nenhum jogo ativo",true);
+document.getElementById("deleteAllPlayersBtn").onclick=async()=>{
+  if(!activeGameId) return notify("Nenhum jogo ativo",true);
   if(!confirm("Apagar todos os jogadores?"))return;
-  const snaps=await getDocs(playerColRef());
-  await Promise.all(snaps.docs.map(d=>deleteDoc(playerDocRef(d.id))));
-  showNotification("🗑️ Todos os jogadores eliminados");
-  await loadPlayers();
+  const snaps=await getDocs(playerCol());
+  await Promise.all(snaps.docs.map(d=>deleteDoc(playerDoc(d.id))));
+  notify("🗑️ Jogadores eliminados");
 };
 </script>
 </body>
