@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
   getFirestore, collection, doc, setDoc, getDoc, getDocs,
-  deleteDoc, onSnapshot, query, where
+  deleteDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 // ✅ Firebase config

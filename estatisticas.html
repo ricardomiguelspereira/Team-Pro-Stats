@@ -3,33 +3,133 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Estatísticas</title>
+<title>Estatísticas do Jogo</title>
 <style>
-body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
-h2 { text-align:center; margin-bottom:20px; color:#333; }
-footer { text-align:center; padding:12px 0; font-size:0.8em; color:#666; margin-top:20px; }
-.notification { display:none; position:fixed; right:12px; top:12px; background:#e0ffe0; padding:10px 14px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2); font-weight:bold; }
-.notification.error { background:#ffdede; }
-.tabs { display:flex; justify-content:center; gap:6px; margin-bottom:20px; }
-.tab-btn { padding:8px 16px; border:none; border-radius:6px; background:#2980b9; color:white; cursor:pointer; transition:0.2s; font-weight:500; }
-.tab-btn.active { background:#1c5980; }
-.tab-content { display:none; }
-.tab-content.active { display:block; }
-.responsive { overflow-x:auto; margin-bottom:20px; }
-table { border-collapse:collapse; width:100%; background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-th,td { padding:10px; text-align:center; border-bottom:1px solid #eee; }
-th { background:#f5f5f5; color:#333; font-weight:600; }
-tr:hover { background:#f9f9f9; }
-.stat-controls { display:flex; justify-content:center; align-items:center; gap:4px; }
-.stat-controls button { width:28px; height:28px; border:none; border-radius:6px; background:#2980b9; color:white; font-weight:bold; cursor:pointer; }
-.stat-controls button:hover { background:#1c5980; }
-.stat-controls input[type=number] { width:48px; text-align:center; border:1px solid #ccc; border-radius:6px; height:28px; }
-#loading { display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:1.2em; padding:20px; background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.15); margin-bottom:20px; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f3f5f7;
+  margin: 0;
+  padding: 20px;
+  color: #222;
+}
+h2 {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.tab-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #0077ff;
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.25s;
+}
+.tab-btn.active {
+  background: #0047b3;
+}
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+.responsive {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+}
+th, td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+th {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+tr:hover {
+  background: #f9f9f9;
+}
+.stat-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+.stat-controls button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #0077ff;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+.stat-controls button:hover {
+  background: #0047b3;
+}
+.stat-controls input[type=number] {
+  width: 46px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  height: 28px;
+}
+#notification {
+  display: none;
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  background: #e8f1ff;
+  color: #0047b3;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.notification.error {
+  background: #ffe8e8;
+  color: #b71c1c;
+}
+#loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 1.1em;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  margin-bottom: 20px;
+}
+footer {
+  text-align: center;
+  padding: 14px;
+  font-size: 0.85em;
+  color: #555;
+  margin-top: 20px;
+}
 </style>
 </head>
 <body>
 
-<h2>Estatísticas do Jogo Ativo</h2>
+<h2>📊 Estatísticas do Jogo Ativo</h2>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
@@ -40,154 +140,153 @@ tr:hover { background:#f9f9f9; }
 
 <div id="part1" class="tab-content active">
   <div class="responsive">
-    <table id="tableCampo1"><thead>
-      <tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
-    </thead><tbody></tbody></table>
+    <table id="tableCampo1">
+      <thead>
+        <tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
   <div class="responsive">
-    <table id="tableGR1"><thead>
-      <tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr>
-    </thead><tbody></tbody></table>
+    <table id="tableGR1">
+      <thead>
+        <tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 </div>
 
 <div id="part2" class="tab-content">
   <div class="responsive">
-    <table id="tableCampo2"><thead>
-      <tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
-    </thead><tbody></tbody></table>
+    <table id="tableCampo2">
+      <thead>
+        <tr><th>#</th><th>Nome</th><th>Interceptados</th><th>Fora</th><th>Golos</th><th>Passes Errados</th><th>Faltas</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
   <div class="responsive">
-    <table id="tableGR2"><thead>
-      <tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr>
-    </thead><tbody></tbody></table>
+    <table id="tableGR2">
+      <thead>
+        <tr><th>#</th><th>Nome</th><th>Defesas</th><th>Interceptados</th><th>Golos Sofridos</th><th>Faltas</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 </div>
 
-<div id="lastSaved" style="font-size:12px; margin-top:10px;"></div>
-<div id="notification" class="notification"></div>
+<div id="notification"></div>
+
+<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 
 <script type="module">
 import {
-  initializeFirebase,
-  getUserId,
-  getActiveGameId,
-  saveSingleStat,
-  onFirebaseDataChange,
-  getFirebaseData,
-  FB_PATHS_GAME
-} from './firebase-data.js';
+  db, getFirebaseCollection, setFirebaseDoc, onFirebaseCollectionChange
+} from "./firebase-data.js";
+import {
+  collection, query, where, getDocs
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-let fieldPlayers = [], goalKeepers = [];
-let statsParte1 = { campo: {}, gr: {} };
-let statsParte2 = { campo: {}, gr: {} };
+let userId = "user1";
+let activeGameId = null;
+let fieldPlayers = [];
+let goalKeepers = [];
+
 const campoStats = ['interceptados','fora','golos','passesErrados','faltas'];
 const grStats = ['defesas','interceptados','golosSofridos','faltas'];
 
-const notificationEl = document.getElementById('notification');
-const lastSavedEl = document.getElementById('lastSaved');
-const loadingEl = document.getElementById('loading');
+const notification = document.getElementById('notification');
+const loading = document.getElementById('loading');
 
-function showNotification(msg, err=false) {
-  notificationEl.textContent = msg;
-  notificationEl.className = err ? 'notification error' : 'notification';
-  notificationEl.style.display = 'block';
-  setTimeout(()=>notificationEl.style.display='none',2000);
+function showNotification(msg, err=false){
+  notification.textContent = msg;
+  notification.style.background = err ? '#ffe8e8' : '#e8f1ff';
+  notification.style.color = err ? '#b71c1c' : '#0047b3';
+  notification.style.display = 'block';
+  setTimeout(()=>notification.style.display='none',2500);
 }
 
-function updateLastSaved() {
-  lastSavedEl.textContent = `Última gravação: ${new Date().toLocaleTimeString('pt-PT')}`;
-}
-
-function renderTable(tableId, players, statsMap, statKeys) {
+function renderTable(tableId, players, statKeys, statsData){
   const tbody = document.querySelector(`#${tableId} tbody`);
   tbody.innerHTML = '';
-  players.forEach(p => {
+  players.forEach(p=>{
     const row = tbody.insertRow();
-    row.dataset.player = p.numero;
-    row.innerHTML = `<td>${p.numero}</td><td>${p.nome}${p.gr?' 🧤':''}</td>` +
-      statKeys.map(k => `<td>
-        <div class="stat-controls">
-          <button onclick="changeStat(this,-1)">−</button>
-          <input type="number" min="0" value="${statsMap[p.numero]?.[k]||0}"
-            data-player="${p.numero}" data-category="${tableId.includes('Campo')?'campo':'gr'}"
-            data-part="${tableId.includes('1')?'1':'2'}" data-stat="${k}">
-          <button onclick="changeStat(this,1)">+</button>
-        </div>
-      </td>`).join('');
+    row.innerHTML = `
+      <td>${p.numero}</td>
+      <td>${p.nome}${p.gr ? ' 🧤' : ''}</td>
+      ${statKeys.map(k=>`
+        <td>
+          <div class="stat-controls">
+            <button onclick="changeStat(this,-1)">−</button>
+            <input type="number" min="0" value="${statsData[p.numero]?.[k]||0}"
+              data-player="${p.numero}" data-stat="${k}" data-category="${p.gr?'gr':'campo'}" data-table="${tableId}">
+            <button onclick="changeStat(this,1)">+</button>
+          </div>
+        </td>`).join('')}
+    `;
   });
 }
 
-window.changeStat = async function(btn, delta) {
+window.changeStat = async function(btn, delta){
   const input = btn.parentElement.querySelector('input');
-  let val = parseInt(input.value)||0;
+  let val = parseInt(input.value) || 0;
   val += delta; if(val<0) val=0; input.value=val;
-  const {player, category, part, stat:statKey} = input.dataset;
-  const stats = part==='1' ? statsParte1 : statsParte2;
-  if(!stats[category]) stats[category]={};
-  if(!stats[category][player]) stats[category][player]={};
-  stats[category][player][statKey]=val;
-  try{
-    await saveSingleStat(part, category, player, statKey, val);
-    updateLastSaved();
-    showNotification(`Guardado: ${statKey} (${val}) — #${player}`);
-  }catch(e){ console.error(e); showNotification('Erro ao guardar', true); }
+  const player = input.dataset.player;
+  const stat = input.dataset.stat;
+  const category = input.dataset.category;
+  const tableId = input.dataset.table;
+  const part = tableId.includes('1') ? 'parte1' : 'parte2';
+  try {
+    await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/${part}`, {
+      [category]: { [player]: { [stat]: val } }
+    });
+    showNotification(`Guardado: ${stat} (${val}) — #${player}`);
+  } catch(err){
+    console.error(err);
+    showNotification("Erro ao guardar", true);
+  }
 };
 
-function render() {
-  renderTable('tableCampo1', fieldPlayers, statsParte1.campo, campoStats);
-  renderTable('tableGR1', goalKeepers, statsParte1.gr, grStats);
-  renderTable('tableCampo2', fieldPlayers, statsParte2.campo, campoStats);
-  renderTable('tableGR2', goalKeepers, statsParte2.gr, grStats);
-  loadingEl.style.display='none';
+async function renderAll(){
+  const stats1Snap = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/stats`);
+  const parte1 = stats1Snap.find(s => s.id === 'parte1') || {campo:{}, gr:{}};
+  const parte2 = stats1Snap.find(s => s.id === 'parte2') || {campo:{}, gr:{}};
+
+  renderTable('tableCampo1', fieldPlayers, campoStats, parte1.campo||{});
+  renderTable('tableGR1', goalKeepers, grStats, parte1.gr||{});
+  renderTable('tableCampo2', fieldPlayers, campoStats, parte2.campo||{});
+  renderTable('tableGR2', goalKeepers, grStats, parte2.gr||{});
+  loading.style.display='none';
 }
 
-async function setupFirebaseListeners() {
-  const uid = getUserId();
-  const gameId = getActiveGameId();
-  if(!uid || !gameId){
-    alert("Nenhum jogo ativo. Redirecionando...");
+async function loadPlayers(){
+  const players = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
+  const eligible = players.filter(p => p.estatisticas === true);
+  fieldPlayers = eligible.filter(p => !p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers = eligible.filter(p => p.gr).sort((a,b)=>a.numero-b.numero);
+  await renderAll();
+}
+
+async function findActiveGame(){
+  const q = query(collection(db,`users/${userId}/games`), where("active","==",true));
+  const snaps = await getDocs(q);
+  if(!snaps.empty){
+    const active = snaps.docs[0];
+    activeGameId = active.id;
+    await loadPlayers();
+  } else {
+    alert("Nenhum jogo ativo encontrado. Redirecionando...");
     window.location.href="configjogoequipa.html";
-    return;
   }
-
-  const playersColRef = `users/${uid}/games/${gameId}/players`;
-  
-  const snaps = await getDocs(collection(db, playersColRef));
-  const playersArray = snaps.docs.map(d => ({id:d.id, ...d.data()}));
-  const eligible = playersArray.filter(p=>p.estatisticas===true);
-  fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-  goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
-  render();
-
-  onFirebaseDataChange(playersColRef, data=>{
-    if(!data) return;
-    const arr = Object.entries(data).map(([id,p])=>({id, ...p}));
-    const eligible = arr.filter(p=>p.estatisticas===true);
-    fieldPlayers = eligible.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-    goalKeepers = eligible.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
-    render();
-  });
-
-  const path1 = FB_PATHS_GAME.estatisticasParte1.replace("{uid}", uid).replace("{gameId}", gameId);
-  const path2 = FB_PATHS_GAME.estatisticasParte2.replace("{uid}", uid).replace("{gameId}", gameId);
-  onFirebaseDataChange(path1, data=>{ statsParte1 = data || { campo:{}, gr:{} }; render(); });
-  onFirebaseDataChange(path2, data=>{ statsParte2 = data || { campo:{}, gr:{} }; render(); });
 }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
-  await initializeFirebase();
-  const activeGame = getActiveGameId();
-  if(!activeGame){
-    alert("Nenhum jogo ativo. Redirecionando...");
-    window.location.href="configjogoequipa.html";
-    return;
-  }
-  await setupFirebaseListeners();
+  await findActiveGame();
 });
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
@@ -195,7 +294,5 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 </script>
-
-<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </body>
 </html>
