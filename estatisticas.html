@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Estatísticas do Jogo</title>
+<title>Estatísticas do Jogo Activo</title>
 <style>
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -167,7 +167,7 @@ footer {
 </head>
 <body>
 
-<h2>📊 Estatísticas do Jogo Ativo</h2>
+<h2>📊 Estatísticas do Jogo Activo</h2>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="part1">1ª Parte</button>
@@ -248,8 +248,8 @@ footer {
 </div>
 
 <div class="reset-buttons">
-  <button id="resetPart1Btn">Reset Estatísticas 1ª Parte</button>
-  <button id="resetPart2Btn">Reset Estatísticas 2ª Parte</button>
+  <button id="resetPart1Btn">Reset 1ª Parte</button>
+  <button id="resetPart2Btn">Reset 2ª Parte</button>
   <button id="resetAllBtn">Reset Todas as Estatísticas</button>
 </div>
 
@@ -312,7 +312,7 @@ function renderTable(tableId, players, statKeys, statsData){
     } else {
       row.innerHTML = `
         <td>${p.numero}</td>
-        <td>${p.nome} 🧤</td>
+        <td>${p.nome}</td>
         ${grStats.map(k=>`
           <td>
             <div class="stat-controls">
