@@ -26,7 +26,7 @@ h2 {
   padding: 10px 18px;
   border: none;
   border-radius: 6px;
-  background: #0077ff;
+  background: #888;
   color: white;
   cursor: pointer;
   font-weight: 500;
@@ -94,7 +94,7 @@ tr:hover {
   background: #1e7e34;
 }
 .stat-controls input[type=number] {
-  width: 40px;
+  width: 50px;
   text-align: center;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -147,7 +147,7 @@ footer {
 .reset-buttons button {
   padding: 8px 18px;
   border-radius: 6px;
-  border: 2px solid transparent;
+  border: none;
   background: #e74c3c;
   color: #fff;
   font-weight: 600;
@@ -156,8 +156,22 @@ footer {
 .reset-buttons button:hover {
   background: #b71c1c;
 }
-.reset-buttons button.active {
-  border: 2px solid #28a745;
+.extra-button {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+.extra-button button {
+  padding: 10px 20px;
+  background: #0077ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.extra-button button:hover {
+  background: #005fcc;
 }
 </style>
 </head>
@@ -243,9 +257,13 @@ footer {
 </div>
 
 <div class="reset-buttons">
-  <button id="resetPart1Btn" class="active">Reset Estatísticas 1ª Parte</button>
+  <button id="resetPart1Btn">Reset Estatísticas 1ª Parte</button>
   <button id="resetPart2Btn">Reset Estatísticas 2ª Parte</button>
   <button id="resetAllBtn">Reset Todas as Estatísticas</button>
+</div>
+
+<div class="extra-button">
+  <button onclick="window.location.href='entradassaidas.html'">Entradas / Saídas</button>
 </div>
 
 <div id="notification"></div>
@@ -384,9 +402,6 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    document.querySelectorAll('.reset-buttons button').forEach(b=>b.classList.remove('active'));
-    if(btn.dataset.tab==="part1") document.getElementById('resetPart1Btn').classList.add('active');
-    else document.getElementById('resetPart2Btn').classList.add('active');
   });
 });
 
