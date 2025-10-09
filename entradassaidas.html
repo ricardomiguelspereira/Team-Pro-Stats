@@ -12,7 +12,7 @@
   .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .tabs { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .tab-btn, .nav-btn { height: 34px; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 14px; border-radius: 6px; cursor: pointer; border: none; user-select: none; }
-  .tab-btn { background-color: #888; color: white; transition: 0.2s; }
+  .tab-btn { background-color: #ccc; color: black; transition: 0.2s; }
   .tab-btn.active { background-color: #2ecc71; color: white; }
   .nav-btn { background-color: #3498db; color: white; }
   .nav-btn:hover { background-color: #5dade2; }
@@ -20,7 +20,6 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
-  /* Table styling */
   .responsive-inout { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; background: white; }
   table.part-table-inout { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
   table.part-table-inout thead tr { background-color: #3498db; color: white; }
@@ -28,7 +27,7 @@
   table.part-table-inout th:first-child, table.part-table-inout td:first-child { text-align: left; cursor: default; }
   table.part-table-inout td:nth-child(3), table.part-table-inout td:nth-child(4) { min-width: 30px; }
 
-  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; opacity:0; transition:opacity 0.3s; }
+  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; }
   footer { margin-top: 25px; font-size: 11px; text-align: center; color: #999; }
 </style>
 </head>
@@ -49,7 +48,7 @@
 
 <div id="inOutPart1" class="tab-content active">
   <div class="responsive-inout">
-    <table id="tableInOut1" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 1ª Parte">
+    <table id="tableInOut1" class="part-table-inout">
       <thead><tr></tr></thead>
       <tbody></tbody>
     </table>
@@ -58,7 +57,7 @@
 
 <div id="inOutPart2" class="tab-content">
   <div class="responsive-inout">
-    <table id="tableInOut2" class="part-table-inout" aria-label="Tabela de Entradas e Saídas 2ª Parte">
+    <table id="tableInOut2" class="part-table-inout">
       <thead><tr></tr></thead>
       <tbody></tbody>
     </table>
@@ -72,88 +71,94 @@
 import {
   db,
   FB_PATHS_GLOBAL,
-  FB_PATHS_GAME,
-  getFirebaseDoc,
-  setFirebaseDoc,
-  getFirebaseCollection,
-  onFirebaseDocChange,
-  onFirebaseCollectionChange,
+  getFirebaseData,
+  setFirebaseData,
+  onFirebaseDataChange,
   getActiveGameId
 } from "./firebase-data.js";
 
 let inOutData = {};
 let playersCampo = [], playersGR = [];
 
+// 🔹 Intervalos
 const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const levelIntervalsMap = { sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals };
-
 function getIntervalsForLevel(level){ return levelIntervalsMap[level] || defaultIntervals; }
-function normalizeText(text){ return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g,''); }
 
+// 🔹 Normalize
+function normalizeText(text){
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+}
+
+// 🔹 Get level
 async function getLevelFromConfig(){
   const gameId = getActiveGameId();
   if(!gameId) return 'sub13';
-  const gameData = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}`);
-  if(!gameData) return 'sub13';
-  const esc = normalizeText(gameData.escalao||'');
-  const map = { sub13:'sub13', sub15:'sub15', sub17:'sub17', sub19:'sub19', sub23:'sub23', seniores:'seniores', seniors:'seniores'};
+  const jogoData = await getFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}`);
+  if(!jogoData) return 'sub13';
+  let esc = normalizeText(jogoData.escalao || '');
+  const map = { sub13:'sub13', sub15:'sub15', sub17:'sub17', sub19:'sub19', sub23:'sub23', seniores:'seniores', seniors:'seniores' };
   return map[esc] || 'sub13';
 }
 
-async function loadPlayersFromFirebase(){
-  const gameId = getActiveGameId();
-  if(!gameId) return;
-  const playersSnap = await getFirebaseCollection(`${FB_PATHS_GLOBAL.games}/${gameId}/players`);
-  playersCampo = playersSnap.filter(p=>p.tipo==="campo" && p.estatisticas);
-  playersGR = playersSnap.filter(p=>p.tipo==="gr" && p.estatisticas);
+// 🔹 Load players (same as estatisticas.html)
+async function loadPlayers(){
+  const fieldPlayersData = await getFirebaseData('fieldPlayers');
+  const goalKeepersData = await getFirebaseData('goalKeepers');
+  const fieldPlayers = fieldPlayersData?.players || [];
+  const goalKeepers = goalKeepersData?.players || [];
+  playersCampo = fieldPlayers.filter(p => p.estatisticas);
+  playersGR = goalKeepers.filter(p => p.estatisticas);
 }
 
+// 🔹 Render
 async function renderInOut(){
   const gameId = getActiveGameId();
   if(!gameId){
     alert("❌ Nenhum jogo ativo. Configure em 'Configurar Jogo'.");
-    window.location.href="configjogoequipa.html";
+    window.location.href='configjogoequipa.html';
     return;
   }
 
-  const saved = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
-  inOutData = saved.inOut || {};
-  await loadPlayersFromFirebase();
-  const allPlayers = [...playersCampo,...playersGR];
+  const savedData = await getFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
+  inOutData = savedData.inOut || {};
+  await loadPlayers();
+  const allPlayers = [...playersCampo, ...playersGR];
   const intervals = getIntervalsForLevel(await getLevelFromConfig());
 
   function buildHeader(table){
     const tr = table.querySelector('thead tr');
     tr.innerHTML = '<th>#</th><th>Nome</th>';
-    intervals.forEach(iv=> tr.innerHTML+=`<th>${iv}</th>`);
+    intervals.forEach(iv => tr.innerHTML += `<th>${iv}</th>`);
   }
 
-  async function buildBody(table,part){
+  function buildBody(table, part){
     const tbody = table.querySelector('tbody');
-    tbody.innerHTML='';
-    allPlayers.forEach(p=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td>`;
-      intervals.forEach(iv=>{
-        const td=document.createElement('td');
-        const key=`tableInOut${part}_${p.numero}_${iv}`;
-        const val=inOutData[key]||'';
-        td.dataset.key=key; td.dataset.state=val; td.textContent=val;
+    tbody.innerHTML = '';
+    allPlayers.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${p.numero}</td><td>${p.nome}</td>`;
+      intervals.forEach(iv => {
+        const td = document.createElement('td');
+        const key = `tableInOut${part}_${p.numero}_${iv}`;
+        const val = inOutData[key] || '';
+        td.dataset.key = key;
+        td.dataset.state = val;
+        td.textContent = val;
         if(val==='E'){ td.style.background='green'; td.style.color='white'; }
         else if(val==='S'){ td.style.background='orange'; td.style.color='white'; }
         td.addEventListener('click', async ()=>{
-          let state=td.dataset.state||'';
-          if(state==='') state='E';
-          else if(state==='E') state='S';
-          else state='';
-          td.dataset.state=state; td.textContent=state;
+          let state = td.dataset.state || '';
+          state = state==='' ? 'E' : state==='E' ? 'S' : '';
+          td.dataset.state = state;
+          td.textContent = state;
           td.style.background = state==='E'?'green':state==='S'?'orange':'';
-          td.style.color = state? 'white':'';
-          inOutData[key]=state;
-          saved.inOut=inOutData;
-          await setFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, saved);
+          td.style.color = state ? 'white' : '';
+          inOutData[key] = state;
+          savedData.inOut = inOutData;
+          await setFirebaseData(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, savedData);
           showNotification("✔️ Guardado com sucesso");
         });
         tr.appendChild(td);
@@ -162,33 +167,35 @@ async function renderInOut(){
     });
   }
 
-  const t1=document.getElementById('tableInOut1'), t2=document.getElementById('tableInOut2');
-  buildHeader(t1); await buildBody(t1,'1');
-  buildHeader(t2); await buildBody(t2,'2');
+  const t1 = document.getElementById('tableInOut1');
+  const t2 = document.getElementById('tableInOut2');
+  buildHeader(t1); buildBody(t1,'1');
+  buildHeader(t2); buildBody(t2,'2');
 }
 
+// 🔹 Notification
 function showNotification(msg){
-  const n=document.getElementById('notification');
-  n.textContent=msg;
+  const n = document.getElementById('notification');
+  n.textContent = msg;
   n.style.opacity='1';
   setTimeout(()=>n.style.opacity='0',2500);
 }
 
-// Tabs
+// 🔹 Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    localStorage.setItem('activeInOutTab',btn.dataset.tab);
+    localStorage.setItem('activeInOutTab', btn.dataset.tab);
   });
 });
 
-// Back button
+// 🔹 Back
 document.getElementById('backStats').addEventListener('click',()=>{ window.location.href='estatisticas.html'; });
 
-// Initialize
+// 🔹 Init
 window.addEventListener('load', async ()=>{
   const savedTab = localStorage.getItem('activeInOutTab');
   if(savedTab){
@@ -201,8 +208,9 @@ window.addEventListener('load', async ()=>{
 
   const gameId = getActiveGameId();
   if(gameId){
-    onFirebaseDocChange(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, renderInOut);
-    onFirebaseCollectionChange(`${FB_PATHS_GLOBAL.games}/${gameId}/players`, renderInOut);
+    onFirebaseDataChange(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, renderInOut);
+    onFirebaseDataChange('fieldPlayers', renderInOut);
+    onFirebaseDataChange('goalKeepers', renderInOut);
   }
 });
 </script>
