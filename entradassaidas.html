@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Entradas / Saídas</title>
 
-<!-- Optional: reuse your estatisticas.css if you have it -->
+<!-- Optional reuse your estatisticas.css if present -->
 <link rel="stylesheet" href="estatisticas.css" />
 
 <style>
@@ -154,9 +154,7 @@
 import {
   initializeFirebase,
   getUserId,
-  getActiveGameId,
-  onFirebaseDataChange,
-  FB_PATHS_GAME
+  getActiveGameId
 } from './firebase-data.js';
 
 import {
@@ -226,11 +224,6 @@ function gameDocRef(uid,gid){
 
 /* ---------- Render helpers ---------- */
 
-function clearTable(table){
-  table.querySelector('thead tr').innerHTML = '';
-  table.querySelector('tbody').innerHTML = '';
-}
-
 async function renderTables(){
   if(!uid || !gameId) return;
   // get game document to read escalao
@@ -261,7 +254,6 @@ async function renderTables(){
 
 function buildHeader(table, intervals){
   const tr = table.querySelector('thead tr');
-  // first two sticky columns (# and Nome)
   let html = `<th>#</th><th>Nome</th>`;
   for(const iv of intervals) html += `<th>${iv}</th>`;
   tr.innerHTML = html;
@@ -286,7 +278,7 @@ async function buildBody(table, players, intervals, part){
       td.dataset.key = key;
       td.textContent = val;
       styleCell(td, val);
-      td.addEventListener('click', async (ev)=>{
+      td.addEventListener('click', async ()=>{
         // cycle: '' -> 'E' -> 'S' -> ''
         const cur = td.textContent || '';
         let next = '';
@@ -299,11 +291,9 @@ async function buildBody(table, players, intervals, part){
         // persist to firestore
         try {
           await setDoc(inoutDocRef(uid, gameId, key), { value: next }, { merge: true });
-          // optionally show a small notification
-          // showNotification(`Guardado ${key}=${next}`);
         } catch(err){
           console.error('save inout error', err);
-          showNotification('Erro ao guardar (ver consolo)', true);
+          showNotification('Erro ao guardar (veja console)', true);
         }
       });
       tr.appendChild(td);
@@ -337,7 +327,6 @@ async function subscribePlayersAndInout(){
     const playersRef = playersCollectionRef(uid, gameId);
     onSnapshot(playersRef, snapshot=>{
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      // keep only players that have estatisticas === true
       const eligible = docs.filter(p => p.estatisticas === true);
       fieldPlayers = eligible.filter(p => !p.gr).sort((a,b)=> (a.numero||0)-(b.numero||0));
       goalKeepers = eligible.filter(p => p.gr).sort((a,b)=> (a.numero||0)-(b.numero||0));
@@ -353,7 +342,6 @@ async function subscribePlayersAndInout(){
   try {
     const inoutRef = inoutCollectionRef(uid, gameId);
     onSnapshot(inoutRef, snapshot=>{
-      // snapshot.docs may be empty if not created; rebuild map
       const map = {};
       snapshot.docs.forEach(d => {
         const id = d.id;
@@ -373,7 +361,6 @@ async function subscribePlayersAndInout(){
   try {
     const gref = gameDocRef(uid, gameId);
     onSnapshot(gref, snap=>{
-      // on change re-render (because escalao may change intervals)
       renderTables().catch(e=>console.error(e));
     }, err=>console.error('game doc onSnapshot error', err));
   } catch(e){
@@ -390,10 +377,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     uid = getUserId() || localStorage.getItem('userId') || null;
     gameId = getActiveGameId() || localStorage.getItem('activeGameId') || null;
 
-    // If no active game, try to query firestore for an active one (in case getActiveGameId isn't set)
-    if(!gameId){
-      // try find active game for this uid
-      // We'll query Firestore directly to find a game where active == true
+    // If no active game, try to query firestore for an active one
+    if(!gameId && uid){
       try {
         const gamesColl = collection(db, `users/${uid}/games`);
         const gamesSnap = await getDocs(gamesColl);
@@ -402,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
           if(d.active){ gameId = docSnap.id; break; }
         }
       } catch(e){
-        // ignore
+        console.error('query games error', e);
       }
     }
 
@@ -412,7 +397,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       return;
     }
 
-    // OK: subscribe
+    // subscribe realtime
     await subscribePlayersAndInout();
 
     // restore selected tab
