@@ -65,6 +65,13 @@ th {
 tr:hover {
   background: #f9f9f9;
 }
+td.clickable {
+  cursor: pointer;
+  transition: 0.2s;
+}
+td.clickable:hover {
+  background: #e0f7fa;
+}
 #notification {
   display: none;
   position: fixed;
@@ -77,23 +84,12 @@ tr:hover {
   font-weight: 600;
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
-.notification.error {
-  background: #ffe8e8;
-  color: #b71c1c;
-}
 footer {
   text-align: center;
   padding: 14px;
   font-size: 0.85em;
   color: #555;
   margin-top: 20px;
-}
-td.clickable {
-  cursor: pointer;
-  transition: 0.2s;
-}
-td.clickable:hover {
-  background: #e0f7fa;
 }
 </style>
 </head>
@@ -131,10 +127,10 @@ td.clickable:hover {
 
 <script type="module">
 import {
-  db, getFirebaseCollection, setFirebaseDoc
+  db, getFirebaseCollection, setFirebaseDoc, getFirebaseDoc
 } from "./firebase-data.js";
 import {
-  collection, query, where, getDocs
+  collection, query, where, getDocs, doc, getDoc
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let userId = "user1";
@@ -143,10 +139,24 @@ let fieldPlayers = [];
 let goalKeepers = [];
 let inOutData = {};
 
-const defaultIntervals = ["25","24'30","24","23'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+// interval sets per "Escalão"
+const intervalsDefault = ["25","24'30","24","23'30","22","21'30","21","20'30","20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+const intervalsSub13 = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+const intervalsSub15_17 = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
+
+function getIntervalsForLevel(level) {
+  switch(level){
+    case "Sub-13": return intervalsSub13;
+    case "Sub-15": 
+    case "Sub-17": return intervalsSub15_17;
+    case "Sub-19":
+    case "Sub-23":
+    case "Séniores":
+    default: return intervalsDefault;
+  }
+}
 
 const notification = document.getElementById('notification');
-
 function showNotification(msg, err=false){
   notification.textContent = msg;
   notification.style.background = err ? '#ffe8e8' : '#e8f1ff';
@@ -155,6 +165,7 @@ function showNotification(msg, err=false){
   setTimeout(()=>notification.style.display='none',2500);
 }
 
+// get active game
 async function findActiveGame(){
   const q = query(collection(db,`users/${userId}/games`), where("active","==",true));
   const snaps = await getDocs(q);
@@ -168,6 +179,7 @@ async function findActiveGame(){
   }
 }
 
+// load players from active game
 async function loadPlayers(){
   const players = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
   const eligible = players.filter(p => p.estatisticas === true);
@@ -176,17 +188,26 @@ async function loadPlayers(){
   await loadInOut();
 }
 
+// load In/Out data
 async function loadInOut(){
-  const statsSnap = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/inout`);
+  const docsSnap = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/inout`);
   inOutData = {};
-  statsSnap.forEach(doc=>{
-    inOutData[doc.id] = doc.data;
+  docsSnap.forEach(docSnap => {
+    const d = docSnap;
+    inOutData[d.id] = d.data().value || '';
   });
   renderInOutTables();
 }
 
-function renderInOutTables(){
-  const intervals = defaultIntervals;
+async function getGameLevel(){
+  const gameDoc = await getFirebaseDoc(`users/${userId}/games/${activeGameId}`);
+  return gameDoc?.escalao || "Séniores";
+}
+
+// render tables
+async function renderInOutTables(){
+  const level = await getGameLevel();
+  const intervals = getIntervalsForLevel(level);
   const allPlayers = [...fieldPlayers, ...goalKeepers];
 
   ['1','2'].forEach(part=>{
@@ -205,20 +226,17 @@ function renderInOutTables(){
         cell.textContent = current;
         cell.dataset.key = key;
         cell.classList.add('clickable');
-        if(current==='E'){cell.style.background='green';cell.style.color='white';}
-        else if(current==='S'){cell.style.background='orange';cell.style.color='white';}
-
+        updateCellColor(cell, current);
         cell.addEventListener('click', async ()=>{
           let newVal = '';
-          if(current==='') newVal='E';
-          else if(current==='E') newVal='S';
+          if(cell.textContent === '') newVal='E';
+          else if(cell.textContent === 'E') newVal='S';
           else newVal='';
-          inOutData[key]=newVal;
-          cell.textContent=newVal;
-          cell.style.background= newVal==='E'?'green': newVal==='S'?'orange':'';
-          cell.style.color= newVal? 'white':'';
+          cell.textContent = newVal;
+          updateCellColor(cell, newVal);
           try {
             await setFirebaseDoc(`users/${userId}/games/${activeGameId}/inout/${key}`, { value: newVal });
+            inOutData[key] = newVal;
           } catch(err){
             console.error(err);
             showNotification("Erro ao guardar alteração", true);
@@ -231,6 +249,13 @@ function renderInOutTables(){
   });
 }
 
+function updateCellColor(cell, val){
+  if(val==='E'){cell.style.background='green';cell.style.color='white';}
+  else if(val==='S'){cell.style.background='orange';cell.style.color='white';}
+  else {cell.style.background='';cell.style.color='';}
+}
+
+// tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -241,10 +266,12 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
+// back button
 document.getElementById('backStats').addEventListener('click',()=>{
   window.location.href = 'estatisticas.html';
 });
 
+// initialize
 document.addEventListener('DOMContentLoaded', async ()=>{
   await findActiveGame();
   const savedTab = localStorage.getItem('activeInOutTab');
