@@ -75,13 +75,22 @@ tr:hover {
   height: 28px;
   border: none;
   border-radius: 6px;
-  background: #0077ff;
-  color: white;
   font-weight: bold;
   cursor: pointer;
 }
-.stat-controls button:hover {
-  background: #0047b3;
+.stat-controls button.decrease {
+  background: #e74c3c;
+  color: white;
+}
+.stat-controls button.decrease:hover {
+  background: #b71c1c;
+}
+.stat-controls button.increase {
+  background: #28a745;
+  color: white;
+}
+.stat-controls button.increase:hover {
+  background: #1e7e34;
 }
 .stat-controls input[type=number] {
   width: 46px;
@@ -89,6 +98,8 @@ tr:hover {
   border: 1px solid #ccc;
   border-radius: 6px;
   height: 28px;
+  pointer-events: none;
+  background: #f9f9f9;
 }
 #notification {
   display: none;
@@ -242,10 +253,9 @@ function renderTable(tableId, players, statKeys, statsData){
       ${statKeys.map(k=>`
         <td>
           <div class="stat-controls">
-            <button onclick="changeStat(this,-1)">−</button>
-            <input type="number" min="0" value="${statsData[p.numero]?.[k]||0}"
-              data-player="${p.numero}" data-stat="${k}" data-category="${p.gr?'gr':'campo'}" data-table="${tableId}">
-            <button onclick="changeStat(this,1)">+</button>
+            <button class="decrease" onclick="changeStat(this,-1)">−</button>
+            <input type="number" value="${statsData[p.numero]?.[k]||0}" data-player="${p.numero}" data-stat="${k}" data-category="${p.gr?'gr':'campo'}" data-table="${tableId}" readonly>
+            <button class="increase" onclick="changeStat(this,1)">+</button>
           </div>
         </td>`).join('')}
     `;
