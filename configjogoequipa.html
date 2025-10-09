@@ -5,134 +5,37 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Team Pro Stats — Gestão de Jogos e Jogadores</title>
 <style>
-:root{
-  --primary:#0077ff;
-  --danger:#e74c3c;
-  --success:#28a745;
-  --muted:#f4f7fa;
-  --card:#fff;
-  --border:#ddd;
-  --text:#222;
-  --header-bg:#0056cc;
-}
+:root{--primary:#0077ff;--danger:#e74c3c;--success:#28a745;--muted:#f4f7fa;--card:#fff;--border:#ddd;--text:#222;}
 *{box-sizing:border-box;}
-body{
-  font-family:system-ui,Segoe UI,Roboto,Arial;
-  margin:0;padding:16px;
-  background:var(--muted);
-  color:var(--text);
-  display:flex;
-  justify-content:center;
-}
-.wrap{
-  width:100%;max-width:1100px;
-  background:var(--card);
-  border-radius:12px;
-  box-shadow:0 8px 30px rgba(0,0,0,.1);
-  overflow:hidden;
-}
-header{
-  background:var(--header-bg);
-  color:#fff;
-  text-align:center;
-  padding:16px;
-  font-weight:700;
-  font-size:1.4em;
-}
-main{padding:24px;}
-form{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-  gap:12px;
-}
+body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;padding:16px;background:var(--muted);color:var(--text);display:flex;justify-content:center;}
+.wrap{width:100%;max-width:1100px;background:var(--card);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.08);overflow:hidden;}
+header{background:var(--primary);color:#fff;text-align:center;padding:14px;font-weight:700;}
+main{padding:20px;}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
 label{display:block;font-weight:600;font-size:13px;}
-input,select{
-  width:100%;
-  padding:8px;
-  margin-top:4px;
-  border-radius:6px;
-  border:1px solid var(--border);
-}
-.actions{
-  margin-top:16px;
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-}
-button{
-  padding:8px 14px;
-  border-radius:6px;
-  border:0;
-  cursor:pointer;
-  font-weight:600;
-  transition:.2s;
-}
+input,select{width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid var(--border);}
+.actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;}
+button{padding:8px 12px;border-radius:6px;border:0;cursor:pointer;font-weight:600;}
 button.primary{background:var(--primary);color:#fff;}
-button.primary:hover{background:#0056cc;}
 button.success{background:var(--success);color:#fff;}
-button.success:hover{background:#1e7e34;}
 button.danger{background:var(--danger);color:#fff;}
-button.danger:hover{background:#c0392b;}
-.notification{
-  margin-top:12px;
-  padding:12px;
-  border-radius:8px;
-  display:none;
-  font-weight:600;
-}
-#gamesList{
-  margin-top:20px;
-  border-top:1px solid var(--border);
-  padding-top:12px;
-  display:none;
-}
+.notification{margin-top:10px;padding:10px;border-radius:8px;display:none;font-weight:600;}
+#gamesList{margin-top:18px;border-top:1px solid var(--border);padding-top:10px;display:none;}
 #gamesList.show{display:block;}
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:12px;
-  border-radius:8px;
-  overflow:hidden;
-}
-th,td{
-  border:1px solid var(--border);
-  padding:8px;
-  text-align:left;
-  font-size:13px;
-}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{border:1px solid var(--border);padding:8px;text-align:left;font-size:13px;}
 th{background:#f0f6ff;}
 tr.active-row{background:#e6f7ff;}
-tr:hover{background:#f5faff;}
-.small-btn{
-  padding:6px 8px;
-  font-size:13px;
-  border-radius:4px;
-  border:0;
-  cursor:pointer;
-  margin-right:4px;
-}
+.small-btn{padding:6px 8px;font-size:13px;border-radius:4px;border:0;cursor:pointer;margin-right:4px;}
 .small-btn.load{background:var(--primary);color:#fff;}
 .small-btn.delete{background:var(--danger);color:#fff;}
-hr{margin:28px 0;border:none;border-top:1px solid var(--border);}
-@media(max-width:600px){
-  form{grid-template-columns:1fr;}
-  th,td{font-size:12px;}
-}
-footer{
-  text-align:center;
-  padding:16px 0;
-  font-size:0.9em;
-  color:#666;
-  margin-top:24px;
-}
+hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 </style>
 </head>
 <body>
-
 <div class="wrap">
 <header>Team Pro Stats — Gestão de Jogos e Jogadores</header>
 <main>
-
 <h2>Gestão de Jogos</h2>
 <form id="jogoForm" autocomplete="off" novalidate onsubmit="return false;">
   <label>Escalão<input name="escalao"/></label>
@@ -148,7 +51,7 @@ footer{
 
 <div class="actions">
   <button class="primary" id="newGameBtn">Novo Jogo</button>
-  <button class="success" id="saveGameBtn" disabled>Salvar (Ativar)</button>
+  <button class="success" id="saveGameBtn" disabled>Salvar</button>
   <button class="primary" id="toggleGamesBtn">Mostrar/Ocultar Jogos</button>
   <button class="danger" id="deleteAllGamesBtn">Apagar Todos</button>
 </div>
@@ -159,7 +62,9 @@ footer{
   <h3>📋 Jogos Guardados</h3>
   <table>
     <thead>
-      <tr><th>Escalão</th><th>Competição</th><th>Fase</th><th>Grupo</th><th>Jornada</th><th>Data/Hora</th><th>Local</th><th>Adversário</th><th>Ativo</th><th>Ações</th></tr>
+      <tr><th>Escalão</th><th>Competição</th><th>Fase</th><th>Grupo</th>
+      <th>Jornada</th><th>Data/Hora</th><th>Local</th><th>Adversário</th>
+      <th>Ativo</th><th>Ações</th></tr>
     </thead>
     <tbody id="gamesTableBody"></tbody>
   </table>
@@ -186,31 +91,17 @@ footer{
 <button class="danger" id="deleteAllPlayersBtn">Eliminar Todos os Jogadores</button>
 
 </main>
-<footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-
-// Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyCD8a60aGbdXdYFKKKrV-z0mCDZx9yKWqI",
-  authDomain: "team-pro-stats.firebaseapp.com",
-  projectId: "team-pro-stats",
-  storageBucket: "team-pro-stats.firebasestorage.app",
-  messagingSenderId: "758444286089",
-  appId: "1:758444286089:web:fcd8fba3a5d705de01e658"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { db, setFirebaseDoc, getFirebaseCollection, getFirebaseDoc, deleteFirebaseDoc, onFirebaseCollectionChange } from "./firebase-data.js";
+import { collection, doc, getDocs, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let currentUserId = "user1";
 let activeGameId = null;
 let unsubscribePlayers = null;
 let editingPlayerId = null;
 
-// Elements
 const jogoForm = document.getElementById('jogoForm');
 const gamesBody = document.getElementById('gamesTableBody');
 const numero = document.getElementById('numero');
@@ -224,105 +115,114 @@ const goalBody = document.querySelector('#goalKeepersTable tbody');
 const delAllPlayers = document.getElementById('deleteAllPlayersBtn');
 
 function esc(s){return s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])):'';}
-function showNotification(msg,err=false){ const n=document.getElementById('notification'); n.textContent=msg; n.style.display='block'; n.style.background=err?'#ffe8e8':'#e8f1ff'; n.style.color=err?'#b71c1c':'#0047b3'; setTimeout(()=>n.style.display='none',3500); }
-function getFormData(){return {escalao:jogoForm.escalao.value,competicao:jogoForm.competicao.value,fase:jogoForm.fase.value,grupo:jogoForm.grupo.value,jornada:jogoForm.jornada.value,data:jogoForm.data.value,hora:jogoForm.hora.value,local:jogoForm.local.value,adversario:jogoForm.adversario.value};}
+function showNotification(msg, err=false){const n=document.getElementById('notification');n.textContent=msg;n.style.display='block';n.style.background=err?'#ffe8e8':'#e8f1ff';n.style.color=err?'#b71c1c':'#0047b3';setTimeout(()=>n.style.display='none',3500);}
+function getFormData(){return Object.fromEntries(new FormData(jogoForm).entries());}
 function setFormData(o={}){for(const el of jogoForm.elements) if(el.name) el.value=o[el.name]||'';}
-function playerColRef(){return activeGameId ? collection(db, `users/${currentUserId}/games/${activeGameId}/players`) : null;}
-function gameDocRef(id){return doc(db, `users/${currentUserId}/games/${id}`);}
-function playerDocRef(id){return doc(db, `users/${currentUserId}/games/${activeGameId}/players/${id}`);}
+function playerColRef(){return activeGameId?collection(db,`users/${currentUserId}/games/${activeGameId}/players`):null;}
+function gameDocRef(id){return doc(db,`users/${currentUserId}/games/${id}`);}
+function playerDocRef(id){return doc(db,`users/${currentUserId}/games/${activeGameId}/players/${id}`);}
 
-// Render Players
-function renderPlayers(players){
-  fieldBody.innerHTML=''; goalBody.innerHTML='';
-  players.sort((a,b)=>a.numero-b.numero);
-  const field = players.filter(p=>!p.gr); const goal = players.filter(p=>p.gr);
-  field.forEach(p=>fieldBody.insertAdjacentHTML('beforeend', `<tr><td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td><td><button class="small-btn load" data-id="${p.id}">Editar</button><button class="small-btn delete" data-id="${p.id}">Del</button></td></tr>`));
-  goal.forEach(p=>goalBody.insertAdjacentHTML('beforeend', `<tr><td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✔️':''}</td><td>${p.estatisticas?'✔️':''}</td><td><button class="small-btn load" data-id="${p.id}">Editar</button><button class="small-btn delete" data-id="${p.id}">Del</button></td></tr>`));
-}
-
-function subscribePlayers(){ if(unsubscribePlayers) unsubscribePlayers(); if(!activeGameId) return; unsubscribePlayers = onSnapshot(playerColRef(), snapshot=>{ const players = snapshot.docs.map(d=>({id:d.id,...d.data()})); renderPlayers(players); }); }
-
-// Load Games
 async function loadGames(){
-  const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
+  const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   gamesBody.innerHTML='';
-  if(snaps.empty){ gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>'; return; }
-  const games = snaps.docs.map(d=>({id:d.id,...d.data()}));
-  games.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); 
-  games.forEach(g=>{
-    const tr=document.createElement('tr'); if(g.active) tr.classList.add('active-row');
-    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td><td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td><td>${g.active?'✅':''}</td><td><button class="small-btn load" data-id="${g.id}">Load</button><button class="small-btn delete" data-id="${g.id}">Del</button></td>`;
+  if(snaps.empty){gamesBody.innerHTML='<tr><td colspan="10" style="text-align:center">Nenhum jogo.</td></tr>';return;}
+  snaps.forEach(docSnap=>{
+    const g=docSnap.data();
+    const tr=document.createElement('tr');
+    if(g.active) tr.classList.add('active-row');
+    tr.innerHTML=`<td>${esc(g.escalao)}</td><td>${esc(g.competicao)}</td><td>${esc(g.fase)}</td><td>${esc(g.grupo)}</td>
+    <td>${esc(g.jornada)}</td><td>${esc(g.data)} ${esc(g.hora)}</td><td>${esc(g.local)}</td><td>${esc(g.adversario)}</td>
+    <td>${g.active?'✅':''}</td>
+    <td><button class="small-btn load" data-id="${docSnap.id}">Load</button>
+    <button class="small-btn delete" data-id="${docSnap.id}">Del</button></td>`;
     gamesBody.appendChild(tr);
   });
 }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', async ()=>{ await loadGames(); });
+document.addEventListener('DOMContentLoaded', async ()=>{await loadGames();});
 
 document.getElementById('newGameBtn').onclick = async ()=>{
-  const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
-  await Promise.all(snaps.docs.map(g=>setDoc(gameDocRef(g.id), {active:false},{merge:true})));
-  const newId = crypto.randomUUID();
+  const snaps = await getDocs(collection(db,`users/${currentUserId}/games`));
+  await Promise.all(snaps.docs.map(d=>setDoc(gameDocRef(d.id),{active:false},{merge:true})));
+  const id=crypto.randomUUID();
   const data={escalao:"",competicao:"",fase:"",grupo:"",jornada:"",data:"",hora:"",local:"",adversario:"",active:true,createdAt:new Date().toISOString()};
-  await setDoc(gameDocRef(newId), data);
-  activeGameId=newId; setFormData(data); document.getElementById('saveGameBtn').disabled=false;
-  await loadGames(); subscribePlayers(); showNotification("🆕 Novo jogo criado e ativo");
+  await setDoc(gameDocRef(id),data);
+  activeGameId=id;
+  setFormData(data);
+  document.getElementById('saveGameBtn').disabled=false;
+  await loadGames();
+  showNotification("🆕 Novo jogo criado e ativo");
 };
 
 document.getElementById('saveGameBtn').onclick = async ()=>{
   if(!activeGameId) return showNotification("Nenhum jogo ativo",true);
   const d=getFormData();
-  const snaps=await getDocs(collection(db, `users/${currentUserId}/games`));
-  await Promise.all(snaps.docs.map(s=>setDoc(gameDocRef(s.id), s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
-  await loadGames(); showNotification("💾 Jogo salvo");
+  const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
+  await Promise.all(snaps.docs.map(s=>setDoc(gameDocRef(s.id),s.id===activeGameId?{...d,active:true}:{active:false},{merge:true})));
+  await loadGames();
+  showNotification("💾 Jogo salvo");
 };
 
-document.getElementById('toggleGamesBtn').onclick = ()=>document.getElementById('gamesList').classList.toggle('show');
-
-document.getElementById('deleteAllGamesBtn').onclick = async ()=>{
-  if(!confirm("Apagar todos os jogos?")) return;
-  const snaps = await getDocs(collection(db, `users/${currentUserId}/games`));
+document.getElementById('toggleGamesBtn').onclick=()=>document.getElementById('gamesList').classList.toggle('show');
+document.getElementById('deleteAllGamesBtn').onclick=async()=>{
+  if(!confirm("Apagar todos os jogos?"))return;
+  const snaps=await getDocs(collection(db,`users/${currentUserId}/games`));
   await Promise.all(snaps.docs.map(d=>deleteDoc(gameDocRef(d.id))));
-  activeGameId=null; setFormData(); await loadGames(); showNotification("🗑️ Todos os jogos eliminados");
+  activeGameId=null;
+  setFormData();
+  await loadGames();
+  showNotification("🗑️ Todos os jogos eliminados");
 };
 
-gamesBody.addEventListener('click', async e=>{
-  const id = e.target.dataset.id; if(!id) return;
+gamesBody.addEventListener('click',async e=>{
+  const id=e.target.dataset.id;if(!id)return;
   if(e.target.matches('.load')){
-    const snap=await getDoc(gameDocRef(id)); if(!snap.exists()) return showNotification("Jogo não encontrado",true);
-    const snaps=await getDocs(collection(db, `users/${currentUserId}/games`));
-    await Promise.all(snaps.docs.map(g=>setDoc(gameDocRef(g.id), g.id===id?{...g.data(), active:true}:{active:false},{merge:true})));
-    activeGameId=id; setFormData(snap.data()); document.getElementById('saveGameBtn').disabled=false; subscribePlayers(); showNotification("✅ Jogo carregado");
+    const snap=await getDoc(gameDocRef(id));if(!snap.exists())return;
+    activeGameId=id;setFormData(snap.data());
+    document.getElementById('saveGameBtn').disabled=false;
+    showNotification("✅ Jogo carregado");
   }else if(e.target.matches('.delete')){
-    if(!confirm("Apagar jogo?")) return; await deleteDoc(gameDocRef(id)); if(activeGameId===id) activeGameId=null;
-    await loadGames(); showNotification("🗑️ Jogo eliminado");
+    if(!confirm("Apagar jogo?"))return;
+    await deleteDoc(gameDocRef(id));
+    if(activeGameId===id) activeGameId=null;
+    await loadGames();
+    showNotification("🗑️ Jogo eliminado");
   }
 });
 
-// Player Add/Edit/Delete
-addBtn.onclick = async ()=>{
-  if(!activeGameId) return showNotification("Ative um jogo primeiro", true);
-  const n=numero.value, nm=nome.value.trim(); if(!n||!nm) return showNotification("Número e Nome obrigatórios", true);
-  const data={numero:n,nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked,id:editingPlayerId||crypto.randomUUID()};
-  await setDoc(playerDocRef(data.id), data);
-  numero.value=""; nome.value=""; pse.checked=false; estatisticas.checked=false; gr.checked=false; editingPlayerId=null; addBtn.textContent="Adicionar";
+addBtn.onclick=async()=>{
+  if(!activeGameId)return showNotification("Ative um jogo primeiro",true);
+  const n=numero.value,nm=nome.value.trim();
+  if(!n||!nm)return showNotification("Número e Nome obrigatórios",true);
+  const data={numero:n,nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked};
+  const id=editingPlayerId||crypto.randomUUID();
+  await setDoc(playerDocRef(id),{id,...data});
+  numero.value="";nome.value="";pse.checked=false;estatisticas.checked=false;gr.checked=false;
+  editingPlayerId=null;addBtn.textContent="Adicionar";
   showNotification("✅ Jogador salvo");
 };
 
-[fieldBody, goalBody].forEach(table => table.addEventListener('click', async e=>{
-  if(!e.target.dataset.id) return; const id=e.target.dataset.id;
+[fieldBody,goalBody].forEach(t=>t.addEventListener('click',async e=>{
+  if(!e.target.dataset.id)return;
+  const id=e.target.dataset.id;
   if(e.target.matches('.load')){
-    const snap = await getDoc(playerDocRef(id)); if(!snap.exists()) return;
-    const p = snap.data(); numero.value=p.numero; nome.value=p.nome; pse.checked=p.pse; estatisticas.checked=p.estatisticas; gr.checked=p.gr; editingPlayerId=id; addBtn.textContent="Atualizar"; showNotification("✏️ Editando jogador");
+    const snap=await getDoc(playerDocRef(id));if(!snap.exists())return;
+    const p=snap.data();numero.value=p.numero;nome.value=p.nome;pse.checked=p.pse;estatisticas.checked=p.estatisticas;gr.checked=p.gr;
+    editingPlayerId=id;addBtn.textContent="Atualizar";
+    showNotification("✏️ Editando jogador");
   }else if(e.target.matches('.delete')){
-    if(!confirm("Apagar jogador?")) return; await deleteDoc(playerDocRef(id)); showNotification("🗑️ Jogador eliminado");
+    if(!confirm("Apagar jogador?"))return;
+    await deleteDoc(playerDocRef(id));
+    showNotification("🗑️ Jogador eliminado");
   }
 }));
 
-delAllPlayers.onclick=async ()=>{
-  if(!activeGameId) return showNotification("Nenhum jogo ativo",true);
-  if(!confirm("Apagar todos os jogadores do jogo ativo?")) return;
-  const snaps=await getDocs(playerColRef()); await Promise.all(snaps.docs.map(d=>deleteDoc(playerDocRef(d.id)))); showNotification("🗑️ Todos os jogadores eliminados");
+delAllPlayers.onclick=async()=>{
+  if(!activeGameId)return showNotification("Nenhum jogo ativo",true);
+  if(!confirm("Apagar todos os jogadores?"))return;
+  const snaps=await getDocs(playerColRef());
+  await Promise.all(snaps.docs.map(d=>deleteDoc(playerDocRef(d.id))));
+  showNotification("🗑️ Todos os jogadores eliminados");
 };
 </script>
 </body>
