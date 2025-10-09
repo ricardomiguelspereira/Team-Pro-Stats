@@ -94,8 +94,8 @@ hr{margin:24px 0;border:none;border-top:1px solid var(--border);}
 </div>
 
 <script type="module">
-import { db, setFirebaseDoc, getFirebaseCollection, getFirebaseDoc, deleteFirebaseDoc, onFirebaseCollectionChange } from "./firebase-data.js";
-import { collection, doc, getDocs, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db, setFirebaseDoc, getFirebaseCollection } from "./firebase-data.js";
+import { collection, doc, getDocs, deleteDoc, setDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let currentUserId = "user1";
 let activeGameId = null;
@@ -139,7 +139,46 @@ async function loadGames(){
   });
 }
 
-document.addEventListener('DOMContentLoaded', async ()=>{await loadGames();});
+async function loadActiveGame(){
+  const q = query(collection(db,`users/${currentUserId}/games`), where("active","==",true));
+  const snaps = await getDocs(q);
+  if(!snaps.empty){
+    const active = snaps.docs[0];
+    activeGameId = active.id;
+    const g = active.data();
+    setFormData(g);
+    document.getElementById('saveGameBtn').disabled=false;
+    showNotification("✅ Jogo ativo carregado automaticamente");
+    await loadPlayers();
+  } else {
+    showNotification("ℹ️ Nenhum jogo ativo encontrado");
+  }
+}
+
+async function loadPlayers(){
+  if(!activeGameId) return;
+  const players = await getFirebaseCollection(`users/${currentUserId}/games/${activeGameId}/players`);
+  const field = players.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+  const gk = players.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+  renderPlayers(fieldBody, field);
+  renderPlayers(goalBody, gk);
+}
+
+function renderPlayers(tbody, arr){
+  tbody.innerHTML='';
+  if(!arr.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center">Sem jogadores.</td></tr>';return;}
+  arr.forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.numero}</td><td>${esc(p.nome)}</td><td>${p.pse?'✅':''}</td><td>${p.estatisticas?'📊':''}</td>
+    <td><button class="small-btn load" data-id="${p.id}">Edit</button><button class="small-btn delete" data-id="${p.id}">Del</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await loadGames();
+  await loadActiveGame();
+});
 
 document.getElementById('newGameBtn').onclick = async ()=>{
   const snaps = await getDocs(collection(db,`users/${currentUserId}/games`));
@@ -152,6 +191,7 @@ document.getElementById('newGameBtn').onclick = async ()=>{
   document.getElementById('saveGameBtn').disabled=false;
   await loadGames();
   showNotification("🆕 Novo jogo criado e ativo");
+  await loadPlayers();
 };
 
 document.getElementById('saveGameBtn').onclick = async ()=>{
@@ -181,6 +221,7 @@ gamesBody.addEventListener('click',async e=>{
     activeGameId=id;setFormData(snap.data());
     document.getElementById('saveGameBtn').disabled=false;
     showNotification("✅ Jogo carregado");
+    await loadPlayers();
   }else if(e.target.matches('.delete')){
     if(!confirm("Apagar jogo?"))return;
     await deleteDoc(gameDocRef(id));
@@ -194,12 +235,13 @@ addBtn.onclick=async()=>{
   if(!activeGameId)return showNotification("Ative um jogo primeiro",true);
   const n=numero.value,nm=nome.value.trim();
   if(!n||!nm)return showNotification("Número e Nome obrigatórios",true);
-  const data={numero:n,nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked};
+  const data={numero:Number(n),nome:nm,pse:pse.checked,estatisticas:estatisticas.checked,gr:gr.checked};
   const id=editingPlayerId||crypto.randomUUID();
   await setDoc(playerDocRef(id),{id,...data});
   numero.value="";nome.value="";pse.checked=false;estatisticas.checked=false;gr.checked=false;
   editingPlayerId=null;addBtn.textContent="Adicionar";
   showNotification("✅ Jogador salvo");
+  await loadPlayers();
 };
 
 [fieldBody,goalBody].forEach(t=>t.addEventListener('click',async e=>{
@@ -214,6 +256,7 @@ addBtn.onclick=async()=>{
     if(!confirm("Apagar jogador?"))return;
     await deleteDoc(playerDocRef(id));
     showNotification("🗑️ Jogador eliminado");
+    await loadPlayers();
   }
 }));
 
@@ -223,6 +266,7 @@ delAllPlayers.onclick=async()=>{
   const snaps=await getDocs(playerColRef());
   await Promise.all(snaps.docs.map(d=>deleteDoc(playerDocRef(d.id))));
   showNotification("🗑️ Todos os jogadores eliminados");
+  await loadPlayers();
 };
 </script>
 </body>
