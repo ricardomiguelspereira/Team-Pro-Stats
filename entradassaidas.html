@@ -28,7 +28,7 @@
   table.part-table-inout th:first-child, table.part-table-inout td:first-child { text-align: left; cursor: default; }
   table.part-table-inout td:nth-child(3), table.part-table-inout td:nth-child(4) { min-width: 30px; }
 
-  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; opacity: 0; transition: opacity 0.3s; }
+  .notification { margin-top: 10px; font-size: 12px; color: #27ae60; opacity:0; transition:opacity 0.3s; }
   footer { margin-top: 25px; font-size: 11px; text-align: center; color: #999; }
 </style>
 </head>
@@ -69,20 +69,17 @@
 <div class="notification" id="notification"></div>
 
 <script type="module">
-import { 
-  db, 
-  getFirebaseCollection, 
-  getFirebaseDoc, 
-  setFirebaseDoc, 
-  onFirebaseDocChange, 
-  onFirebaseCollectionChange 
-} from './firebase-data.js';
-
-const FB_PATHS_GLOBAL = { games: "games" };
-
-export function getActiveGameId() {
-  return localStorage.getItem('activeGameId');
-}
+import {
+  db,
+  FB_PATHS_GLOBAL,
+  FB_PATHS_GAME,
+  getFirebaseDoc,
+  setFirebaseDoc,
+  getFirebaseCollection,
+  onFirebaseDocChange,
+  onFirebaseCollectionChange,
+  getActiveGameId
+} from "./firebase-data.js";
 
 let inOutData = {};
 let playersCampo = [], playersGR = [];
@@ -91,19 +88,17 @@ const defaultIntervals = ["25","24'30","24","23'30","23","22'30","22","21'30","2
 const sub13Intervals = ["18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const sub15_17Intervals = ["20","19'30","19","18'30","18","17'30","17","16'30","16","15'30","15","14'30","14","13'30","13","12'30","12","11'30","11","10'30","10","9'30","9","8'30","8","7'30","7","6'30","6","5'30","5","4'30","4","3'30","3","2'30","2","1'30","1","30"];
 const levelIntervalsMap = { sub13: sub13Intervals, sub15: sub15_17Intervals, sub17: sub15_17Intervals, sub19: defaultIntervals, sub23: defaultIntervals, seniores: defaultIntervals };
+
 function getIntervalsForLevel(level){ return levelIntervalsMap[level] || defaultIntervals; }
+function normalizeText(text){ return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g,''); }
 
-function normalizeText(text){
-  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-}
-
-async function getLevelFromConfig() {
+async function getLevelFromConfig(){
   const gameId = getActiveGameId();
-  if (!gameId) return 'sub13';
-  const jogoData = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}`);
-  if(!jogoData) return 'sub13';
-  let esc = normalizeText(jogoData.escalao || '');
-  const map = { sub13:'sub13', sub15:'sub15', sub17:'sub17', sub19:'sub19', sub23:'sub23', seniores:'seniores', seniors:'seniores' };
+  if(!gameId) return 'sub13';
+  const gameData = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}`);
+  if(!gameData) return 'sub13';
+  const esc = normalizeText(gameData.escalao||'');
+  const map = { sub13:'sub13', sub15:'sub15', sub17:'sub17', sub19:'sub19', sub23:'sub23', seniores:'seniores', seniors:'seniores'};
   return map[esc] || 'sub13';
 }
 
@@ -126,39 +121,38 @@ async function renderInOut(){
   const saved = await getFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`) || {};
   inOutData = saved.inOut || {};
   await loadPlayersFromFirebase();
-  const allPlayers = [...playersCampo, ...playersGR];
+  const allPlayers = [...playersCampo,...playersGR];
   const intervals = getIntervalsForLevel(await getLevelFromConfig());
 
   function buildHeader(table){
     const tr = table.querySelector('thead tr');
     tr.innerHTML = '<th>#</th><th>Nome</th>';
-    intervals.forEach(iv=>{ tr.innerHTML += `<th>${iv}</th>`; });
+    intervals.forEach(iv=> tr.innerHTML+=`<th>${iv}</th>`);
   }
 
-  async function buildBody(table, part){
+  async function buildBody(table,part){
     const tbody = table.querySelector('tbody');
-    tbody.innerHTML = '';
+    tbody.innerHTML='';
     allPlayers.forEach(p=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.numero}</td><td>${p.nome}</td>`;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${p.numero}</td><td>${p.nome}</td>`;
       intervals.forEach(iv=>{
-        const td = document.createElement('td');
-        const key = `tableInOut${part}_${p.numero}_${iv}`;
-        const val = inOutData[key]||'';
-        td.dataset.key = key;
-        td.dataset.state = val;
-        td.textContent = val;
+        const td=document.createElement('td');
+        const key=`tableInOut${part}_${p.numero}_${iv}`;
+        const val=inOutData[key]||'';
+        td.dataset.key=key; td.dataset.state=val; td.textContent=val;
         if(val==='E'){ td.style.background='green'; td.style.color='white'; }
         else if(val==='S'){ td.style.background='orange'; td.style.color='white'; }
         td.addEventListener('click', async ()=>{
-          let state = td.dataset.state || '';
-          if(state==='') state='E'; else if(state==='E') state='S'; else state='';
-          td.dataset.state = state;
-          td.textContent = state;
-          td.style.background = state==='E'?'green': state==='S'?'orange':'';
-          td.style.color = state ? 'white' : '';
-          inOutData[key] = state;
-          saved.inOut = inOutData;
+          let state=td.dataset.state||'';
+          if(state==='') state='E';
+          else if(state==='E') state='S';
+          else state='';
+          td.dataset.state=state; td.textContent=state;
+          td.style.background = state==='E'?'green':state==='S'?'orange':'';
+          td.style.color = state? 'white':'';
+          inOutData[key]=state;
+          saved.inOut=inOutData;
           await setFirebaseDoc(`${FB_PATHS_GLOBAL.games}/${gameId}/inOutData`, saved);
           showNotification("✔️ Guardado com sucesso");
         });
@@ -168,30 +162,33 @@ async function renderInOut(){
     });
   }
 
-  const t1 = document.getElementById('tableInOut1'), t2 = document.getElementById('tableInOut2');
+  const t1=document.getElementById('tableInOut1'), t2=document.getElementById('tableInOut2');
   buildHeader(t1); await buildBody(t1,'1');
   buildHeader(t2); await buildBody(t2,'2');
 }
 
 function showNotification(msg){
-  const n = document.getElementById('notification');
-  n.textContent = msg;
+  const n=document.getElementById('notification');
+  n.textContent=msg;
   n.style.opacity='1';
   setTimeout(()=>n.style.opacity='0',2500);
 }
 
+// Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    localStorage.setItem('activeInOutTab', btn.dataset.tab);
+    localStorage.setItem('activeInOutTab',btn.dataset.tab);
   });
 });
 
-document.getElementById('backStats').addEventListener('click', ()=>{ window.location.href='estatisticas.html'; });
+// Back button
+document.getElementById('backStats').addEventListener('click',()=>{ window.location.href='estatisticas.html'; });
 
+// Initialize
 window.addEventListener('load', async ()=>{
   const savedTab = localStorage.getItem('activeInOutTab');
   if(savedTab){

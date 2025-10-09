@@ -16,10 +16,31 @@ const firebaseConfig = {
   measurementId: "G-D1GDDBPD55"
 };
 
+// Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// 🔹 Helpers
+// 🔹 Global paths
+export const FB_PATHS_GLOBAL = {
+  games: "games",
+  fieldPlayers: "playersCampo",
+  goalKeepers: "playersGR"
+};
+
+export const FB_PATHS_GAME = {
+  estatisticasValores: "estatisticas_valores"
+};
+
+// 🔹 Active game helpers
+export function getActiveGameId() {
+  return localStorage.getItem('activeGameId');
+}
+
+export function setActiveGameId(gameId) {
+  localStorage.setItem('activeGameId', gameId);
+}
+
+// 🔹 Firestore helpers
 export async function getFirebaseDoc(path) {
   const ref = doc(db, path);
   const snap = await getDoc(ref);
@@ -40,6 +61,7 @@ export async function getFirebaseCollection(path) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// 🔹 Real-time listeners
 export function onFirebaseDocChange(path, callback) {
   const ref = doc(db, path);
   return onSnapshot(ref, snap => callback(snap.exists() ? snap.data() : null));
@@ -50,4 +72,18 @@ export function onFirebaseCollectionChange(path, callback) {
   return onSnapshot(ref, snap =>
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })))
   );
+}
+
+// 🔹 Backward-compatible Firebase data functions
+export async function getFirebaseData(path) {
+  return getFirebaseDoc(path);
+}
+
+export async function setFirebaseData(path, data) {
+  return setFirebaseDoc(path, data);
+}
+
+export async function initializeFirebase() {
+  // Placeholder in case initialization or auth is needed
+  return app;
 }
