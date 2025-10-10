@@ -46,7 +46,7 @@ table {
   border-radius:10px;
   box-shadow:0 3px 8px rgba(0,0,0,.08);
   font-size:13px;
-  table-layout:fixed;
+  table-layout:auto;
 }
 th, td {
   padding:8px;
@@ -54,11 +54,10 @@ th, td {
   border:1px solid #ccc;
   height:48px;
   cursor:pointer;
-  word-break:keep-all;
   white-space:nowrap;
 }
 th {
-  background:#00aaff;
+  background:#007acc;
   font-weight:700;
   color:#000;
   position:sticky;
@@ -80,14 +79,14 @@ th:nth-child(2), td:nth-child(2) {
   z-index:3;
   text-align:left;
   padding-left:6px;
-  min-width:220px;
-  max-width:260px;
+  min-width:260px;
+  max-width:300px;
 }
 th.time-header {
   writing-mode:vertical-rl;
   transform:rotate(180deg);
   white-space:nowrap;
-  min-width:72px; /* double width */
+  min-width:90px;
 }
 th:first-child, th:nth-child(2) {
   writing-mode:horizontal-tb;
@@ -145,7 +144,7 @@ footer {text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20p
 @media(max-width:768px){
   table{font-size:11px;}
   th,td{height:44px;}
-  th.time-header{min-width:60px;}
+  th.time-header{min-width:70px;}
 }
 </style>
 </head>
@@ -224,8 +223,7 @@ function renderTable(tableId,data){
     row.innerHTML=cells;
     tb.appendChild(row);
   });
-
-  // Auto-scroll to the rightmost side (latest time)
+  // Auto-scroll to rightmost side
   const wrapper = table.closest('.responsive');
   if(wrapper) wrapper.scrollLeft = wrapper.scrollWidth;
 }
