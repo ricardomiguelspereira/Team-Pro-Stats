@@ -22,30 +22,49 @@ h2{text-align:center;margin-bottom:16px;}
 
 table{
   border-collapse:collapse;width:100%;
-  background:#ccc; /* medium gray base */
+  background:#ccc; /* medium gray */
   border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,.08);
   font-size:13px;
+  table-layout:fixed;
 }
 th,td{
   padding:8px;text-align:center;
   border:1px solid #999;
   min-width:36px;height:48px;cursor:pointer;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
+
+/* Default header style */
 th{
   background:#4a90e2; /* medium blue */
   color:#000; /* black text */
   font-weight:700;
   position:sticky;top:0;z-index:2;
-  writing-mode: vertical-rl; /* vertical text */
-  transform: rotate(180deg); /* keep upright */
+  writing-mode: vertical-rl; /* vertical text by default */
+  transform: rotate(180deg);
   white-space: nowrap;
 }
+
+/* Make # and Nome headers horizontal */
+th:first-child,
+th:nth-child(2){
+  writing-mode: horizontal-tb !important;
+  transform: none !important;
+  text-align:center;
+}
+
+/* Sticky columns for player number and name */
 th:first-child,td:first-child{
   position:sticky;left:0;background:#fefefe;z-index:3;font-weight:600;
 }
 th:nth-child(2),td:nth-child(2){
   position:sticky;left:60px;background:#fefefe;z-index:3;
   text-align:left;padding-left:6px;
+  max-width:fit-content;
+  width:auto;
+  white-space:nowrap;
 }
 
 /* alternating row colors */
@@ -54,14 +73,14 @@ tr:nth-child(odd){background:#ffffff;}
 
 /* cell state colors */
 td.e-cell{
-  background:#4CAF50 !important; /* green background */
-  color:#000 !important;          /* black text */
+  background:#4CAF50 !important; /* green */
+  color:#000 !important;
   font-weight:600;
   font-size:15px;
 }
 td.s-cell{
-  background:#ff4d4d !important;  /* red background */
-  color:#000 !important;          /* black text */
+  background:#ff4d4d !important; /* red */
+  color:#000 !important;
   font-weight:600;
   font-size:15px;
 }
@@ -127,6 +146,7 @@ let userId="user1",activeGameId=null;
 let fieldPlayers=[],goalKeepers=[];
 const localCache={parte1:{},parte2:{}};
 
+// Generate time headers 25:00 → 00:30 (step 30s)
 const times=[];
 for(let sec=25*60;sec>=30;sec-=30){
   const m=Math.floor(sec/60),s=sec%60;
@@ -153,6 +173,12 @@ function renderTable(tableId,data){
   const tb=table.querySelector("tbody");
   tb.innerHTML="";
   const combined=[...fieldPlayers,...goalKeepers];
+
+  // Calculate dynamic width for "Nome" column based on longest name
+  const longestName=Math.max(...combined.map(p=>(p.nome ? p.nome.length : 0)))+6;
+  const nameCol=document.querySelectorAll(`#${tableId} th:nth-child(2), #${tableId} td:nth-child(2)`);
+  nameCol.forEach(el=>el.style.minWidth=`${longestName*8}px`);
+
   combined.forEach(p=>{
     const row=document.createElement("tr");
     let cells=`<td>${p.numero}</td><td>${p.nome}${p.gr?" (GR)":""}</td>`;
