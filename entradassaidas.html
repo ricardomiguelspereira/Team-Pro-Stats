@@ -139,8 +139,8 @@ footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px
 <footer>© 2025 Team Pro Stats · Entradas / Saídas</footer>
 
 <script type="module">
-import { db,getFirebaseCollection,setFirebaseDoc } from "./firebase-data.js";
-import { collection,query,where,getDocs,deleteField } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
+import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let userId="user1",activeGameId=null;
 let fieldPlayers=[],goalKeepers=[];
@@ -199,7 +199,7 @@ async function saveCell(part,player,time,val,td){
     if(val==="") delete localCache[part][player][time];
     else localCache[part][player][time]=val;
     const path=`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`;
-    await setFirebaseDoc(path,{[player]:{[time]:val===""?deleteField():val}});
+    await setFirebaseDoc(path,{[player]:localCache[part][player]});
     td.classList.remove("saving");
     td.classList.add("saved");
     setTimeout(()=>td.classList.remove("saved"),800);
@@ -208,8 +208,8 @@ async function saveCell(part,player,time,val,td){
 
 async function loadData(){
   const snaps=await getFirebaseCollection(`users/${userId}/games/${activeGameId}/entradasSaidas`);
-  const parte1=snaps.find(s=>s.id==="parte1")||{};
-  const parte2=snaps.find(s=>s.id==="parte2")||{};
+  const parte1=snaps.find(s=>s.id==="parte1")?.data||{};
+  const parte2=snaps.find(s=>s.id==="parte2")?.data||{};
   localCache.parte1=JSON.parse(JSON.stringify(parte1));
   localCache.parte2=JSON.parse(JSON.stringify(parte2));
   renderTable("tableParte1",parte1);
@@ -246,19 +246,25 @@ document.body.addEventListener("click",async e=>{
   await saveCell(part,player,time,next,td);
 });
 
+/* --- FIXED RESET FUNCTIONS --- */
+import { doc as fsDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
 async function reset(part){
   try{
+    if(!activeGameId){notify("Jogo não encontrado",true);return;}
     if(part==="all"){
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{});
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{});
+      await deleteDoc(fsDoc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`));
+      await deleteDoc(fsDoc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`));
       localCache.parte1={};localCache.parte2={};
     }else{
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{});
+      await deleteDoc(fsDoc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`));
       localCache[part]={};
     }
-    await loadData();notify("✅ Reset concluído");
+    await loadData();
+    notify("✅ Reset concluído");
   }catch(e){console.error(e);notify("Erro ao resetar",true);}
 }
+
 document.getElementById("resetPart1Btn").onclick=()=>reset("parte1");
 document.getElementById("resetPart2Btn").onclick=()=>reset("parte2");
 document.getElementById("resetAllBtn").onclick=()=>reset("all");
