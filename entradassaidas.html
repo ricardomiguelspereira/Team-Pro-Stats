@@ -33,7 +33,11 @@ h2 {text-align:center;margin-bottom:16px;}
 .tab-btn.active {background:#28a745;}
 .tab-content {display:none;}
 .tab-content.active {display:block;}
-.responsive {overflow-x:auto;margin-bottom:20px;}
+.responsive {
+  overflow-x:auto;
+  margin-bottom:20px;
+  position:relative;
+}
 
 table {
   border-collapse:collapse;
@@ -48,7 +52,6 @@ th, td {
   padding:8px;
   text-align:center;
   border:1px solid #ccc;
-  min-width:36px;
   height:48px;
   cursor:pointer;
   word-break:keep-all;
@@ -68,6 +71,7 @@ th:first-child, td:first-child {
   background:#fefefe;
   z-index:3;
   font-weight:600;
+  min-width:60px;
 }
 th:nth-child(2), td:nth-child(2) {
   position:sticky;
@@ -76,12 +80,14 @@ th:nth-child(2), td:nth-child(2) {
   z-index:3;
   text-align:left;
   padding-left:6px;
-  max-width:240px;
+  min-width:220px;
+  max-width:260px;
 }
 th.time-header {
   writing-mode:vertical-rl;
   transform:rotate(180deg);
   white-space:nowrap;
+  min-width:72px; /* double width */
 }
 th:first-child, th:nth-child(2) {
   writing-mode:horizontal-tb;
@@ -138,7 +144,8 @@ td.saved {background:#d4edda!important;transition:background .6s ease;}
 footer {text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px;}
 @media(max-width:768px){
   table{font-size:11px;}
-  th,td{min-width:28px;height:44px;}
+  th,td{height:44px;}
+  th.time-header{min-width:60px;}
 }
 </style>
 </head>
@@ -155,11 +162,11 @@ footer {text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20p
 <div id="notification"></div>
 
 <div id="part1" class="tab-content active">
-  <div class="responsive"><table id="tableParte1"><thead></thead><tbody></tbody></table></div>
+  <div class="responsive" id="scroll1"><table id="tableParte1"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <div id="part2" class="tab-content">
-  <div class="responsive"><table id="tableParte2"><thead></thead><tbody></tbody></table></div>
+  <div class="responsive" id="scroll2"><table id="tableParte2"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <div class="reset-buttons">
@@ -172,7 +179,7 @@ footer {text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20p
 
 <script type="module">
 import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
-import { collection, query, where, getDocs, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, deleteField, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let userId="user1", activeGameId=null;
 let fieldPlayers=[], goalKeepers=[];
@@ -201,6 +208,7 @@ function createHeader(){
 
 function renderTable(tableId,data){
   const table=document.getElementById(tableId);
+  if(!table) return;
   table.querySelector("thead").innerHTML=createHeader();
   const tb=table.querySelector("tbody");
   tb.innerHTML="";
@@ -216,6 +224,10 @@ function renderTable(tableId,data){
     row.innerHTML=cells;
     tb.appendChild(row);
   });
+
+  // Auto-scroll to the rightmost side (latest time)
+  const wrapper = table.closest('.responsive');
+  if(wrapper) wrapper.scrollLeft = wrapper.scrollWidth;
 }
 
 async function saveCell(part,player,time,val,td){
@@ -224,8 +236,8 @@ async function saveCell(part,player,time,val,td){
     localCache[part][player]=localCache[part][player]||{};
     if(val==="") delete localCache[part][player][time];
     else localCache[part][player][time]=val;
-    const path=`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`;
-    await setFirebaseDoc(path,{[player]:{[time]:val===""?deleteField():val}});
+    const path=doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`);
+    await setDoc(path,{[player]:{[time]:val===""?deleteField():val}},{merge:true});
     td.classList.remove("saving");
     td.classList.add("saved");
     setTimeout(()=>td.classList.remove("saved"),800);
@@ -234,14 +246,15 @@ async function saveCell(part,player,time,val,td){
 
 function attachRealtimeListeners(){
   ["parte1","parte2"].forEach(part=>{
-    const path=collection(db,`users/${userId}/games/${activeGameId}/entradasSaidas`);
-    const unsub=onSnapshot(collection(db,`users/${userId}/games/${activeGameId}/entradasSaidas`),(snapshot)=>{
-      snapshot.forEach(doc=>{
-        if(doc.id===part){
-          localCache[part]=doc.data()||{};
-          renderTable(part==="parte1"?"tableParte1":"tableParte2",localCache[part]);
-        }
-      });
+    const ref=doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`);
+    onSnapshot(ref,(snap)=>{
+      if(snap.exists()){
+        localCache[part]=snap.data()||{};
+        renderTable(part==="parte1"?"tableParte1":"tableParte2",localCache[part]);
+      } else {
+        localCache[part]={};
+        renderTable(part==="parte1"?"tableParte1":"tableParte2",{});
+      }
     });
   });
 }
@@ -283,12 +296,15 @@ document.body.addEventListener("click",async e=>{
 async function reset(part){
   try{
     if(part==="all"){
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{});
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{});
+      await setDoc(doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`),{});
+      await setDoc(doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`),{});
       localCache.parte1={};localCache.parte2={};
+      renderTable("tableParte1",{});
+      renderTable("tableParte2",{});
     }else{
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{});
+      await setDoc(doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`),{});
       localCache[part]={};
+      renderTable(part==="parte1"?"tableParte1":"tableParte2",{});
     }
     notify("✅ Reset concluído");
   }catch(e){console.error(e);notify("Erro ao resetar",true);}
