@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Entradas / Saídas</title>
 
-<!-- Import Roboto font -->
+<!-- Roboto font -->
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
@@ -30,9 +30,12 @@ table{
   font-size:13px;
 }
 th,td{
-  padding:6px;text-align:center;
+  padding:0;
+  text-align:center;
   border:1px solid #ccc;
-  height:48px;cursor:pointer;
+  width:36px;
+  height:40px;
+  cursor:pointer;
 }
 th{
   background:#3399ff;font-weight:700;color:#000;
@@ -42,7 +45,8 @@ th{
 th.time-col{
   transform:rotate(-90deg);
   transform-origin:center center;
-  width:32px; /* Reduced time column width */
+  width:36px;
+  height:40px;
   white-space:nowrap;
 }
 th:first-child,td:first-child{
@@ -50,18 +54,18 @@ th:first-child,td:first-child{
   min-width:40px;
 }
 th:nth-child(2),td:nth-child(2){
-  position:sticky;left:60px;background:#fefefe;z-index:3;
-  text-align:left;padding-left:6px;
-  min-width:180px; /* Wide enough for full player names */
+  position:sticky;left:40px;background:#fefefe;z-index:3;
+  text-align:left;padding-left:4px;
+  min-width:160px;
 }
 
-/* Alternate row colors for all cells including # and Nome */
+/* Alternate row colors including # and Nome */
 tr:nth-child(even) td{background:#e0e0e0;}
 tr:nth-child(odd) td{background:#ffffff;}
 
-/* Header colors */
-td.e-cell{background:#2ecc71;color:#000;font-weight:600;}
-td.s-cell{background:#e74c3c;color:#000;font-weight:600;}
+/* Cell color logic */
+td.e-cell{background:#28a745!important;color:#000;font-weight:600;}
+td.s-cell{background:#e74c3c!important;color:#000;font-weight:600;}
 td.saving{background:#fff3cd!important;}
 td.saved{background:#d4edda!important;transition:background .6s ease;}
 
@@ -86,7 +90,7 @@ footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px
 
 @media(max-width:768px){
   table{font-size:11px;}
-  th,td{min-width:28px;height:44px;}
+  th,td{min-width:28px;height:28px;}
 }
 </style>
 </head>
@@ -119,8 +123,8 @@ footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px
 <footer>© 2025 Team Pro Stats · Entradas / Saídas</footer>
 
 <script type="module">
-import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
-import { collection, query, where, getDocs, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db, getFirebaseCollection, setFirebaseDoc, deleteFirebaseDoc } from "./firebase-data.js";
+import { collection, query, where, getDocs, deleteField, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let userId="user1",activeGameId=null;
 let fieldPlayers=[],goalKeepers=[];
@@ -156,7 +160,7 @@ function renderTable(tableId,data){
   const tb=table.querySelector("tbody");
   tb.innerHTML="";
   const combined=[...fieldPlayers,...goalKeepers];
-  combined.forEach((p,rowIndex)=>{
+  combined.forEach((p)=>{
     const row=document.createElement("tr");
     let cells=`<td>${p.numero}</td><td>${p.nome}${p.gr?" (GR)":""}</td>`;
     times.forEach(t=>{
@@ -175,8 +179,8 @@ async function saveCell(part,player,time,val,td){
     localCache[part][player]=localCache[part][player]||{};
     if(val==="") delete localCache[part][player][time];
     else localCache[part][player][time]=val;
-    const path=`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`;
-    await setFirebaseDoc(path,{[player]:{[time]:val===""?deleteField():val}});
+    const ref=doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`);
+    await setDoc(ref,{[player]:{[time]:val===""?deleteField():val}},{merge:true});
     td.classList.remove("saving");
     td.classList.add("saved");
     setTimeout(()=>td.classList.remove("saved"),800);
@@ -184,18 +188,16 @@ async function saveCell(part,player,time,val,td){
 }
 
 function listenRealtime(){
-  ["parte1","parte2"].forEach(part=>{
-    const colRef=collection(db,`users/${userId}/games/${activeGameId}/entradasSaidas`);
-    onSnapshot(colRef,snap=>{
-      const parte1={},parte2={};
-      snap.forEach(doc=>{
-        if(doc.id==="parte1")Object.assign(parte1,doc.data());
-        if(doc.id==="parte2")Object.assign(parte2,doc.data());
-      });
-      localCache.parte1=parte1;localCache.parte2=parte2;
-      renderTable("tableParte1",parte1);
-      renderTable("tableParte2",parte2);
+  const colRef=collection(db,`users/${userId}/games/${activeGameId}/entradasSaidas`);
+  onSnapshot(colRef,snap=>{
+    const parte1={},parte2={};
+    snap.forEach(doc=>{
+      if(doc.id==="parte1")Object.assign(parte1,doc.data());
+      if(doc.id==="parte2")Object.assign(parte2,doc.data());
     });
+    localCache.parte1=parte1;localCache.parte2=parte2;
+    renderTable("tableParte1",parte1);
+    renderTable("tableParte2",parte2);
   });
 }
 
@@ -231,11 +233,11 @@ document.body.addEventListener("click",async e=>{
 async function reset(part){
   try{
     if(part==="all"){
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{});
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{});
+      await setDoc(doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`),{});
+      await setDoc(doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`),{});
       localCache.parte1={};localCache.parte2={};
     }else{
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{});
+      await setDoc(doc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`),{});
       localCache[part]={};
     }
     notify("✅ Reset concluído");
