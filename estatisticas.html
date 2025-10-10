@@ -4,164 +4,134 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Estatísticas do Jogo Activo</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 <style>
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f3f5f7;
-  margin: 0;
-  padding: 20px;
-  color: #222;
-}
-h2 {
-  text-align: center;
-  margin-bottom: 16px;
-}
-.tabs {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 18px;
-}
-.tab-btn {
-  padding: 10px 18px;
-  border: none;
-  border-radius: 6px;
-  background: #888;
-  color: white;
-  cursor: pointer;
-  font-weight: 500;
-  transition: 0.25s;
-}
-.tab-btn.active {
-  background: #28a745;
-}
-.tab-content {
-  display: none;
-}
-.tab-content.active {
-  display: block;
-}
-.responsive {
-  overflow-x: auto;
-  margin-bottom: 20px;
-}
-table {
-  border-collapse: collapse;
+/* RESET & BASE */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Roboto', sans-serif; background: linear-gradient(135deg, #1d2b64, #f8cdda); color: #222; display: flex; flex-direction: column; overflow-x: hidden; }
+body { margin: 0; min-height: 100vh; padding: 20px; }
+
+/* HEADER / NAV BAR */
+header {
+  position: sticky;
+  top: 0;
   width: 100%;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-  font-size: 14px;
-}
-th, td {
-  padding: 8px;
-  text-align: center;
-  border-bottom: 1px solid #eee;
-  font-size: 14px;
-}
-th {
-  background: #f5f7fa;
-  font-weight: 600;
-}
-tr:hover {
-  background: #f9f9f9;
-}
-.stat-controls {
+  background: linear-gradient(135deg, #1d2b64, #f8cdda);
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  gap: 6px;
+  padding: 10px 20px;
+  z-index: 1002;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
-.stat-controls button {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 18px;
-}
-.stat-controls button.decrease {
-  background: #e74c3c;
-  color: white;
-}
-.stat-controls button.decrease:hover {
-  background: #b71c1c;
-}
-.stat-controls button.increase {
-  background: #28a745;
-  color: white;
-}
-.stat-controls button.increase:hover {
-  background: #1e7e34;
-}
-.stat-controls input[type=number] {
-  width: 30px;
-  text-align: center;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  height: 36px;
-  pointer-events: none;
-  background: #f9f9f9;
-  font-size: 14px;
-}
-#notification {
-  display: none;
+.nav-left, .nav-right { display: flex; align-items: center; }
+.hamburger { font-size: 1.8em; cursor: pointer; color: #fff; transition: transform 0.2s ease; }
+.hamburger:hover { transform: scale(1.1); }
+.header-logo { height: 40px; width: auto; display: block; margin: 0 auto; }
+.home-icon { font-size: 1.8em; color: #fff; cursor: pointer; text-decoration: none; transition: transform 0.2s ease; }
+.home-icon:hover { transform: scale(1.1); }
+
+/* SIDE MENU (OVERLAY) */
+.side-menu {
   position: fixed;
-  top: 14px;
-  right: 14px;
-  background: #e8f1ff;
-  color: #0047b3;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
-.notification.error {
-  background: #ffe8e8;
-  color: #b71c1c;
-}
-#loading {
+  top: 0;
+  left: -260px;
+  width: 260px;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(29,43,100,0.85), rgba(248,205,218,0.85));
+  backdrop-filter: blur(12px);
+  box-shadow: 3px 0 15px rgba(0,0,0,0.4);
+  transition: left 0.35s ease;
+  z-index: 1003;
+  padding-top: 80px;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  font-size: 1.1em;
-  padding: 20px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  margin-bottom: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-left: 25px;
 }
-footer {
-  text-align: center;
-  padding: 14px;
-  font-size: 0.85em;
-  color: #555;
-  margin-top: 20px;
-}
-.reset-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 10px;
-  margin-bottom: 14px;
-}
-.reset-buttons button {
-  padding: 8px 18px;
-  border-radius: 6px;
-  border: none;
-  background: #e74c3c;
+.side-menu.open { left: 0; }
+.side-menu a {
   color: #fff;
+  text-decoration: none;
   font-weight: 600;
-  cursor: pointer;
+  margin: 14px 0;
+  display: flex;
+  align-items: center;
+  font-size: 1.05em;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
-.reset-buttons button:hover {
-  background: #b71c1c;
+.side-menu a:hover { transform: translateX(5px); color: #f8cdda; }
+
+/* OVERLAY */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease;
+  z-index: 1002;
 }
+.overlay.active { opacity: 1; visibility: visible; }
+
+/* PAGE STYLES (original) */
+h2 { text-align: center; margin-bottom: 16px; }
+.tabs { display: flex; justify-content: center; gap: 6px; margin-bottom: 18px; }
+.tab-btn { padding: 10px 18px; border: none; border-radius: 6px; background: #888; color: white; cursor: pointer; font-weight: 500; transition: 0.25s; }
+.tab-btn.active { background: #28a745; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.responsive { overflow-x: auto; margin-bottom: 20px; }
+table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.08); font-size: 14px; }
+th, td { padding: 8px; text-align: center; border-bottom: 1px solid #eee; font-size: 14px; }
+th { background: #f5f7fa; font-weight: 600; }
+tr:hover { background: #f9f9f9; }
+.stat-controls { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.stat-controls button { width: 36px; height: 36px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 18px; }
+.stat-controls button.decrease { background: #e74c3c; color: white; }
+.stat-controls button.decrease:hover { background: #b71c1c; }
+.stat-controls button.increase { background: #28a745; color: white; }
+.stat-controls button.increase:hover { background: #1e7e34; }
+.stat-controls input[type=number] { width: 30px; text-align: center; border: 1px solid #ccc; border-radius: 6px; height: 36px; pointer-events: none; background: #f9f9f9; font-size: 14px; }
+#notification { display: none; position: fixed; top: 14px; right: 14px; background: #e8f1ff; color: #0047b3; padding: 10px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.notification.error { background: #ffe8e8; color: #b71c1c; }
+#loading { display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.1em; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); margin-bottom: 20px; }
+footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; margin-top: 20px; }
+.reset-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 10px; margin-bottom: 14px; }
+.reset-buttons button { padding: 8px 18px; border-radius: 6px; border: none; background: #e74c3c; color: #fff; font-weight: 600; cursor: pointer; }
+.reset-buttons button:hover { background: #b71c1c; }
 </style>
 </head>
 <body>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay"></div>
+
+<!-- Side Menu -->
+<div class="side-menu" id="sideMenu">
+  <a href="index.html"><i class='bx bx-home'></i>&nbsp; Home</a>
+  <a href="estatisticas.html"><i class='bx bx-bar-chart'></i>&nbsp; Estatísticas de Jogo</a>
+  <a href="entradassaidas.html"><i class='bx bx-transfer'></i>&nbsp; Entradas / Saídas</a>
+  <a href="pse.html"><i class='bx bx-user'></i>&nbsp; PSE</a>
+  <a href="relatorios.html"><i class='bx bx-file'></i>&nbsp; Relatórios</a>
+  <a href="exportar.html"><i class='bx bx-export'></i>&nbsp; Exportar</a>
+  <a href="confjogoequipa.html"><i class='bx bx-cog'></i>&nbsp; Configurações</a>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="nav-left">
+    <i class='bx bx-menu hamburger' id="menuToggle"></i>
+  </div>
+  <img src="https://ricardopereira.com/firebase/LogoRP_White.png" alt="Logo" class="header-logo">
+  <div class="nav-right">
+    <a href="index.html"><i class='bx bx-home home-icon'></i></a>
+  </div>
+</header>
 
 <h2>📊 Estatísticas do Jogo Activo</h2>
 
@@ -180,7 +150,7 @@ footer {
         <tr>
           <th>#</th>
           <th>Nome</th>
-          <th>GR / Postes</th>
+          <th style="text-align:center;">GR / Postes</th>
           <th>Interceptados</th>
           <th>Fora</th>
           <th>Golos</th>
@@ -215,7 +185,7 @@ footer {
         <tr>
           <th>#</th>
           <th>Nome</th>
-          <th>GR / Postes</th>
+          <th style="text-align:center;">GR / Postes</th>
           <th>Interceptados</th>
           <th>Fora</th>
           <th>Golos</th>
@@ -254,12 +224,8 @@ footer {
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
 
 <script type="module">
-import {
-  db, getFirebaseCollection, setFirebaseDoc
-} from "./firebase-data.js";
-import {
-  collection, query, where, getDocs
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let userId = "user1";
 let activeGameId = null;
@@ -289,7 +255,6 @@ function renderTable(tableId, players, statKeys, statsData){
       <td>${p.numero}</td>
       <td>${p.nome}</td>
       ${statKeys.map(k=>{
-        // Goalkeepers do not have GR / Postes
         if((k==='grPostes') && p.gr) return '';
         return `<td>
           <div class="stat-controls">
@@ -390,6 +355,19 @@ async function resetStats(part){
 document.getElementById('resetPart1Btn').onclick=()=>resetStats('parte1');
 document.getElementById('resetPart2Btn').onclick=()=>resetStats('parte2');
 document.getElementById('resetAllBtn').onclick=()=>resetStats('all');
+
+/* NAVIGATION JS */
+const menuToggle = document.getElementById('menuToggle');
+const sideMenu = document.getElementById('sideMenu');
+const overlay = document.getElementById('overlay');
+const menuLinks = sideMenu.querySelectorAll('a');
+
+function openMenu() { sideMenu.classList.add('open'); overlay.classList.add('active'); }
+function closeMenu() { sideMenu.classList.remove('open'); overlay.classList.remove('active'); }
+
+menuToggle.addEventListener('click', () => { sideMenu.classList.contains('open') ? closeMenu() : openMenu(); });
+overlay.addEventListener('click', closeMenu);
+menuLinks.forEach(link => link.addEventListener('click', closeMenu));
 </script>
 </body>
 </html>
