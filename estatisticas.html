@@ -10,7 +10,7 @@
 /* RESET & BASE */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: 'Roboto', sans-serif; background: linear-gradient(135deg, #1d2b64, #f8cdda); color: #222; display: flex; flex-direction: column; overflow-x: hidden; }
-body { margin: 0; min-height: 100vh; }
+body { margin: 0; min-height: 100vh; padding: 20px; }
 
 /* HEADER / NAV BAR */
 header {
@@ -78,11 +78,8 @@ header {
 }
 .overlay.active { opacity: 1; visibility: visible; }
 
-/* PAGE CONTENT WRAPPER */
-.content-wrapper { flex: 1; padding: 20px; display: flex; flex-direction: column; }
-
 /* PAGE STYLES */
-h2 { text-align: center; margin-bottom: 16px; }
+h2 { text-align: center; margin-bottom: 16px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 .tabs { display: flex; justify-content: center; gap: 6px; margin-bottom: 18px; }
 .tab-btn { padding: 10px 18px; border: none; border-radius: 6px; background: #888; color: white; cursor: pointer; font-weight: 500; transition: 0.25s; }
 .tab-btn.active { background: #28a745; }
@@ -103,7 +100,7 @@ tr:hover { background: #f9f9f9; }
 #notification { display: none; position: fixed; top: 14px; right: 14px; background: #e8f1ff; color: #0047b3; padding: 10px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 .notification.error { background: #ffe8e8; color: #b71c1c; }
 #loading { display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.1em; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); margin-bottom: 20px; }
-footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; margin-top: 20px; }
+footer { text-align: center; padding: 14px; font-size: 0.85em; color: #fff; margin-top: 20px; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 .reset-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 10px; margin-bottom: 14px; }
 .reset-buttons button { padding: 8px 18px; border-radius: 6px; border: none; background: #e74c3c; color: #fff; font-weight: 600; cursor: pointer; }
 .reset-buttons button:hover { background: #b71c1c; }
@@ -139,9 +136,6 @@ footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; marg
     <a href="index.html"><i class='bx bx-home home-icon'></i></a>
   </div>
 </header>
-
-<!-- Page Content -->
-<div class="content-wrapper">
 
 <h2>📊 Estatísticas do Jogo Activo</h2>
 
@@ -232,10 +226,148 @@ footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; marg
 <div id="notification"></div>
 
 <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
-</div>
 
 <script type="module">
-/* --- All your original JS stays unchanged --- */
+import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+let userId = "user1";
+let activeGameId = null;
+let fieldPlayers = [];
+let goalKeepers = [];
+
+const campoStats = ['grPostes','interceptados','fora','golos','passesErrados','faltas'];
+const grStats = ['defesas','interceptados','golosSofridos','faltas'];
+
+const notification = document.getElementById('notification');
+const loading = document.getElementById('loading');
+
+function showNotification(msg, err=false){
+  notification.textContent = msg;
+  notification.style.background = err ? '#ffe8e8' : '#e8f1ff';
+  notification.style.color = err ? '#b71c1c' : '#0047b3';
+  notification.style.display = 'block';
+  setTimeout(()=>notification.style.display='none',2500);
+}
+
+function renderTable(tableId, players, statKeys, statsData){
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML = '';
+  players.forEach(p=>{
+    const row = tbody.insertRow();
+    row.innerHTML = `
+      <td>${p.numero}</td>
+      <td>${p.nome}</td>
+      ${statKeys.map(k=>{
+        if((k==='grPostes') && p.gr) return '';
+        return `<td>
+          <div class="stat-controls">
+            <button class="decrease" onclick="changeStat(this,-1)">−</button>
+            <input type="number" value="${statsData[p.numero]?.[k]||0}" data-player="${p.numero}" data-stat="${k}" data-category="${p.gr?'gr':'campo'}" data-table="${tableId}" readonly>
+            <button class="increase" onclick="changeStat(this,1)">+</button>
+          </div>
+        </td>`;
+      }).join('')}
+    `;
+  });
+}
+
+window.changeStat = async function(btn, delta){
+  const input = btn.parentElement.querySelector('input');
+  let val = parseInt(input.value) || 0;
+  val += delta; if(val<0) val=0; input.value=val;
+  const player = input.dataset.player;
+  const stat = input.dataset.stat;
+  const category = input.dataset.category;
+  const tableId = input.dataset.table;
+  const part = tableId.includes('1') ? 'parte1' : 'parte2';
+  try {
+    await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/${part}`, {
+      [category]: { [player]: { [stat]: val } }
+    });
+    showNotification(`Guardado: ${stat} (${val}) — #${player}`);
+  } catch(err){
+    console.error(err);
+    showNotification("Erro ao guardar", true);
+  }
+};
+
+async function renderAll(){
+  const statsSnap = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/stats`);
+  const parte1 = statsSnap.find(s => s.id === 'parte1') || {campo:{}, gr:{}};
+  const parte2 = statsSnap.find(s => s.id === 'parte2') || {campo:{}, gr:{}};
+  renderTable('tableCampo1', fieldPlayers, campoStats, parte1.campo||{});
+  renderTable('tableGR1', goalKeepers, grStats, parte1.gr||{});
+  renderTable('tableCampo2', fieldPlayers, campoStats, parte2.campo||{});
+  renderTable('tableGR2', goalKeepers, grStats, parte2.gr||{});
+  loading.style.display='none';
+}
+
+async function loadPlayers(){
+  const players = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
+  const eligible = players.filter(p => p.estatisticas === true);
+  fieldPlayers = eligible.filter(p => !p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers = eligible.filter(p => p.gr).sort((a,b)=>a.numero-b.numero);
+  await renderAll();
+}
+
+async function findActiveGame(){
+  const q = query(collection(db,`users/${userId}/games`), where("active","==",true));
+  const snaps = await getDocs(q);
+  if(!snaps.empty){
+    activeGameId = snaps.docs[0].id;
+    await loadPlayers();
+  } else {
+    alert("Nenhum jogo activo encontrado. Redirecionando...");
+    window.location.href="configjogoequipa.html";
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{ await findActiveGame(); });
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    if(btn.dataset.tab) document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+async function resetStats(part){
+  try{
+    if(part==='all'){
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/parte1`, {campo:{}, gr:{}});
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/parte2`, {campo:{}, gr:{}});
+      await renderAll();
+      showNotification("✅ Todas as Estatísticas Eliminadas");
+    } else {
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/stats/${part}`, {campo:{}, gr:{}});
+      await renderAll();
+      showNotification(`✅ Estatísticas ${part==='parte1'?'1ª Parte':'2ª Parte'} resetadas`);
+    }
+  } catch(e){
+    console.error(e);
+    showNotification("Erro ao resetar estatísticas", true);
+  }
+}
+
+document.getElementById('resetPart1Btn').onclick=()=>resetStats('parte1');
+document.getElementById('resetPart2Btn').onclick=()=>resetStats('parte2');
+document.getElementById('resetAllBtn').onclick=()=>resetStats('all');
+
+/* NAVIGATION JS */
+const menuToggle = document.getElementById('menuToggle');
+const sideMenu = document.getElementById('sideMenu');
+const overlay = document.getElementById('overlay');
+const menuLinks = sideMenu.querySelectorAll('a');
+
+function openMenu() { sideMenu.classList.add('open'); overlay.classList.add('active'); }
+function closeMenu() { sideMenu.classList.remove('open'); overlay.classList.remove('active'); }
+
+menuToggle.addEventListener('click', () => { sideMenu.classList.contains('open') ? closeMenu() : openMenu(); });
+overlay.addEventListener('click', closeMenu);
+menuLinks.forEach(link => link.addEventListener('click', closeMenu));
 </script>
 </body>
 </html>
