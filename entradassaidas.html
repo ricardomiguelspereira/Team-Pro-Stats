@@ -5,110 +5,89 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Entradas / Saídas</title>
 <style>
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f3f5f7;
-  margin: 0;
-  padding: 20px;
-  color: #222;
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background:#f3f5f7;margin:0;padding:20px;color:#222;
 }
-h2 {
-  text-align: center;
-  margin-bottom: 16px;
+h2{text-align:center;margin-bottom:16px;}
+.tabs{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:18px;}
+.tab-btn{
+  padding:10px 18px;border:none;border-radius:6px;background:#888;
+  color:#fff;cursor:pointer;font-weight:500;transition:.25s;
 }
-.tabs {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-.tab-btn {
-  padding: 10px 18px;
-  border: none;
-  border-radius: 6px;
-  background: #888;
-  color: white;
-  cursor: pointer;
-  font-weight: 500;
-  transition: 0.25s;
-}
-.tab-btn.active { background: #28a745; }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-.responsive { overflow-x: auto; margin-bottom: 20px; }
+.tab-btn.active{background:#28a745;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.responsive{overflow-x:auto;margin-bottom:20px;}
 
-table {
-  border-collapse: collapse;
-  width: 100%;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-  font-size: 13px;
+table{
+  border-collapse:collapse;width:100%;
+  background:#ccc; /* medium gray base */
+  border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,.08);
+  font-size:13px;
 }
-th, td {
-  padding: 8px;
-  text-align: center;
-  border-bottom: 1px solid #eee;
-  min-width: 36px;
-  height: 48px;
-  cursor: pointer;
+th,td{
+  padding:8px;text-align:center;
+  border:1px solid #999;
+  min-width:36px;height:48px;cursor:pointer;
 }
-th {
-  background: #f5f7fa;
-  font-weight: 600;
-  position: sticky;
-  top: 0;
-  z-index: 2;
+th{
+  background:#4a90e2; /* medium blue */
+  color:#000; /* black text */
+  font-weight:700;
+  position:sticky;top:0;z-index:2;
+  writing-mode: vertical-rl; /* vertical text */
+  transform: rotate(180deg); /* keep upright */
+  white-space: nowrap;
 }
-td.e-cell { color: #0c8c3a; font-weight: 600; font-size: 15px; }
-td.s-cell { color: #c0392b; font-weight: 600; font-size: 15px; }
-td.saving { background: #fff3cd !important; }
-td.saved { background: #d4edda !important; transition: background 0.6s ease; }
-tr:hover { background: #f9f9f9; }
+th:first-child,td:first-child{
+  position:sticky;left:0;background:#fefefe;z-index:3;font-weight:600;
+}
+th:nth-child(2),td:nth-child(2){
+  position:sticky;left:60px;background:#fefefe;z-index:3;
+  text-align:left;padding-left:6px;
+}
 
-.reset-buttons {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
-  margin-bottom: 14px;
-}
-.reset-buttons button {
-  padding: 10px 20px;
-  border-radius: 6px;
-  border: none;
-  background: #e74c3c;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-.reset-buttons button:hover { background: #b71c1c; }
+/* alternating row colors */
+tr:nth-child(even){background:#ccc;}
+tr:nth-child(odd){background:#ffffff;}
 
-#notification {
-  display: none;
-  position: fixed;
-  top: 14px;
-  right: 14px;
-  background: #e8f1ff;
-  color: #0047b3;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  z-index: 999;
+/* cell state colors */
+td.e-cell{
+  background:#4CAF50 !important; /* green background */
+  color:#000 !important;          /* black text */
+  font-weight:600;
+  font-size:15px;
 }
-footer {
-  text-align: center;
-  padding: 14px;
-  font-size: 0.85em;
-  color: #555;
-  margin-top: 20px;
+td.s-cell{
+  background:#ff4d4d !important;  /* red background */
+  color:#000 !important;          /* black text */
+  font-weight:600;
+  font-size:15px;
 }
-@media (max-width: 768px) {
-  table { font-size: 11px; }
-  th, td { min-width: 28px; height: 44px; }
+
+td.saving{background:#fff3cd!important;}
+td.saved{background:#d4edda!important;transition:background .6s ease;}
+
+.reset-buttons{
+  display:flex;justify-content:center;flex-wrap:wrap;
+  gap:10px;margin:10px 0 14px;
+}
+.reset-buttons button{
+  padding:10px 20px;border-radius:6px;border:none;
+  background:#e74c3c;color:#fff;font-weight:600;cursor:pointer;
+}
+.reset-buttons button:hover{background:#b71c1c;}
+#notification{
+  display:none;position:fixed;top:14px;right:14px;
+  background:#e8f1ff;color:#0047b3;padding:10px 14px;
+  border-radius:8px;font-weight:600;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);z-index:999;
+}
+footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px;}
+@media(max-width:768px){
+  table{font-size:11px;}
+  th,td{min-width:28px;height:44px;}
 }
 </style>
 </head>
@@ -125,21 +104,11 @@ footer {
 <div id="notification"></div>
 
 <div id="part1" class="tab-content active">
-  <div class="responsive">
-    <table id="tableCampo1"><thead></thead><tbody></tbody></table>
-  </div>
-  <div class="responsive">
-    <table id="tableGR1"><thead></thead><tbody></tbody></table>
-  </div>
+  <div class="responsive"><table id="tableParte1"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <div id="part2" class="tab-content">
-  <div class="responsive">
-    <table id="tableCampo2"><thead></thead><tbody></tbody></table>
-  </div>
-  <div class="responsive">
-    <table id="tableGR2"><thead></thead><tbody></tbody></table>
-  </div>
+  <div class="responsive"><table id="tableParte2"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <div class="reset-buttons">
@@ -151,154 +120,129 @@ footer {
 <footer>© 2025 Team Pro Stats · Entradas / Saídas</footer>
 
 <script type="module">
-import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
-import { collection, query, where, getDocs, deleteField } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { db,getFirebaseCollection,setFirebaseDoc } from "./firebase-data.js";
+import { collection,query,where,getDocs,deleteField } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-let userId = "user1";
-let activeGameId = null;
-let fieldPlayers = [], goalKeepers = [];
+let userId="user1",activeGameId=null;
+let fieldPlayers=[],goalKeepers=[];
+const localCache={parte1:{},parte2:{}};
 
-// Generate 52 columns from 25:00 → 00:30 (every 30 seconds)
-const times = [];
-for(let sec = 25*60; sec >= 30; sec -= 30){
-  let m = Math.floor(sec/60), s = sec%60;
-  times.push(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+const times=[];
+for(let sec=25*60;sec>=30;sec-=30){
+  const m=Math.floor(sec/60),s=sec%60;
+  times.push(`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`);
 }
 
-// Notification helper
-const notification = document.getElementById("notification");
-function notify(msg, err=false){
-  notification.textContent = msg;
-  notification.style.background = err ? "#ffe8e8" : "#e8f1ff";
-  notification.style.color = err ? "#b71c1c" : "#0047b3";
-  notification.style.display = "block";
+const notification=document.getElementById("notification");
+function notify(msg,err=false){
+  notification.textContent=msg;
+  notification.style.background=err?"#ffe8e8":"#e8f1ff";
+  notification.style.color=err?"#b71c1c":"#0047b3";
+  notification.style.display="block";
   setTimeout(()=>notification.style.display="none",2000);
 }
 
-// Build table header
 function createHeader(){
-  const cols = ["#","Nome",...times];
+  const cols=["#","Nome",...times];
   return "<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
 }
 
-// Render a table (field or goalkeeper)
-function renderTable(tableId, players, data){
-  const table = document.getElementById(tableId);
-  const thead = table.querySelector("thead");
-  const tbody = table.querySelector("tbody");
-  thead.innerHTML = createHeader();
-  tbody.innerHTML = "";
-  players.forEach(p=>{
-    const row = document.createElement("tr");
-    let cells = `<td>${p.numero}</td><td>${p.nome}</td>`;
+function renderTable(tableId,data){
+  const table=document.getElementById(tableId);
+  table.querySelector("thead").innerHTML=createHeader();
+  const tb=table.querySelector("tbody");
+  tb.innerHTML="";
+  const combined=[...fieldPlayers,...goalKeepers];
+  combined.forEach(p=>{
+    const row=document.createElement("tr");
+    let cells=`<td>${p.numero}</td><td>${p.nome}${p.gr?" (GR)":""}</td>`;
     times.forEach(t=>{
-      const val = data[p.numero]?.[t] || "";
-      const cls = val==="E"?"e-cell":val==="S"?"s-cell":"";
-      cells += `<td class="${cls}" data-player="${p.numero}" data-time="${t}" data-part="${tableId.includes('1')?'parte1':'parte2'}">${val}</td>`;
+      const val=data[p.numero]?.[t]||"";
+      const cls=val==="E"?"e-cell":val==="S"?"s-cell":"";
+      cells+=`<td class="${cls}" data-player="${p.numero}" data-time="${t}" data-part="${tableId.includes("1")?"parte1":"parte2"}">${val}</td>`;
     });
-    row.innerHTML = cells;
-    tbody.appendChild(row);
+    row.innerHTML=cells;
+    tb.appendChild(row);
   });
 }
 
-// Save or delete a cell entry
-async function saveCell(part, player, time, val, category, td){
+async function saveCell(part,player,time,val,td){
   try{
     td.classList.add("saving");
-    const path = `users/${userId}/games/${activeGameId}/entradasSaidas/${part}`;
-    if(val === ""){
-      // remove field from Firestore
-      await setFirebaseDoc(path, { [category]: { [player]: { [time]: deleteField() } } });
-    } else {
-      await setFirebaseDoc(path, { [category]: { [player]: { [time]: val } } });
-    }
+    localCache[part][player]=localCache[part][player]||{};
+    if(val==="") delete localCache[part][player][time];
+    else localCache[part][player][time]=val;
+    const path=`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`;
+    await setFirebaseDoc(path,{[player]:{[time]:val===""?deleteField():val}});
     td.classList.remove("saving");
     td.classList.add("saved");
     setTimeout(()=>td.classList.remove("saved"),800);
-  }catch(e){
-    console.error(e);
-    td.classList.remove("saving");
-    notify("Erro ao guardar", true);
-  }
+  }catch(e){console.error(e);td.classList.remove("saving");notify("Erro ao guardar",true);}
 }
 
-// Load data from Firestore
 async function loadData(){
-  const snaps = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/entradasSaidas`);
-  const parte1 = snaps.find(s=>s.id==="parte1")||{campo:{},gr:{}};
-  const parte2 = snaps.find(s=>s.id==="parte2")||{campo:{},gr:{}};
-  renderTable("tableCampo1", fieldPlayers, parte1.campo||{});
-  renderTable("tableGR1", goalKeepers, parte1.gr||{});
-  renderTable("tableCampo2", fieldPlayers, parte2.campo||{});
-  renderTable("tableGR2", goalKeepers, parte2.gr||{});
+  const snaps=await getFirebaseCollection(`users/${userId}/games/${activeGameId}/entradasSaidas`);
+  const parte1=snaps.find(s=>s.id==="parte1")||{};
+  const parte2=snaps.find(s=>s.id==="parte2")||{};
+  localCache.parte1=JSON.parse(JSON.stringify(parte1));
+  localCache.parte2=JSON.parse(JSON.stringify(parte2));
+  renderTable("tableParte1",parte1);
+  renderTable("tableParte2",parte2);
 }
 
-// Load players with statistics enabled
 async function loadPlayers(){
-  const players = await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
-  const active = players.filter(p=>p.estatisticas===true);
-  fieldPlayers = active.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-  goalKeepers = active.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+  const ps=await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
+  const active=ps.filter(p=>p.estatisticas===true);
+  fieldPlayers=active.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers=active.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
+  goalKeepers=goalKeepers.slice(0,2);
   await loadData();
 }
 
-// Find and load active game
 async function findActiveGame(){
-  const q = query(collection(db,`users/${userId}/games`),where("active","==",true));
-  const snap = await getDocs(q);
-  if(!snap.empty){
-    activeGameId = snap.docs[0].id;
-    await loadPlayers();
-  } else {
-    alert("Nenhum jogo ativo encontrado.");
-    window.location.href = "configjogoequipa.html";
-  }
+  const q=query(collection(db,`users/${userId}/games`),where("active","==",true));
+  const snap=await getDocs(q);
+  if(!snap.empty){activeGameId=snap.docs[0].id;await loadPlayers();}
+  else{alert("Nenhum jogo ativo encontrado.");window.location.href="configjogoequipa.html";}
 }
-
 document.addEventListener("DOMContentLoaded",()=>findActiveGame());
 
-// Cell click → toggle E / S / empty + save
 document.body.addEventListener("click",async e=>{
-  if(e.target.tagName!=="TD" || !e.target.dataset.player) return;
-  const td = e.target;
-  const current = td.textContent.trim();
-  const next = current===""?"E":current==="E"?"S":"";
-  td.textContent = next;
+  if(e.target.tagName!=="TD"||!e.target.dataset.player)return;
+  const td=e.target;
+  const cur=td.textContent.trim();
+  const next=cur===""?"E":cur==="E"?"S":"";
+  td.textContent=next;
   td.classList.remove("e-cell","s-cell");
-  if(next==="E") td.classList.add("e-cell");
-  else if(next==="S") td.classList.add("s-cell");
-  const part = td.dataset.part;
-  const player = td.dataset.player;
-  const time = td.dataset.time;
-  const category = td.closest("table").id.includes("GR") ? "gr" : "campo";
-  await saveCell(part, player, time, next, category, td);
+  if(next==="E")td.classList.add("e-cell");
+  else if(next==="S")td.classList.add("s-cell");
+  const part=td.dataset.part,player=td.dataset.player,time=td.dataset.time;
+  await saveCell(part,player,time,next,td);
 });
 
-// Reset part(s)
 async function reset(part){
   try{
     if(part==="all"){
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{campo:{},gr:{}});
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{campo:{},gr:{}});
-    } else {
-      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{campo:{},gr:{}});
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{});
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{});
+      localCache.parte1={};localCache.parte2={};
+    }else{
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{});
+      localCache[part]={};
     }
-    await loadData();
-    notify("✅ Reset concluído");
-  }catch(e){ console.error(e); notify("Erro ao resetar",true); }
+    await loadData();notify("✅ Reset concluído");
+  }catch(e){console.error(e);notify("Erro ao resetar",true);}
 }
-
 document.getElementById("resetPart1Btn").onclick=()=>reset("parte1");
 document.getElementById("resetPart2Btn").onclick=()=>reset("parte2");
 document.getElementById("resetAllBtn").onclick=()=>reset("all");
 
-// Tab switching
 document.querySelectorAll(".tab-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
     btn.classList.add("active");
-    if(btn.dataset.tab) document.getElementById(btn.dataset.tab).classList.add("active");
+    if(btn.dataset.tab)document.getElementById(btn.dataset.tab).classList.add("active");
   });
 });
 </script>
