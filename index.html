@@ -4,30 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Team Pro Stats</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
     /* Reset & base styles */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
       height: 100%;
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      background-color: #ffffff;
-      color: #333;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1d2b64, #f8cdda);
+      color: #ffffff;
       display: flex;
       flex-direction: column;
     }
 
-    /* Container with fade-in animation */
-    .container {
-      flex: 1; /* take available vertical space */
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* Wrapper for vertical centering */
+    .wrapper {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center; /* vertical centering */
-      align-items: center;     /* horizontal centering */
+      justify-content: center;
+      align-items: center;
       text-align: center;
+      padding: 20px;
+    }
+
+    /* Container with fade-in animation */
+    .container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       opacity: 0;
       animation: fadeIn 1.5s ease-in forwards;
-      padding: 20px; /* small padding so it doesn't hug edges on tiny screens */
+      width: 100%;
+      max-width: 900px;
     }
 
     @keyframes fadeIn {
@@ -40,75 +57,117 @@
       width: 220px;
       max-width: 80%;
       height: auto;
-      border-radius: 12px;
-      object-fit: cover;
+      border-radius: 20px;
       margin-bottom: 20px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
-      display: block;
-      display: none; /* Hidden by default until loaded */
+      cursor: default;
+      transition: transform 0.3s ease;
     }
 
     img.logo:hover {
-      transform: scale(1.08);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      transform: scale(1.03);
     }
 
-    /* Text styling */
-    .page-title { font-size: 2em; font-weight: bold; margin-bottom: 8px; }
-    .powered-by { font-size: 0.9em; color: #555; }
+    /* Page title */
+    .page-title {
+      font-size: 2.2em;
+      font-weight: 700;
+      margin-bottom: 25px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      letter-spacing: 1px;
+    }
+
+    /* Buttons grid */
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+
+    /* Modern glassmorphic buttons */
+    .square-button {
+      aspect-ratio: 1;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: #fff;
+      border-radius: 20px;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      transition: all 0.4s ease;
+      padding: 15px;
+    }
+
+    .square-button:hover {
+      transform: translateY(-5px) scale(1.05);
+      background: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.4);
+    }
+
+    .square-button:active { transform: translateY(0) scale(1); }
 
     /* Footer */
     footer {
       text-align: center;
-      padding: 12px 0;
-      font-size: 0.8em;
-      color: #666;
+      padding: 8px 0;
+      font-size: 0.65em;
+      color: rgba(255, 255, 255, 0.7);
+      width: 100%;
+      flex-shrink: 0;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
 
     /* Responsive typography */
+    @media (max-width: 1024px) {
+      .page-title { font-size: 2em; }
+      .buttons-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .square-button { font-size: 0.95em; padding: 12px; }
+    }
+
+    @media (max-width: 768px) {
+      .page-title { font-size: 1.85em; }
+      .buttons-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .square-button { font-size: 0.9em; padding: 12px; }
+    }
+
     @media (max-width: 480px) {
       .page-title { font-size: 1.5em; }
-      .powered-by { font-size: 0.8em; }
+      .buttons-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .square-button { font-size: 0.85em; padding: 10px; }
+    }
+
+    @media (max-width: 320px) {
+      .buttons-grid { grid-template-columns: 1fr; gap: 6px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <img alt="Team Logo" class="logo" id="teamLogo" src="" />
-    <p class="page-title">TEAM PRO STATS</p>
-    <p class="powered-by">powered by RP Technology</p>
+  <div class="wrapper">
+    <div class="container">
+      <img alt="Ricardo Pereira Team Logo" class="logo"
+           src="https://ricardopereira.com/firebase/LogoRP_White.png" />
+      <p class="page-title">TEAM PRO STATS</p>
+
+      <!-- Buttons Grid -->
+      <div class="buttons-grid">
+        <a href="estatisticas.html" class="square-button">Estatísticas<br>de Jogo</a>
+        <a href="entradassaidas.html" class="square-button">Entradas / Saídas</a>
+        <a href="pse.html" class="square-button">PSE</a>
+        <a href="relatorios.html" class="square-button">Relatórios</a>
+        <a href="exportar.html" class="square-button">Exportar</a>
+        <a href="confjogoequipa.html" class="square-button">Configurações</a>
+      </div>
+    </div>
   </div>
 
-  <script type="module" src="firebase-data.js"></script>
-  <script type="module">
-    import {
-      FB_PATHS_GLOBAL,
-      initializeFirebase,
-      getFirebaseData
-    } from './firebase-data.js';
-    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      await initializeFirebase(); // Ensures auth & migration
-
-      const teamLogoElement = document.getElementById('teamLogo');
-      const teamLogoData = await getFirebaseData(FB_PATHS_GLOBAL.teamLogo);
-      if (teamLogoData && teamLogoData.logo) {
-        teamLogoElement.src = teamLogoData.logo;
-        teamLogoElement.style.display = 'block'; // Show the logo if available
-      }
-
-      // Optional: Log a page view event to Firebase Analytics
-      try {
-        const analytics = getAnalytics();
-        logEvent(analytics, 'page_view', { page_title: 'Team Pro Stats Landing' });
-      } catch (e) {
-        console.warn("Firebase Analytics not available or initialized:", e);
-      }
-    });
-  </script>
-
-  <footer>© 2025 Team Pro Stats · Powered by RP Technology</footer>
+  <footer>© 2025 Team Pro Stats | Powered by RP Technology</footer>
 </body>
 </html>
