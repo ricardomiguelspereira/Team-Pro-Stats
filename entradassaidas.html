@@ -5,105 +5,137 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Entradas / Saídas</title>
 <style>
-body{
+body {
   font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-  background:#f3f5f7;margin:0;padding:20px;color:#222;
+  background:#f3f5f7;
+  margin:0;
+  padding:20px;
+  color:#222;
 }
-h2{text-align:center;margin-bottom:16px;}
-.tabs{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:18px;}
-.tab-btn{
-  padding:10px 18px;border:none;border-radius:6px;background:#888;
-  color:#fff;cursor:pointer;font-weight:500;transition:.25s;
+h2 {text-align:center;margin-bottom:16px;}
+.tabs {
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
 }
-.tab-btn.active{background:#28a745;}
-.tab-content{display:none;}
-.tab-content.active{display:block;}
-.responsive{overflow-x:auto;margin-bottom:20px;}
+.tab-btn {
+  padding:10px 18px;
+  border:none;
+  border-radius:6px;
+  background:#888;
+  color:#fff;
+  cursor:pointer;
+  font-weight:500;
+  transition:.25s;
+}
+.tab-btn.active {background:#28a745;}
+.tab-content {display:none;}
+.tab-content.active {display:block;}
+.responsive {overflow-x:auto;margin-bottom:20px;}
 
-table{
-  border-collapse:collapse;width:100%;
-  background:#ccc; /* medium gray */
-  border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,.08);
+table {
+  border-collapse:collapse;
+  width:100%;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 3px 8px rgba(0,0,0,.08);
   font-size:13px;
   table-layout:fixed;
 }
-th,td{
-  padding:8px;text-align:center;
-  border:1px solid #999;
-  min-width:36px;height:48px;cursor:pointer;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-/* Default header style */
-th{
-  background:#4a90e2; /* medium blue */
-  color:#000; /* black text */
-  font-weight:700;
-  position:sticky;top:0;z-index:2;
-  writing-mode: vertical-rl; /* vertical text by default */
-  transform: rotate(180deg);
-  white-space: nowrap;
-}
-
-/* Make # and Nome headers horizontal */
-th:first-child,
-th:nth-child(2){
-  writing-mode: horizontal-tb !important;
-  transform: none !important;
+th, td {
+  padding:8px;
   text-align:center;
-}
-
-/* Sticky columns for player number and name */
-th:first-child,td:first-child{
-  position:sticky;left:0;background:#fefefe;z-index:3;font-weight:600;
-}
-th:nth-child(2),td:nth-child(2){
-  position:sticky;left:60px;background:#fefefe;z-index:3;
-  text-align:left;padding-left:6px;
-  max-width:fit-content;
-  width:auto;
+  border:1px solid #ccc;
+  min-width:36px;
+  height:48px;
+  cursor:pointer;
+  word-break:keep-all;
   white-space:nowrap;
 }
+th {
+  background:#00aaff;
+  font-weight:700;
+  color:#000;
+  position:sticky;
+  top:0;
+  z-index:2;
+}
+th:first-child, td:first-child {
+  position:sticky;
+  left:0;
+  background:#fefefe;
+  z-index:3;
+  font-weight:600;
+}
+th:nth-child(2), td:nth-child(2) {
+  position:sticky;
+  left:60px;
+  background:#fefefe;
+  z-index:3;
+  text-align:left;
+  padding-left:6px;
+  max-width:240px;
+}
+th.time-header {
+  writing-mode:vertical-rl;
+  transform:rotate(180deg);
+  white-space:nowrap;
+}
+th:first-child, th:nth-child(2) {
+  writing-mode:horizontal-tb;
+  transform:none;
+}
+tr:nth-child(even) {background:#e0e0e0;}
+tr:nth-child(odd) {background:#ffffff;}
 
-/* alternating row colors */
-tr:nth-child(even){background:#ccc;}
-tr:nth-child(odd){background:#ffffff;}
-
-/* cell state colors */
-td.e-cell{
-  background:#4CAF50 !important; /* green */
-  color:#000 !important;
+td.e-cell {
+  background:#32cd32!important;
+  color:#000!important;
   font-weight:600;
   font-size:15px;
 }
-td.s-cell{
-  background:#ff4d4d !important; /* red */
-  color:#000 !important;
+td.s-cell {
+  background:#ff4c4c!important;
+  color:#000!important;
   font-weight:600;
   font-size:15px;
 }
+td.saving {background:#fff3cd!important;}
+td.saved {background:#d4edda!important;transition:background .6s ease;}
 
-td.saving{background:#fff3cd!important;}
-td.saved{background:#d4edda!important;transition:background .6s ease;}
-
-.reset-buttons{
-  display:flex;justify-content:center;flex-wrap:wrap;
-  gap:10px;margin:10px 0 14px;
+.reset-buttons {
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:10px 0 14px;
 }
-.reset-buttons button{
-  padding:10px 20px;border-radius:6px;border:none;
-  background:#e74c3c;color:#fff;font-weight:600;cursor:pointer;
+.reset-buttons button {
+  padding:10px 20px;
+  border-radius:6px;
+  border:none;
+  background:#e74c3c;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
 }
-.reset-buttons button:hover{background:#b71c1c;}
-#notification{
-  display:none;position:fixed;top:14px;right:14px;
-  background:#e8f1ff;color:#0047b3;padding:10px 14px;
-  border-radius:8px;font-weight:600;
-  box-shadow:0 4px 10px rgba(0,0,0,0.2);z-index:999;
+.reset-buttons button:hover {background:#b71c1c;}
+#notification {
+  display:none;
+  position:fixed;
+  top:14px;
+  right:14px;
+  background:#e8f1ff;
+  color:#0047b3;
+  padding:10px 14px;
+  border-radius:8px;
+  font-weight:600;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  z-index:999;
 }
-footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px;}
+footer {text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px;}
 @media(max-width:768px){
   table{font-size:11px;}
   th,td{min-width:28px;height:44px;}
@@ -140,13 +172,13 @@ footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px
 
 <script type="module">
 import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
-import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { collection, query, where, getDocs, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-let userId="user1",activeGameId=null;
-let fieldPlayers=[],goalKeepers=[];
+let userId="user1", activeGameId=null;
+let fieldPlayers=[], goalKeepers=[];
 const localCache={parte1:{},parte2:{}};
 
-// Generate time headers 25:00 → 00:30 (step 30s)
+// 52 columns 25:00→00:30 step 30s
 const times=[];
 for(let sec=25*60;sec>=30;sec-=30){
   const m=Math.floor(sec/60),s=sec%60;
@@ -164,7 +196,7 @@ function notify(msg,err=false){
 
 function createHeader(){
   const cols=["#","Nome",...times];
-  return "<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
+  return "<tr>"+cols.map((c,i)=>`<th class="${i>1?'time-header':''}">${c}</th>`).join("")+"</tr>";
 }
 
 function renderTable(tableId,data){
@@ -173,12 +205,6 @@ function renderTable(tableId,data){
   const tb=table.querySelector("tbody");
   tb.innerHTML="";
   const combined=[...fieldPlayers,...goalKeepers];
-
-  // Calculate dynamic width for "Nome" column based on longest name
-  const longestName=Math.max(...combined.map(p=>(p.nome ? p.nome.length : 0)))+6;
-  const nameCol=document.querySelectorAll(`#${tableId} th:nth-child(2), #${tableId} td:nth-child(2)`);
-  nameCol.forEach(el=>el.style.minWidth=`${longestName*8}px`);
-
   combined.forEach(p=>{
     const row=document.createElement("tr");
     let cells=`<td>${p.numero}</td><td>${p.nome}${p.gr?" (GR)":""}</td>`;
@@ -199,37 +225,45 @@ async function saveCell(part,player,time,val,td){
     if(val==="") delete localCache[part][player][time];
     else localCache[part][player][time]=val;
     const path=`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`;
-    await setFirebaseDoc(path,{[player]:localCache[part][player]});
+    await setFirebaseDoc(path,{[player]:{[time]:val===""?deleteField():val}});
     td.classList.remove("saving");
     td.classList.add("saved");
     setTimeout(()=>td.classList.remove("saved"),800);
   }catch(e){console.error(e);td.classList.remove("saving");notify("Erro ao guardar",true);}
 }
 
-async function loadData(){
-  const snaps=await getFirebaseCollection(`users/${userId}/games/${activeGameId}/entradasSaidas`);
-  const parte1=snaps.find(s=>s.id==="parte1")?.data||{};
-  const parte2=snaps.find(s=>s.id==="parte2")?.data||{};
-  localCache.parte1=JSON.parse(JSON.stringify(parte1));
-  localCache.parte2=JSON.parse(JSON.stringify(parte2));
-  renderTable("tableParte1",parte1);
-  renderTable("tableParte2",parte2);
+function attachRealtimeListeners(){
+  ["parte1","parte2"].forEach(part=>{
+    const path=collection(db,`users/${userId}/games/${activeGameId}/entradasSaidas`);
+    const unsub=onSnapshot(collection(db,`users/${userId}/games/${activeGameId}/entradasSaidas`),(snapshot)=>{
+      snapshot.forEach(doc=>{
+        if(doc.id===part){
+          localCache[part]=doc.data()||{};
+          renderTable(part==="parte1"?"tableParte1":"tableParte2",localCache[part]);
+        }
+      });
+    });
+  });
 }
 
 async function loadPlayers(){
   const ps=await getFirebaseCollection(`users/${userId}/games/${activeGameId}/players`);
   const active=ps.filter(p=>p.estatisticas===true);
   fieldPlayers=active.filter(p=>!p.gr).sort((a,b)=>a.numero-b.numero);
-  goalKeepers=active.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero);
-  goalKeepers=goalKeepers.slice(0,2);
-  await loadData();
+  goalKeepers=active.filter(p=>p.gr).sort((a,b)=>a.numero-b.numero).slice(0,2);
 }
 
 async function findActiveGame(){
   const q=query(collection(db,`users/${userId}/games`),where("active","==",true));
   const snap=await getDocs(q);
-  if(!snap.empty){activeGameId=snap.docs[0].id;await loadPlayers();}
-  else{alert("Nenhum jogo ativo encontrado.");window.location.href="configjogoequipa.html";}
+  if(!snap.empty){
+    activeGameId=snap.docs[0].id;
+    await loadPlayers();
+    attachRealtimeListeners();
+  }else{
+    alert("Nenhum jogo ativo encontrado.");
+    window.location.href="configjogoequipa.html";
+  }
 }
 document.addEventListener("DOMContentLoaded",()=>findActiveGame());
 
@@ -246,25 +280,19 @@ document.body.addEventListener("click",async e=>{
   await saveCell(part,player,time,next,td);
 });
 
-/* --- FIXED RESET FUNCTIONS --- */
-import { doc as fsDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-
 async function reset(part){
   try{
-    if(!activeGameId){notify("Jogo não encontrado",true);return;}
     if(part==="all"){
-      await deleteDoc(fsDoc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`));
-      await deleteDoc(fsDoc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`));
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte1`,{});
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/parte2`,{});
       localCache.parte1={};localCache.parte2={};
     }else{
-      await deleteDoc(fsDoc(db,`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`));
+      await setFirebaseDoc(`users/${userId}/games/${activeGameId}/entradasSaidas/${part}`,{});
       localCache[part]={};
     }
-    await loadData();
     notify("✅ Reset concluído");
   }catch(e){console.error(e);notify("Erro ao resetar",true);}
 }
-
 document.getElementById("resetPart1Btn").onclick=()=>reset("parte1");
 document.getElementById("resetPart2Btn").onclick=()=>reset("parte2");
 document.getElementById("resetAllBtn").onclick=()=>reset("all");
