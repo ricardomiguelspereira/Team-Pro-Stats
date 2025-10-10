@@ -104,6 +104,10 @@ footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; marg
 .reset-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 10px; margin-bottom: 14px; }
 .reset-buttons button { padding: 8px 18px; border-radius: 6px; border: none; background: #e74c3c; color: #fff; font-weight: 600; cursor: pointer; }
 .reset-buttons button:hover { background: #b71c1c; }
+
+/* RESPONSIVE HEADER */
+@media (max-width: 768px) { .header-logo { height: 35px; } }
+@media (max-width: 480px) { .header-logo { height: 30px; } }
 </style>
 </head>
 <body>
@@ -227,6 +231,7 @@ footer { text-align: center; padding: 14px; font-size: 0.85em; color: #555; marg
 import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
+/* --- Firebase & Table Logic --- */
 let userId = "user1";
 let activeGameId = null;
 let fieldPlayers = [];
