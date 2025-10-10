@@ -43,11 +43,18 @@ th{
   white-space:nowrap;
 }
 th.time-col{
-  transform:rotate(-90deg);
-  transform-origin:center center;
   width:36px;
   height:40px;
+  padding:0;
+}
+th.time-col div{
+  transform:rotate(-90deg);
+  transform-origin:center center;
+  display:inline-block;
+  line-height:36px;
   white-space:nowrap;
+  font-weight:700;
+  color:#000;
 }
 th:first-child,td:first-child{
   position:sticky;left:0;background:#fefefe;z-index:3;font-weight:600;
@@ -123,14 +130,13 @@ footer{text-align:center;padding:14px;font-size:.85em;color:#555;margin-top:20px
 <footer>© 2025 Team Pro Stats · Entradas / Saídas</footer>
 
 <script type="module">
-import { db, getFirebaseCollection, setFirebaseDoc, deleteFirebaseDoc } from "./firebase-data.js";
+import { db, getFirebaseCollection, setFirebaseDoc } from "./firebase-data.js";
 import { collection, query, where, getDocs, deleteField, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
 let userId="user1",activeGameId=null;
 let fieldPlayers=[],goalKeepers=[];
 const localCache={parte1:{},parte2:{}};
 
-// Time columns (25:00 → 00:30)
 const times=[];
 for(let sec=25*60;sec>=30;sec-=30){
   const m=Math.floor(sec/60),s=sec%60;
@@ -150,7 +156,7 @@ function createHeader(){
   const cols=["#","Nome",...times];
   return "<tr>"+cols.map(c=>{
     if(c==="#"||c==="Nome") return `<th>${c}</th>`;
-    return `<th class='time-col'>${c}</th>`;
+    return `<th class='time-col'><div>${c}</div></th>`;
   }).join("")+"</tr>";
 }
 
